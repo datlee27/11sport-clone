@@ -12,6 +12,7 @@ import {
   staffRepo,
 } from '../config/db';
 import { ApiError } from '../utils/errors';
+import { verifyToken } from '../utils/auth';
 import { ShiftCode } from '../models/Attendance';
 import { getLateToleranceMinutes } from './attendanceTimesheet';
 import {
@@ -238,11 +239,13 @@ async function getEnvAttendanceConfig() {
       id: 1,
       name: officeName,
       allowedIps,
+      domain: office1Domain || '',
     },
     {
       id: 2,
       name: office2Name,
       allowedIps: allowedIps2,
+      domain: office2Domain || '',
     },
   ];
 
@@ -251,9 +254,96 @@ async function getEnvAttendanceConfig() {
     allowedIps,
     office2Name,
     allowedIps2,
+    office1Domain,
+    office2Domain,
     requireGps: false,
     requireIp,
     branches,
+  };
+}
+
+/**
+ * Lấy cấu hình chấm công kết hợp: ưu tiên bản ghi do HR / Admin / CEO cấu hình trong Database,
+ * và tự động fallback về biến môi trường .env nếu hệ thống chưa có cấu hình trong DB.
+ */
+async function getEffectiveAttendanceConfig() {
+  const envConfig = await getEnvAttendanceConfig();
+  const dbDoc = await attendanceConfigRepo.findOne({ key: 'DEFAULT' });
+
+  if (!dbDoc) {
+    return envConfig;
+  }
+
+  const officeName = dbDoc.officeName || envConfig.officeName;
+  const office2Name = dbDoc.office2Name || envConfig.office2Name;
+
+  let allowedIps = Array.isArray(dbDoc.allowedIps)
+    ? sanitizeAllowedIps(dbDoc.allowedIps)
+    : envConfig.allowedIps;
+
+  const office1Domain =
+    typeof dbDoc.office1Domain === 'string'
+      ? dbDoc.office1Domain
+      : (readAttendanceEnv().ATTENDANCE_OFFICE_1_DOMAIN ||
+        readAttendanceEnv().ATTENDANCE_DDNS_DOMAIN ||
+        (isTestEnv() ? '' : '11sport2.myddns.me'));
+  if (office1Domain && !isTestEnv()) {
+    const resolvedList = await resolveDomains(office1Domain);
+    if (resolvedList.length > 0) {
+      allowedIps = Array.from(new Set([...resolvedList, ...allowedIps]));
+    }
+  }
+
+  let allowedIps2 = Array.isArray(dbDoc.allowedIps2)
+    ? sanitizeAllowedIps(dbDoc.allowedIps2)
+    : envConfig.allowedIps2;
+
+  const office2Domain =
+    typeof dbDoc.office2Domain === 'string'
+      ? dbDoc.office2Domain
+      : (readAttendanceEnv().ATTENDANCE_OFFICE_2_DOMAIN ||
+        (isTestEnv() ? '' : '11sport.myddns.me'));
+  if (office2Domain && !isTestEnv()) {
+    const resolvedList2 = await resolveDomains(office2Domain);
+    if (resolvedList2.length > 0) {
+      allowedIps2 = Array.from(new Set([...resolvedList2, ...allowedIps2]));
+    }
+  }
+
+  let requireIp = typeof dbDoc.requireIp === 'boolean' ? dbDoc.requireIp : envConfig.requireIp;
+  if (isTestEnv() && process.env.ATTENDANCE_REQUIRE_IP !== undefined) {
+    requireIp = process.env.ATTENDANCE_REQUIRE_IP !== 'false';
+  }
+
+  const branches = [
+    {
+      id: 1,
+      name: officeName,
+      allowedIps,
+      domain: office1Domain || '',
+    },
+    {
+      id: 2,
+      name: office2Name,
+      allowedIps: allowedIps2,
+      domain: office2Domain || '',
+    },
+  ];
+
+  return {
+    _id: (dbDoc as any)._id,
+    key: dbDoc.key,
+    officeName,
+    allowedIps,
+    office2Name,
+    allowedIps2,
+    office1Domain,
+    office2Domain,
+    requireGps: false,
+    requireIp,
+    branches,
+    updatedBy: dbDoc.updatedBy || '',
+    updatedAt: dbDoc.updatedAt,
   };
 }
 
@@ -275,7 +365,7 @@ function isIpAllowed(clientIp: string, allowedIps: string[]): boolean {
   });
 }
 
-type AttendanceConfig = Awaited<ReturnType<typeof getEnvAttendanceConfig>>;
+type AttendanceConfig = Awaited<ReturnType<typeof getEffectiveAttendanceConfig>>;
 
 /**
  * Kiểm tra IP mạng của nhân viên thuộc Mạng Cơ sở 1 hoặc Mạng Cơ sở 2.
@@ -339,7 +429,7 @@ attendanceRouter.post('/attendance/check-in', async (req, res, next) => {
     });
 
     const isWfh = Boolean(approvedWfh);
-    const config = await getEnvAttendanceConfig();
+    const config = await getEffectiveAttendanceConfig();
     const detectedIp = await resolveEffectiveClientIp(req, clientIp);
 
     // 2. Nếu không phải WFH (đã xác minh server-side) -> Kiểm tra IP mạng thuộc Cơ sở 1 hoặc Cơ sở 2
@@ -489,7 +579,7 @@ attendanceRouter.post('/attendance/check-out', async (req, res, next) => {
     });
     const isWfh = attendance.checkInType === 'WFH' || Boolean(approvedWfh);
     if (!isWfh) {
-      const config = await getEnvAttendanceConfig();
+      const config = await getEffectiveAttendanceConfig();
       const detectedIp = await resolveEffectiveClientIp(req, clientIp);
       verifyBranchNetwork(detectedIp, config);
     }
@@ -822,10 +912,10 @@ attendanceRouter.get('/attendance/history', async (req, res, next) => {
   }
 });
 
-// GET /api/v1/attendance/config (Chỉ đọc từ biến môi trường .env)
+// GET /api/v1/attendance/config (Đọc từ DB nếu có, fallback từ .env)
 attendanceRouter.get('/attendance/config', async (req, res, next) => {
   try {
-    const config = await getEnvAttendanceConfig();
+    const config = await getEffectiveAttendanceConfig();
     const detectedClientIp = await resolveEffectiveClientIp(req);
     const isCurrentIpAllowed =
       !config.requireIp ||
@@ -843,13 +933,105 @@ attendanceRouter.get('/attendance/config', async (req, res, next) => {
   }
 });
 
-// PUT /api/v1/attendance/config -> Chặn hoàn toàn vì chỉ cho phép cấu hình trong file .env
-attendanceRouter.put('/attendance/config', async (_req, _res, next) => {
-  next(
-    new ApiError(
-      403,
-      'CONFIG_MANAGED_BY_ENV',
-      'Cấu hình IP Wi-Fi chấm công chỉ được thiết lập trong file .env của Server, không cho phép chỉnh sửa trên hệ thống'
-    )
-  );
+// PUT /api/v1/attendance/config (Role HR, ADMIN, CEO cấu hình IP cả 2 cơ sở)
+attendanceRouter.put('/attendance/config', async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const bearerToken =
+      typeof authHeader === 'string' && authHeader.startsWith('Bearer ')
+        ? authHeader.slice(7).trim()
+        : '';
+    const user = bearerToken ? verifyToken(bearerToken) : null;
+    if (!user) {
+      throw new ApiError(401, 'UNAUTHORIZED', 'Vui lòng đăng nhập để cấu hình IP chấm công');
+    }
+    if (!['CEO', 'ADMIN', 'HR'].includes(user.role)) {
+      throw new ApiError(
+        403,
+        'FORBIDDEN',
+        'Chỉ HR, Quản trị viên (ADMIN) hoặc CEO mới có quyền cấu hình IP chấm công'
+      );
+    }
+
+    const {
+      officeName,
+      office2Name,
+      allowedIps,
+      allowedIps2,
+      office1Domain,
+      office2Domain,
+      requireIp,
+    } = req.body || {};
+
+    const parseIps = (val: any): string[] => {
+      if (Array.isArray(val)) {
+        return val.map((x) => String(x || '').trim()).filter(Boolean);
+      }
+      if (typeof val === 'string') {
+        return val
+          .split(/[\n,]+/)
+          .map((x) => x.trim())
+          .filter(Boolean);
+      }
+      return [];
+    };
+
+    const updateData: any = {
+      updatedBy: user.fullName || user.username || user.userId,
+    };
+
+    if (officeName !== undefined) updateData.officeName = String(officeName).trim();
+    if (office2Name !== undefined) updateData.office2Name = String(office2Name).trim();
+    if (allowedIps !== undefined) updateData.allowedIps = parseIps(allowedIps);
+    if (allowedIps2 !== undefined) updateData.allowedIps2 = parseIps(allowedIps2);
+    if (office1Domain !== undefined) updateData.office1Domain = String(office1Domain).trim();
+    if (office2Domain !== undefined) updateData.office2Domain = String(office2Domain).trim();
+    if (typeof requireIp === 'boolean') updateData.requireIp = requireIp;
+
+    const existing = await attendanceConfigRepo.findOne({ key: 'DEFAULT' });
+    if (existing) {
+      await attendanceConfigRepo.updateById(existing._id, updateData);
+    } else {
+      const envConfig = await getEnvAttendanceConfig();
+      await attendanceConfigRepo.create({
+        key: 'DEFAULT',
+        officeName: updateData.officeName || envConfig.officeName,
+        office2Name: updateData.office2Name || envConfig.office2Name,
+        allowedIps:
+          updateData.allowedIps !== undefined
+            ? updateData.allowedIps
+            : envConfig.allowedIps,
+        allowedIps2:
+          updateData.allowedIps2 !== undefined
+            ? updateData.allowedIps2
+            : envConfig.allowedIps2,
+        office1Domain: updateData.office1Domain !== undefined ? updateData.office1Domain : '',
+        office2Domain: updateData.office2Domain !== undefined ? updateData.office2Domain : '',
+        requireGps: false,
+        requireIp:
+          typeof updateData.requireIp === 'boolean'
+            ? updateData.requireIp
+            : envConfig.requireIp,
+        updatedBy: updateData.updatedBy,
+      });
+    }
+
+    const config = await getEffectiveAttendanceConfig();
+    const detectedClientIp = await resolveEffectiveClientIp(req);
+    const isCurrentIpAllowed =
+      !config.requireIp ||
+      config.branches.some((branch) => isIpAllowed(detectedClientIp, branch.allowedIps || []));
+
+    res.json({
+      data: {
+        config,
+        detectedClientIp,
+        isCurrentIpAllowed,
+        message: 'Cập nhật cấu hình IP chấm công thành công',
+      },
+      meta: {},
+    });
+  } catch (err) {
+    next(err);
+  }
 });

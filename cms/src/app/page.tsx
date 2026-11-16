@@ -26,6 +26,7 @@ import ServiceManagementModule from "@/components/ServiceManagementModule";
 import MyAttendanceCalendar from "@/components/MyAttendanceCalendar";
 import HeaderAttendanceBar from "@/components/HeaderAttendanceBar";
 import InvoicePdfModal from "@/components/InvoicePdfModal";
+import AttendanceIpConfigModule from "@/components/AttendanceIpConfigModule";
 import {
   Boxes,
   TrendingUp,
@@ -43,6 +44,7 @@ import {
   Activity,
   Gift,
   Wallet,
+  Wifi,
   Menu,
   ChevronRight,
   X,
@@ -173,6 +175,7 @@ const ROLE_ALLOWED_MODULES: Record<string, CmsModuleType[]> = {
     "ORDERS",
     "SERVICES",
     "STAFF",
+    "HRM",
     "SHIFT_HANDOVERS",
     "ACTIVITY",
     "PROMOTIONS",
@@ -209,6 +212,7 @@ export default function CmsDashboardPage() {
 
   // State Modal Đổi mật khẩu trong CMS
   const [showChangePwdModal, setShowChangePwdModal] = useState(false);
+  const [showIpConfigModal, setShowIpConfigModal] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
@@ -777,6 +781,31 @@ export default function CmsDashboardPage() {
                   </div>
                   <ChevronRight className="w-4 h-4 shrink-0 text-slate-500" />
                 </button>
+
+                {/* 4. Cấu hình IP Wi-Fi Chấm công (HR, ADMIN, CEO) */}
+                {adminUser && ["HR", "ADMIN", "CEO"].includes(adminUser.role) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsRightDrawerOpen(false);
+                      setShowIpConfigModal(true);
+                    }}
+                    className="w-full text-left px-3 py-3 rounded-xl text-xs font-bold flex items-center justify-between gap-2.5 text-slate-200 hover:bg-slate-800 hover:text-white transition"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-8 h-8 rounded-lg bg-emerald-500/15 text-emerald-400 flex items-center justify-center shrink-0">
+                        <Wifi className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="truncate">Cấu hình IP Wi-Fi chấm công</div>
+                        <div className="text-[10px] font-normal truncate mt-0.5 text-slate-400">
+                          IP 2 cơ sở (Showroom &amp; Văn phòng)
+                        </div>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 shrink-0 text-slate-500" />
+                  </button>
+                )}
               </div>
             </div>
 
@@ -1043,6 +1072,15 @@ export default function CmsDashboardPage() {
         order={invoiceOrder}
         onClose={() => setInvoiceOrder(null)}
       />
+
+      {/* Modal Cấu Hình IP Wi-Fi Chấm Công (2 Cơ Sở) */}
+      {showIpConfigModal && (
+        <AttendanceIpConfigModule
+          currentUser={adminUser}
+          isModal
+          onClose={() => setShowIpConfigModal(false)}
+        />
+      )}
     </div>
   );
 }

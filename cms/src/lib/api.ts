@@ -1810,8 +1810,16 @@ export interface AttendanceConfig {
   maxDistanceMeters?: number;
   allowedIps: string[];
   allowedIps2?: string[];
+  office1Domain?: string;
+  office2Domain?: string;
   requireGps?: boolean;
   requireIp: boolean;
+  branches?: Array<{
+    id: number;
+    name: string;
+    allowedIps: string[];
+    domain?: string;
+  }>;
   updatedBy?: string;
   updatedAt?: string;
 }
@@ -1830,9 +1838,17 @@ export async function fetchAttendanceConfig(): Promise<{
 }
 
 export async function updateAttendanceConfigApi(
-  payload: Partial<AttendanceConfig>
-): Promise<{ config: AttendanceConfig; detectedClientIp: string }> {
-  const res = await apiRequest<{ config: AttendanceConfig; detectedClientIp: string }>("/attendance/config", {
+  payload: Partial<AttendanceConfig> & {
+    allowedIps?: string[] | string;
+    allowedIps2?: string[] | string;
+  }
+): Promise<{ config: AttendanceConfig; detectedClientIp: string; isCurrentIpAllowed?: boolean; message?: string }> {
+  const res = await apiRequest<{
+    config: AttendanceConfig;
+    detectedClientIp: string;
+    isCurrentIpAllowed?: boolean;
+    message?: string;
+  }>("/attendance/config", {
     method: "PUT",
     body: JSON.stringify(payload),
   });
