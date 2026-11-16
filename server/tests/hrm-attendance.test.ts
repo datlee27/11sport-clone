@@ -424,7 +424,7 @@ describe('HRM, Attendance, WFH & Shift Handover API Tests (v4.0)', () => {
     expect(delHol.body.data.success).toBe(true);
   });
 
-  it('6. Cấu hình IP Wi-Fi qua .env: chặn HR sửa qua API, chặn Admin chấm công, và kiểm tra IP từ .env', async () => {
+  it('6. Cấu hình IP Wi-Fi chấm công (cả 2 cơ sở): HR, Admin, CEO được quyền cấu hình; chặn role khác; và đối chiếu check-in theo IP DB', async () => {
     const getCfg = await request(app)
       .get('/api/v1/attendance/config')
       .set('Authorization', `Bearer ${hrToken}`);
@@ -432,15 +432,62 @@ describe('HRM, Attendance, WFH & Shift Handover API Tests (v4.0)', () => {
     expect(getCfg.body.data.config.requireGps).toBe(false);
     expect(getCfg.body.data.config.requireIp).toBe(true);
 
-    // HR hoặc Admin gọi PUT /attendance/config -> bị chặn 403 CONFIG_MANAGED_BY_ENV
-    const updateCfg = await request(app)
+    // 1. Vai trò khác (Accountant, Sales) hoặc không token -> bị chặn 403/401
+    const unauthPut = await request(app)
+      .put('/api/v1/attendance/config')
+      .send({ officeName: 'Hack' });
+    expect(unauthPut.status).toBe(401);
+
+    const accountantPut = await request(app)
+      .put('/api/v1/attendance/config')
+      .set('Authorization', `Bearer ${accountantToken}`)
+      .send({ officeName: 'Hack Accountant' });
+    expect(accountantPut.status).toBe(403);
+    expect(accountantPut.body.code).toBe('FORBIDDEN');
+
+    // 2. HR cấu hình IP cho cả 2 cơ sở -> thành công 200
+    const hrPut = await request(app)
       .put('/api/v1/attendance/config')
       .set('Authorization', `Bearer ${hrToken}`)
-      .send({ officeName: 'Hack' });
-    expect(updateCfg.status).toBe(403);
-    expect(updateCfg.body.code).toBe('CONFIG_MANAGED_BY_ENV');
+      .send({
+        officeName: 'Cơ sở 1: Showroom 11Sport - 24 Tố Hữu',
+        office2Name: 'Cơ sở 2: Văn phòng 11Sport - 89 Lê Thanh Nghị',
+        allowedIps: ['113.160.22.10', '192.168.1.'],
+        allowedIps2: ['116.110.151.140', '192.168.2.'],
+        requireIp: true,
+      });
+    expect(hrPut.status).toBe(200);
+    expect(hrPut.body.data.config.officeName).toBe('Cơ sở 1: Showroom 11Sport - 24 Tố Hữu');
+    expect(hrPut.body.data.config.office2Name).toBe('Cơ sở 2: Văn phòng 11Sport - 89 Lê Thanh Nghị');
+    expect(hrPut.body.data.config.branches).toHaveLength(2);
 
-    // Admin không cần chấm công -> bị chặn 400 ADMIN_NO_ATTENDANCE
+    // 3. Admin cũng có quyền cấu hình IP -> thành công 200
+    const adminPut = await request(app)
+      .put('/api/v1/attendance/config')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        officeName: 'Cơ sở 1: Showroom 11Sport (Admin Update)',
+      });
+    expect(adminPut.status).toBe(200);
+    expect(adminPut.body.data.config.officeName).toBe('Cơ sở 1: Showroom 11Sport (Admin Update)');
+
+    // 4. CEO cũng có quyền cấu hình IP -> thành công 200
+    const ceoLogin = await request(app).post('/api/v1/auth/login').send({
+      username: 'ceo',
+      password: '123456',
+    });
+    const ceoToken = ceoLogin.body.data.token;
+    const ceoPut = await request(app)
+      .put('/api/v1/attendance/config')
+      .set('Authorization', `Bearer ${ceoToken}`)
+      .send({
+        allowedIps: ['113.160.22.10', '192.168.1.'],
+        allowedIps2: ['116.110.151.140', '192.168.2.'],
+        requireIp: true,
+      });
+    expect(ceoPut.status).toBe(200);
+
+    // 5. Admin & CEO không cần chấm công -> bị chặn 400 ADMIN_NO_ATTENDANCE
     const adminCheckIn = await request(app)
       .post('/api/v1/attendance/check-in')
       .set('Authorization', `Bearer ${adminToken}`)
@@ -448,12 +495,7 @@ describe('HRM, Attendance, WFH & Shift Handover API Tests (v4.0)', () => {
     expect(adminCheckIn.status).toBe(400);
     expect(adminCheckIn.body.code).toBe('ADMIN_NO_ATTENDANCE');
 
-    // Thiết lập biến môi trường .env cho IP Wi-Fi
-    process.env.ATTENDANCE_REQUIRE_IP = 'true';
-    process.env.ATTENDANCE_ALLOWED_IPS = '113.160.22.10,192.168.1.';
-    process.env.ATTENDANCE_ALLOWED_IPS_2 = '116.110.151.140,192.168.2.';
-
-    // Accountant check-in sai IP (10.0.0.5) -> bị chặn 400 WIFI_IP_NOT_ALLOWED
+    // 6. Accountant check-in sai IP cấu hình (10.0.0.5) -> bị chặn 400 WIFI_IP_NOT_ALLOWED
     const wrongIpRes = await request(app)
       .post('/api/v1/attendance/check-in')
       .set('Authorization', `Bearer ${accountantToken}`)
@@ -463,7 +505,7 @@ describe('HRM, Attendance, WFH & Shift Handover API Tests (v4.0)', () => {
     expect(wrongIpRes.status).toBe(400);
     expect(wrongIpRes.body.code).toBe('WIFI_IP_NOT_ALLOWED');
 
-    // Accountant check-in đúng dải IP LAN (192.168.1.55) không cần GPS -> thành công 201
+    // 7. Accountant check-in đúng dải IP Cơ sở 1 cấu hình (192.168.1.55) -> thành công 201
     const rightIpRes = await request(app)
       .post('/api/v1/attendance/check-in')
       .set('Authorization', `Bearer ${accountantToken}`)

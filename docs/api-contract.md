@@ -903,8 +903,25 @@
   - Lỗi: `400 ALREADY_CHECKED_IN` nếu ngày đó đã có bản ghi chấm công và `shiftCode !== "OFF"` (dùng PATCH để sửa).
 
 - `GET /api/v1/attendance/config`
-  - Trả về cấu hình danh sách IP Wi-Fi/WAN của các cơ sở công ty (chỉ đọc từ biến môi trường `.env` trên Server: `ATTENDANCE_OFFICE_NAME` / `ATTENDANCE_OFFICE_1_NAME`, `ATTENDANCE_OFFICE_2_NAME`, `ATTENDANCE_REQUIRE_IP`, `ATTENDANCE_OFFICE_1_DOMAIN` / `ATTENDANCE_DDNS_DOMAIN`, `ATTENDANCE_OFFICE_2_DOMAIN`, `ATTENDANCE_ALLOWED_IPS` / `ATTENDANCE_OFFICE_1_ALLOWED_IPS`, `ATTENDANCE_ALLOWED_IPS_2` / `ATTENDANCE_OFFICE_2_ALLOWED_IPS`; trong đó các biến domain DDNS sẽ được server tự động phân giải DNS sang IPv4 hiện tại để gộp vào `allowedIps` / `allowedIps2`), kèm `detectedClientIp` và `isCurrentIpAllowed`. Không cho phép chỉnh sửa qua UI/API (HR và Admin đều không được sửa trên giao diện).
-  - Response: `{ "data": { "config": { "officeName": "...", "office2Name": "...", "allowedIps": ["127.0.0.1", "::1"], "allowedIps2": ["..."], "requireIp": true, "branches": [...] }, "detectedClientIp": "127.0.0.1", "isCurrentIpAllowed": true } }`
+  - Trả về cấu hình danh sách IP Wi-Fi/WAN của các cơ sở công ty (ưu tiên cấu hình lưu trong database `attendance_configs` do Quản trị viên/HR/CEO thiết lập; tự động fallback về biến môi trường `.env` trên Server nếu database chưa có bản ghi: `ATTENDANCE_OFFICE_NAME` / `ATTENDANCE_OFFICE_1_NAME`, `ATTENDANCE_OFFICE_2_NAME`, `ATTENDANCE_REQUIRE_IP`, `ATTENDANCE_OFFICE_1_DOMAIN` / `ATTENDANCE_DDNS_DOMAIN`, `ATTENDANCE_OFFICE_2_DOMAIN`, `ATTENDANCE_ALLOWED_IPS` / `ATTENDANCE_OFFICE_1_ALLOWED_IPS`, `ATTENDANCE_ALLOWED_IPS_2` / `ATTENDANCE_OFFICE_2_ALLOWED_IPS`; trong đó các biến domain DDNS sẽ được server tự động phân giải DNS sang IPv4 hiện tại để gộp vào `allowedIps` / `allowedIps2`), kèm `detectedClientIp` và `isCurrentIpAllowed`.
+  - Response: `{ "data": { "config": { "officeName": "...", "office2Name": "...", "allowedIps": ["127.0.0.1", "::1"], "allowedIps2": ["..."], "office1Domain": "...", "office2Domain": "...", "requireIp": true, "branches": [...] }, "detectedClientIp": "127.0.0.1", "isCurrentIpAllowed": true } }`
+
+- `PUT /api/v1/attendance/config` (Role `HR`, `ADMIN`, `CEO`) — **Cấu hình danh sách IP Wi-Fi chấm công cho cả 2 cơ sở**
+  - Phân quyền: Chỉ `HR`, Quản trị viên (`ADMIN`), hoặc `CEO` có quyền thực hiện. Các vai trò khác hoặc chưa đăng nhập bị chặn (`401 UNAUTHORIZED` / `403 FORBIDDEN`).
+  - Body:
+    ```json
+    {
+      "officeName"?: "Cơ sở 1: Showroom 11Sport - 24 Tố Hữu, Hoà Cường, Đà Nẵng",
+      "office2Name"?: "Cơ sở 2: Văn phòng 11Sport - 89 Lê Thanh Nghị, Hòa Cường, Đà Nẵng",
+      "allowedIps"?: ["113.22.236.87", "113.22.236."],
+      "allowedIps2"?: ["171.231.188.171", "116.110.151.140"],
+      "office1Domain"?: "11sport2.myddns.me",
+      "office2Domain"?: "11sport.myddns.me",
+      "requireIp"?: true
+    }
+    ```
+    *Ghi chú*: `allowedIps` và `allowedIps2` có thể truyền dạng mảng string hoặc chuỗi ngăn cách bởi dấu phẩy/xuống dòng; hỗ trợ khớp IP chính xác và tiền tố dải IP (VD: `113.22.236.`).
+  - Response: `{ "data": { "config": { ... }, "detectedClientIp": "...", "isCurrentIpAllowed": true, "message": "Cập nhật cấu hình IP chấm công thành công" } }`
 
 #### B. Đơn từ & Phê duyệt WFH / Nghỉ phép (`/leave-requests`)
 - **Quy trình làm việc & Cơ chế Tích lũy / Cộng dồn Ngày phép (`PAID_LEAVE`)**:
