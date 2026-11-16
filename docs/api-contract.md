@@ -907,7 +907,7 @@
   - Response: `{ "data": { "config": { "officeName": "...", "office2Name": "...", "allowedIps": ["127.0.0.1", "::1"], "allowedIps2": ["..."], "office1Domain": "...", "office2Domain": "...", "requireIp": true, "branches": [...] }, "detectedClientIp": "127.0.0.1", "isCurrentIpAllowed": true } }`
 
 - `PUT /api/v1/attendance/config` (Role `HR`, `ADMIN`, `CEO`) — **Cấu hình danh sách IP Wi-Fi chấm công cho cả 2 cơ sở**
-  - Phân quyền: Chỉ `HR`, Quản trị viên (`ADMIN`), hoặc `CEO` có quyền thực hiện. Các vai trò khác hoặc chưa đăng nhập bị chặn (`401 UNAUTHORIZED` / `403 FORBIDDEN`).
+  - Phân quyền & Xác thực: Bắt buộc gửi `Authorization: Bearer <token>` hợp lệ (không chấp nhận `x-user-id` hoặc fallback user) và vai trò thuộc `['CEO', 'ADMIN', 'HR']`. Các vai trò khác hoặc chưa xác thực bằng Bearer token bị chặn (`401 UNAUTHORIZED` / `403 FORBIDDEN`).
   - Body:
     ```json
     {
@@ -920,7 +920,7 @@
       "requireIp"?: true
     }
     ```
-    *Ghi chú*: `allowedIps` và `allowedIps2` có thể truyền dạng mảng string hoặc chuỗi ngăn cách bởi dấu phẩy/xuống dòng; hỗ trợ khớp IP chính xác và tiền tố dải IP (VD: `113.22.236.`).
+    *Ghi chú*: `allowedIps` và `allowedIps2` có thể truyền dạng mảng string hoặc chuỗi ngăn cách bởi dấu phẩy/xuống dòng; hỗ trợ khớp IP chính xác và tiền tố dải IP (VD: `113.22.236.`). Nếu lưu danh sách rỗng (`[]`), hệ thống giữ nguyên whitelist rỗng cho cơ sở đó (chỉ fallback về `.env` khi chưa có bản ghi cấu hình trong DB).
   - Response: `{ "data": { "config": { ... }, "detectedClientIp": "...", "isCurrentIpAllowed": true, "message": "Cập nhật cấu hình IP chấm công thành công" } }`
 
 #### B. Đơn từ & Phê duyệt WFH / Nghỉ phép (`/leave-requests`)

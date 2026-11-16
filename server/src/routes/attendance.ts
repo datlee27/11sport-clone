@@ -12,6 +12,7 @@ import {
   staffRepo,
 } from '../config/db';
 import { ApiError } from '../utils/errors';
+import { verifyToken } from '../utils/auth';
 import { ShiftCode } from '../models/Attendance';
 import { getLateToleranceMinutes } from './attendanceTimesheet';
 import {
@@ -276,13 +277,12 @@ async function getEffectiveAttendanceConfig() {
   const officeName = dbDoc.officeName || envConfig.officeName;
   const office2Name = dbDoc.office2Name || envConfig.office2Name;
 
-  let allowedIps =
-    Array.isArray(dbDoc.allowedIps) && dbDoc.allowedIps.length > 0
-      ? sanitizeAllowedIps(dbDoc.allowedIps)
-      : envConfig.allowedIps;
+  let allowedIps = Array.isArray(dbDoc.allowedIps)
+    ? sanitizeAllowedIps(dbDoc.allowedIps)
+    : envConfig.allowedIps;
 
   const office1Domain =
-    dbDoc.office1Domain !== undefined && dbDoc.office1Domain !== ''
+    typeof dbDoc.office1Domain === 'string'
       ? dbDoc.office1Domain
       : (readAttendanceEnv().ATTENDANCE_OFFICE_1_DOMAIN ||
         readAttendanceEnv().ATTENDANCE_DDNS_DOMAIN ||
@@ -294,13 +294,12 @@ async function getEffectiveAttendanceConfig() {
     }
   }
 
-  let allowedIps2 =
-    Array.isArray(dbDoc.allowedIps2) && dbDoc.allowedIps2.length > 0
-      ? sanitizeAllowedIps(dbDoc.allowedIps2)
-      : envConfig.allowedIps2;
+  let allowedIps2 = Array.isArray(dbDoc.allowedIps2)
+    ? sanitizeAllowedIps(dbDoc.allowedIps2)
+    : envConfig.allowedIps2;
 
   const office2Domain =
-    dbDoc.office2Domain !== undefined && dbDoc.office2Domain !== ''
+    typeof dbDoc.office2Domain === 'string'
       ? dbDoc.office2Domain
       : (readAttendanceEnv().ATTENDANCE_OFFICE_2_DOMAIN ||
         (isTestEnv() ? '' : '11sport.myddns.me'));
@@ -937,8 +936,13 @@ attendanceRouter.get('/attendance/config', async (req, res, next) => {
 // PUT /api/v1/attendance/config (Role HR, ADMIN, CEO cấu hình IP cả 2 cơ sở)
 attendanceRouter.put('/attendance/config', async (req, res, next) => {
   try {
-    const user = req.user;
-    if (!user || req.isFallbackUser) {
+    const authHeader = req.headers.authorization;
+    const bearerToken =
+      typeof authHeader === 'string' && authHeader.startsWith('Bearer ')
+        ? authHeader.slice(7).trim()
+        : '';
+    const user = bearerToken ? verifyToken(bearerToken) : null;
+    if (!user) {
       throw new ApiError(401, 'UNAUTHORIZED', 'Vui lòng đăng nhập để cấu hình IP chấm công');
     }
     if (!['CEO', 'ADMIN', 'HR'].includes(user.role)) {

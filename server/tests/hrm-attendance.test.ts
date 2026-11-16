@@ -432,11 +432,18 @@ describe('HRM, Attendance, WFH & Shift Handover API Tests (v4.0)', () => {
     expect(getCfg.body.data.config.requireGps).toBe(false);
     expect(getCfg.body.data.config.requireIp).toBe(true);
 
-    // 1. Vai trò khác (Accountant, Sales) hoặc không token -> bị chặn 403/401
+    // 1. Vai trò khác (Accountant, Sales), không token, hoặc giả mạo x-user-id -> bị chặn 403/401
     const unauthPut = await request(app)
       .put('/api/v1/attendance/config')
       .send({ officeName: 'Hack' });
     expect(unauthPut.status).toBe(401);
+
+    const headerSpoofPut = await request(app)
+      .put('/api/v1/attendance/config')
+      .set('x-user-id', 'hr1')
+      .send({ officeName: 'Hack Spoof Header', requireIp: false });
+    expect(headerSpoofPut.status).toBe(401);
+    expect(headerSpoofPut.body.code).toBe('UNAUTHORIZED');
 
     const accountantPut = await request(app)
       .put('/api/v1/attendance/config')
@@ -453,12 +460,14 @@ describe('HRM, Attendance, WFH & Shift Handover API Tests (v4.0)', () => {
         officeName: 'Cơ sở 1: Showroom 11Sport - 24 Tố Hữu',
         office2Name: 'Cơ sở 2: Văn phòng 11Sport - 89 Lê Thanh Nghị',
         allowedIps: ['113.160.22.10', '192.168.1.'],
-        allowedIps2: ['116.110.151.140', '192.168.2.'],
+        allowedIps2: [],
         requireIp: true,
       });
     expect(hrPut.status).toBe(200);
     expect(hrPut.body.data.config.officeName).toBe('Cơ sở 1: Showroom 11Sport - 24 Tố Hữu');
     expect(hrPut.body.data.config.office2Name).toBe('Cơ sở 2: Văn phòng 11Sport - 89 Lê Thanh Nghị');
+    // Whitelist rỗng đã lưu trong DB phải giữ nguyên là [] (không fallback lại về .env)
+    expect(hrPut.body.data.config.allowedIps2).toEqual([]);
     expect(hrPut.body.data.config.branches).toHaveLength(2);
 
     // 3. Admin cũng có quyền cấu hình IP -> thành công 200
