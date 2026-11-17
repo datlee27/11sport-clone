@@ -130,6 +130,11 @@ interface DraftOrderData {
   customerName: string;
   isExistingCustomer: boolean;
   customerOrders: Order[];
+  customerDebtSummary?: {
+    totalDebtAmount: number;
+    unpaidOrdersCount: number;
+    overdueOrdersCount: number;
+  } | null;
   paymentMethod: PaymentMethodType;
   splitPayments: SplitPaymentItem[];
   debtDueDate?: string;
@@ -153,6 +158,7 @@ const createEmptyDraftData = (): DraftOrderData => ({
   customerName: "",
   isExistingCustomer: false,
   customerOrders: [],
+  customerDebtSummary: null,
   paymentMethod: "CASH",
   splitPayments: [],
   debtDueDate: "",
@@ -298,6 +304,7 @@ export default function PosTab({ onOpenInvoice }: PosTabProps) {
     customerName,
     isExistingCustomer,
     customerOrders,
+    customerDebtSummary,
     paymentMethod,
     splitPayments,
     debtDueDate,
@@ -331,6 +338,7 @@ export default function PosTab({ onOpenInvoice }: PosTabProps) {
     setCustomerName(d.customerName || "");
     setIsExistingCustomer(!!d.isExistingCustomer);
     setCustomerOrders(Array.isArray(d.customerOrders) ? d.customerOrders : []);
+    setCustomerDebtSummary(d.customerDebtSummary || null);
     setPaymentMethod(d.paymentMethod || "CASH");
     setSplitPayments(Array.isArray(d.splitPayments) ? d.splitPayments : []);
     setDebtDueDate(typeof d.debtDueDate === "string" ? d.debtDueDate : "");
@@ -360,6 +368,7 @@ export default function PosTab({ onOpenInvoice }: PosTabProps) {
             customerName,
             isExistingCustomer,
             customerOrders,
+            customerDebtSummary,
             paymentMethod,
             splitPayments,
             debtDueDate,
@@ -383,6 +392,7 @@ export default function PosTab({ onOpenInvoice }: PosTabProps) {
       customerName,
       isExistingCustomer,
       customerOrders,
+      customerDebtSummary,
       paymentMethod,
       splitPayments,
       debtDueDate,
@@ -839,14 +849,15 @@ export default function PosTab({ onOpenInvoice }: PosTabProps) {
       if (activeDraftIdRef.current !== draftIdAtStart) return;
       const customer = res.data?.customer || res.data;
       const orders = res.data?.orders || [];
-      setCustomerDebtSummary(res.data?.debtSummary || null);
       if (customer && (customer.fullName || customer.name || customer.customerName)) {
         setCustomerName(customer.fullName || customer.name || customer.customerName);
         setIsExistingCustomer(true);
         setCustomerOrders(Array.isArray(orders) ? orders : []);
+        setCustomerDebtSummary(res.data?.debtSummary || null);
       } else {
         setIsExistingCustomer(false);
         setCustomerOrders([]);
+        setCustomerDebtSummary(null);
       }
     } catch {
       setIsExistingCustomer(false);
@@ -863,6 +874,7 @@ export default function PosTab({ onOpenInvoice }: PosTabProps) {
     if (clean.length < 9) {
       setIsExistingCustomer(false);
       setCustomerOrders([]);
+      setCustomerDebtSummary(null);
       return;
     }
     handleLookupPhone(debouncedCustomerPhone);
@@ -3067,6 +3079,7 @@ export default function PosTab({ onOpenInvoice }: PosTabProps) {
                     if (cleanPhoneDigits(formatted).length < 9) {
                       setIsExistingCustomer(false);
                       setCustomerOrders([]);
+                      setCustomerDebtSummary(null);
                     }
                   }}
                   placeholder="VD: 0945 xxx xxx"
