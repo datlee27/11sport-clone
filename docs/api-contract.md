@@ -242,10 +242,41 @@
 
 ### 2.5 Bán hàng POS & Khách hàng (`/orders`, `/customers`)
 - `GET /api/v1/customers/lookup?phone=...`
-  - Tra cứu khách hàng theo SĐT (tự động chuẩn hóa khoảng trắng, dấu chấm/gạch và đầu số `+84`/`84` về `0`), trả về thông tin khách hàng và lịch sử đơn hàng + phiếu trả/đổi.
+  - Tra cứu khách hàng theo SĐT (tự động chuẩn hóa khoảng trắng, dấu chấm/gạch và đầu số `+84`/`84` về `0`), trả về thông tin khách hàng (`customer`, `debtSummary`) và lịch sử đơn hàng + phiếu trả/đổi.
+  - *(v4.2)* **Giới hạn theo ca & ngày đối với nhân viên `SALES`**: Khi người gọi là `SALES` (không phải `CEO`/`ADMIN`/`ACCOUNTANT`/`HR`), danh sách `orders` và `returns` trả về trong `/customers/lookup` chỉ bao gồm các đơn hàng thuộc **đúng ca làm việc hiện tại trong ngày hôm nay** (`shiftDate === today` và khớp `shiftCode` của nhân viên). Đơn của ca khác hoặc từ ngày hôm trước trở về trước bị ẩn hoàn toàn.
 - `GET /api/v1/customers` — Danh sách khách hàng (hỗ trợ `?search=...` tìm thông minh theo SĐT chuẩn hóa hoặc tên tiếng Việt không dấu/đa từ khóa, sắp xếp theo độ liên quan).
-- `GET /api/v1/orders` — Danh sách đơn hàng (lọc theo `search`, `phone`, `status`, `paymentMethod`; `search` hỗ trợ tìm không dấu/đa từ khóa trên mã đơn, tên/SĐT khách, mã/tên sản phẩm trong đơn, nhân viên bán, ghi chú).
-- `GET /api/v1/orders/:id` — Chi tiết đơn hàng (hoặc tra theo `orderCode` qua `GET /api/v1/orders/by-code/:code`)
+- `GET /api/v1/orders/current-shift` *(v4.2 — Xem Bill bán hàng trong ca hiện tại)*
+  - Query: `?search=...&status=PAID|DRAFT|PARTIALLY_RETURNED|FULLY_RETURNED&paymentMethod=CASH|BANKING|CARD|OTHER`
+  - Nghiệp vụ & Phân quyền:
+    - Xác định ngày hiện tại `todayStr` (`YYYY-MM-DD` theo giờ local của server) và ca làm việc hiện tại của nhân viên (`staffShift`: ưu tiên lấy từ bản ghi chấm công `Attendance` hôm nay -> lịch phân ca `ShiftAssignment` hôm nay -> khung giờ thực tế `SHIFT_1` trước `17:30`, `SHIFT_2` từ `17:30` trở đi).
+    - **Với nhân viên `SALES`**: Chỉ trả về các đơn hàng có `shiftDate === todayStr` VÀ thuộc đúng ca làm việc của nhân viên đó (`SHIFT_1` chỉ thấy đơn `SHIFT_1`, `SHIFT_2` chỉ thấy đơn `SHIFT_2`, `BOTH` thấy đơn trong ngày hôm nay, `OFF` trả về danh sách rỗng `[]`). Tuyệt đối không trả về đơn của ca khác hoặc đơn của ngày cũ (`shiftDate < todayStr`).
+    - **Với `CEO` / `ADMIN` / `ACCOUNTANT` / `HR`**: Xem được toàn bộ đơn bán trong ngày hôm nay (có thể truyền thêm `?shiftCode=SHIFT_1|SHIFT_2` để lọc theo ca).
+  - Response:
+    ```json
+    {
+      "data": [Order],
+      "meta": {
+        "total": 5,
+        "date": "2026-11-16",
+        "shiftCode": "SHIFT_1",
+        "shiftLabel": "Ca 1 (08:30 - 17:30)",
+        "summary": {
+          "paidOrdersCount": 4,
+          "draftOrdersCount": 1,
+          "totalRevenue": 2450000,
+          "cashTotal": 1200000,
+          "bankingTotal": 1250000,
+          "cardTotal": 0,
+          "debtTotal": 0
+        }
+      }
+    }
+    ```
+- `GET /api/v1/orders` — Danh sách đơn hàng (lọc theo `search`, `phone`, `status`, `paymentMethod`, `shiftCode`, `date`, `forReturn`; `search` hỗ trợ tìm không dấu/đa từ khóa trên mã đơn, tên/SĐT khách, mã/tên sản phẩm trong đơn, nhân viên bán, ghi chú).
+  - *(v4.2)* **Phân quyền xem đơn theo ca & ngày đối với `SALES`**:
+    - Mặc định (khi không truyền `forReturn=true`), tài khoản `SALES` gọi `GET /api/v1/orders` chỉ nhận được các đơn hàng thuộc **đúng ca làm việc hiện tại của ngày hôm nay** (`shiftDate === todayStr` và khớp `shiftCode`). Qua 00:00 sang ngày mới, toàn bộ đơn hàng của ngày cũ (kể cả đơn nháp hay đơn đã thanh toán) đều không hiển thị cho `SALES`.
+    - Khi truyền `forReturn=true` kèm từ khóa tra cứu (`search` hoặc `phone` từ 2 ký tự trở lên, dùng riêng tại tab **4. Trả / Đổi hàng**), hệ thống cho phép `SALES` tìm đơn gốc để phục vụ đổi/trả hàng cho khách.
+- `GET /api/v1/orders/:id` — Chi tiết đơn hàng (với `SALES`, chỉ cho phép xem đơn trong ca hiện tại của ngày hôm nay trừ khi truyền `?forReturn=true`; vi phạm trả `403 ORDER_SHIFT_RESTRICTED`). Tra cứu theo mã đơn cho nghiệp vụ đổi/trả qua `GET /api/v1/orders/by-code/:code`.
 - `POST /api/v1/orders` *(Cập nhật v2.2 — Chỉ bán tồn Kho Tầng 1 + Giảm giá Sản phẩm, Tặng hàng 0đ & Giảm giá Bill)*
   - Body:
     ```json

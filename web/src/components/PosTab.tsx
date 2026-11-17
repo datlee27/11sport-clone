@@ -252,6 +252,11 @@ export default function PosTab({ onOpenInvoice }: PosTabProps) {
   const [customerName, setCustomerName] = useState("");
   const [isExistingCustomer, setIsExistingCustomer] = useState(false);
   const [customerOrders, setCustomerOrders] = useState<Order[]>([]);
+  const [customerDebtSummary, setCustomerDebtSummary] = useState<{
+    totalDebtAmount: number;
+    unpaidOrdersCount: number;
+    overdueOrdersCount: number;
+  } | null>(null);
   const [lookingUp, setLookingUp] = useState(false);
 
   // Thanh toán
@@ -693,6 +698,22 @@ export default function PosTab({ onOpenInvoice }: PosTabProps) {
     fetchSavedDraftOrders();
   }, [fetchSavedDraftOrders]);
 
+  // Tự động làm mới danh sách bản nháp khi qua 00:00 sang ngày mới
+  useEffect(() => {
+    let lastDay = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-${String(new Date().getDate()).padStart(2, "0")}`;
+    const timer = setInterval(() => {
+      const d = new Date();
+      const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      if (today !== lastDay) {
+        lastDay = today;
+        setSavedDraftOrders([]);
+        setCustomerOrders([]);
+        fetchSavedDraftOrders();
+      }
+    }, 15000);
+    return () => clearInterval(timer);
+  }, [fetchSavedDraftOrders]);
+
   useEffect(() => {
     fetchSellableProducts();
   }, [fetchSellableProducts]);
@@ -808,6 +829,7 @@ export default function PosTab({ onOpenInvoice }: PosTabProps) {
     if (clean.length < 9) {
       setIsExistingCustomer(false);
       setCustomerOrders([]);
+      setCustomerDebtSummary(null);
       return;
     }
     setLookingUp(true);
@@ -817,6 +839,7 @@ export default function PosTab({ onOpenInvoice }: PosTabProps) {
       if (activeDraftIdRef.current !== draftIdAtStart) return;
       const customer = res.data?.customer || res.data;
       const orders = res.data?.orders || [];
+      setCustomerDebtSummary(res.data?.debtSummary || null);
       if (customer && (customer.fullName || customer.name || customer.customerName)) {
         setCustomerName(customer.fullName || customer.name || customer.customerName);
         setIsExistingCustomer(true);
@@ -828,6 +851,7 @@ export default function PosTab({ onOpenInvoice }: PosTabProps) {
     } catch {
       setIsExistingCustomer(false);
       setCustomerOrders([]);
+      setCustomerDebtSummary(null);
     } finally {
       setLookingUp(false);
     }
@@ -3068,15 +3092,22 @@ export default function PosTab({ onOpenInvoice }: PosTabProps) {
               const unpaidOrders = customerOrders.filter(
                 (o) => o.status !== "DRAFT" && (Number(o.debtAmount) || 0) > 0
               );
-              if (unpaidOrders.length === 0) return null;
-              const totalDebt = unpaidOrders.reduce(
-                (sum, o) => sum + (Number(o.debtAmount) || 0),
-                0
-              );
+              const totalDebt =
+                customerDebtSummary && customerDebtSummary.totalDebtAmount > 0
+                  ? customerDebtSummary.totalDebtAmount
+                  : unpaidOrders.reduce((sum, o) => sum + (Number(o.debtAmount) || 0), 0);
+              const unpaidCount =
+                customerDebtSummary && customerDebtSummary.unpaidOrdersCount > 0
+                  ? customerDebtSummary.unpaidOrdersCount
+                  : unpaidOrders.length;
+              if (unpaidCount === 0 || totalDebt <= 0) return null;
               const nowMs = Date.now();
-              const overdueCount = unpaidOrders.filter(
-                (o) => o.debtDueDate && new Date(o.debtDueDate).getTime() < nowMs
-              ).length;
+              const overdueCount =
+                customerDebtSummary && customerDebtSummary.overdueOrdersCount > 0
+                  ? customerDebtSummary.overdueOrdersCount
+                  : unpaidOrders.filter(
+                      (o) => o.debtDueDate && new Date(o.debtDueDate).getTime() < nowMs
+                    ).length;
 
               return (
                 <div
@@ -3093,7 +3124,7 @@ export default function PosTab({ onOpenInvoice }: PosTabProps) {
                           overdueCount > 0 ? "text-red-600" : "text-amber-600"
                         }`}
                       />
-                      Cảnh báo: Khách đang có {unpaidOrders.length} đơn công nợ chưa thanh toán!
+                      Cảnh báo: Khách đang có {unpaidCount} đơn công nợ chưa thanh toán!
                     </span>
                     <span className="font-mono text-sm px-2 py-0.5 rounded bg-white border border-current font-black">
                       Tổng nợ: {formatVND(totalDebt)}
@@ -3104,43 +3135,45 @@ export default function PosTab({ onOpenInvoice }: PosTabProps) {
                       🚨 Có {overdueCount} đơn đã quá hạn hẹn trả công nợ!
                     </div>
                   )}
-                  <div className="space-y-1 pt-1">
-                    {unpaidOrders.slice(0, 3).map((ord) => {
-                      const isOv =
-                        ord.debtDueDate && new Date(ord.debtDueDate).getTime() < nowMs;
-                      return (
-                        <div
-                          key={ord._id}
-                          className="flex flex-wrap items-center justify-between gap-2 bg-white/90 px-2.5 py-1 rounded border border-slate-200 text-[11px]"
-                        >
-                          <span className="font-mono font-bold text-slate-900">
-                            {ord.orderCode || ord.code}
-                          </span>
-                          <span className="font-mono font-extrabold text-red-600">
-                            Còn nợ: {formatVND(Number(ord.debtAmount) || 0)}
-                          </span>
-                          {ord.debtDueDate && (
-                            <span
-                              className={`font-semibold ${
-                                isOv ? "text-red-700 font-bold" : "text-slate-600"
-                              }`}
-                            >
-                              Hạn:{" "}
-                              {new Date(ord.debtDueDate).toLocaleDateString("vi-VN")}
-                              {isOv ? " (Quá hạn)" : ""}
-                            </span>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => onOpenInvoice(ord)}
-                            className="text-blue-600 hover:underline font-bold"
+                  {unpaidOrders.length > 0 && (
+                    <div className="space-y-1 pt-1">
+                      {unpaidOrders.slice(0, 3).map((ord) => {
+                        const isOv =
+                          ord.debtDueDate && new Date(ord.debtDueDate).getTime() < nowMs;
+                        return (
+                          <div
+                            key={ord._id}
+                            className="flex flex-wrap items-center justify-between gap-2 bg-white/90 px-2.5 py-1 rounded border border-slate-200 text-[11px]"
                           >
-                            Xem đơn
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
+                            <span className="font-mono font-bold text-slate-900">
+                              {ord.orderCode || ord.code}
+                            </span>
+                            <span className="font-mono font-extrabold text-red-600">
+                              Còn nợ: {formatVND(Number(ord.debtAmount) || 0)}
+                            </span>
+                            {ord.debtDueDate && (
+                              <span
+                                className={`font-semibold ${
+                                  isOv ? "text-red-700 font-bold" : "text-slate-600"
+                                }`}
+                              >
+                                Hạn:{" "}
+                                {new Date(ord.debtDueDate).toLocaleDateString("vi-VN")}
+                                {isOv ? " (Quá hạn)" : ""}
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => onOpenInvoice(ord)}
+                              className="text-blue-600 hover:underline font-bold"
+                            >
+                              Xem đơn
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               );
             })()}

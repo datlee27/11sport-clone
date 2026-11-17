@@ -5,6 +5,7 @@ export type OrderStatus = 'DRAFT' | 'PAID' | 'PARTIALLY_RETURNED' | 'FULLY_RETUR
 export type DiscountType = 'NONE' | 'PERCENT' | 'AMOUNT' | 'GIFT';
 export type DebtStatus = 'NONE' | 'UNPAID' | 'PARTIAL' | 'SETTLED';
 export type SplitMethod = 'CASH' | 'BANKING' | 'CARD' | 'DEBT';
+export type OrderShiftCode = 'SHIFT_1' | 'SHIFT_2' | 'BOTH';
 
 export interface ISplitPaymentItem {
   method: SplitMethod;
@@ -80,6 +81,8 @@ export interface IOrder extends Document {
   debtAdjustments?: IDebtAdjustmentRecord[];
   note: string;
   status: OrderStatus;
+  shiftDate?: string;
+  shiftCode?: OrderShiftCode;
   createdBy: string;
   createdByName: string;
   confirmedBy?: string;
@@ -184,6 +187,13 @@ const OrderSchema = new Schema<IOrder>(
       type: String,
       enum: ['DRAFT', 'PAID', 'PARTIALLY_RETURNED', 'FULLY_RETURNED'],
       default: 'PAID',
+    },
+    shiftDate: { type: String, default: '', index: true },
+    shiftCode: {
+      type: String,
+      enum: ['SHIFT_1', 'SHIFT_2', 'BOTH'],
+      default: 'SHIFT_1',
+      index: true,
     },
     createdBy: { type: String, default: '' },
     createdByName: { type: String, default: '' },
