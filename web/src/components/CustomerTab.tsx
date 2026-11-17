@@ -23,6 +23,12 @@ export default function CustomerTab({ onOpenInvoice }: CustomerTabProps) {
   const [customerInfo, setCustomerInfo] = useState<any>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [returns, setReturns] = useState<ReturnReceipt[]>([]);
+  const [lookupMeta, setLookupMeta] = useState<{
+    shiftRestricted?: boolean;
+    shiftDate?: string;
+    shiftCode?: string;
+    shiftLabel?: string;
+  } | null>(null);
   const [allCustomers, setAllCustomers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
@@ -71,6 +77,7 @@ export default function CustomerTab({ onOpenInvoice }: CustomerTabProps) {
       const cust = res.data?.customer || res.data;
       const ordList = res.data?.orders || [];
       const retList = res.data?.returns || [];
+      setLookupMeta((res.meta as any) || null);
 
       if (!cust || (!cust.phone && !cust.customerPhone && ordList.length === 0)) {
         setCustomerInfo(null);
@@ -216,14 +223,25 @@ export default function CustomerTab({ onOpenInvoice }: CustomerTabProps) {
 
           {/* Bảng danh sách đơn hàng của khách */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-3 sm:p-5">
-            <h3 className="font-bold text-slate-900 text-base flex items-center gap-2 mb-4">
-              <ShoppingBag className="w-5 h-5 text-emerald-600" />
-              Lịch sử Đơn hàng ({orders.length})
-            </h3>
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+              <h3 className="font-bold text-slate-900 text-base flex items-center gap-2">
+                <ShoppingBag className="w-5 h-5 text-emerald-600" />
+                {lookupMeta?.shiftRestricted
+                  ? `Đơn hàng trong ca hiện tại (${orders.length})`
+                  : `Lịch sử Đơn hàng (${orders.length})`}
+              </h3>
+              {lookupMeta?.shiftRestricted && (
+                <span className="text-xs font-semibold px-3 py-1 rounded-full bg-amber-50 text-amber-900 border border-amber-200">
+                  🔒 Chỉ hiển thị bill trong {lookupMeta.shiftLabel || "ca hiện tại"} ({lookupMeta.shiftDate}) · Không xem đơn ca khác / ngày cũ
+                </span>
+              )}
+            </div>
 
             {orders.length === 0 ? (
               <div className="text-center py-8 text-sm text-slate-500">
-                Khách hàng chưa có đơn hàng nào.
+                {lookupMeta?.shiftRestricted
+                  ? `Khách hàng chưa có đơn hàng nào trong ${lookupMeta.shiftLabel || "ca làm việc hiện tại"} hôm nay (${lookupMeta.shiftDate}). Đơn của ca khác hoặc ngày cũ không được phép xem.`
+                  : "Khách hàng chưa có đơn hàng nào."}
               </div>
             ) : (
               <div className="overflow-x-auto border border-slate-200 rounded-xl max-w-full">
