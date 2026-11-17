@@ -14,7 +14,7 @@ import {
   KeyRound,
 } from "lucide-react";
 
-export type TabType = "POS" | "INVENTORY" | "CUSTOMER" | "RETURN" | "PUSH_PRODUCTS";
+export type TabType = "POS" | "INVENTORY" | "CUSTOMER" | "RETURN" | "INVOICE_HISTORY" | "PUSH_PRODUCTS";
 export type DrawerPageType = "NONE" | "PROFILE" | "ATTENDANCE";
 
 export interface TabConfig {

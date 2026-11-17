@@ -282,6 +282,8 @@ export interface Order {
   debtAdjustments?: DebtAdjustmentRecord[];
   note: string;
   status: "DRAFT" | "PAID" | "PARTIALLY_RETURNED" | "FULLY_RETURNED";
+  shiftDate?: string;
+  shiftCode?: "SHIFT_1" | "SHIFT_2" | "BOTH";
   items: OrderItem[];
   soldBy?: string;
   soldByName?: string;
@@ -1910,4 +1912,55 @@ export async function fetchMyLeaveRequestsApi(): Promise<MyLeaveRequest[]> {
 export async function cancelLeaveRequestApi(id: string): Promise<boolean> {
   const res = await apiRequest<{ success: boolean }>(`/leave-requests/${id}`, { method: "DELETE" });
   return res.data.success;
+}
+
+export interface CurrentShiftOrdersSummary {
+  paidOrdersCount: number;
+  draftOrdersCount: number;
+  totalRevenue: number;
+  cashTotal: number;
+  bankingTotal: number;
+  cardTotal: number;
+  debtTotal: number;
+}
+
+export interface CurrentShiftOrdersMeta {
+  total: number;
+  date: string;
+  shiftCode: "SHIFT_1" | "SHIFT_2" | "BOTH" | "OFF";
+  shiftLabel: string;
+  summary: CurrentShiftOrdersSummary;
+}
+
+export async function fetchCurrentShiftOrdersApi(params?: {
+  search?: string;
+  status?: string;
+  paymentMethod?: string;
+}): Promise<{ orders: Order[]; meta: CurrentShiftOrdersMeta }> {
+  const q = new URLSearchParams();
+  if (params?.search?.trim()) q.set("search", params.search.trim());
+  if (params?.status && params.status !== "ALL") q.set("status", params.status);
+  if (params?.paymentMethod && params.paymentMethod !== "ALL") {
+    q.set("paymentMethod", params.paymentMethod);
+  }
+  const qs = q.toString();
+  const res = await apiRequest<Order[]>(`/orders/current-shift${qs ? `?${qs}` : ""}`);
+  return {
+    orders: Array.isArray(res.data) ? res.data : [],
+    meta: (res.meta as unknown as CurrentShiftOrdersMeta) || {
+      total: 0,
+      date: "",
+      shiftCode: "SHIFT_1",
+      shiftLabel: "Ca 1 (08:30 - 17:30)",
+      summary: {
+        paidOrdersCount: 0,
+        draftOrdersCount: 0,
+        totalRevenue: 0,
+        cashTotal: 0,
+        bankingTotal: 0,
+        cardTotal: 0,
+        debtTotal: 0,
+      },
+    },
+  };
 }

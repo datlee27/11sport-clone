@@ -314,7 +314,7 @@ export default function ReturnExchangeTab() {
       }
 
       const listRes = await apiRequest<Order[]>(
-        `/orders?search=${encodeURIComponent(code)}`
+        `/orders?search=${encodeURIComponent(code)}&forReturn=true`
       );
       const list = Array.isArray(listRes.data) ? listRes.data : [];
       const found =

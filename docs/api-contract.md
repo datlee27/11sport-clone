@@ -242,10 +242,41 @@
 
 ### 2.5 Bán hàng POS & Khách hàng (`/orders`, `/customers`)
 - `GET /api/v1/customers/lookup?phone=...`
-  - Tra cứu khách hàng theo SĐT (tự động chuẩn hóa khoảng trắng, dấu chấm/gạch và đầu số `+84`/`84` về `0`), trả về thông tin khách hàng và lịch sử đơn hàng + phiếu trả/đổi.
+  - Tra cứu khách hàng theo SĐT (tự động chuẩn hóa khoảng trắng, dấu chấm/gạch và đầu số `+84`/`84` về `0`), trả về thông tin khách hàng (`customer`, `debtSummary`) và lịch sử đơn hàng + phiếu trả/đổi.
+  - *(v4.2)* **Giới hạn theo ca & ngày đối với nhân viên `SALES`**: Khi người gọi là `SALES` (không phải `CEO`/`ADMIN`/`ACCOUNTANT`/`HR`), danh sách `orders` và `returns` trả về trong `/customers/lookup` chỉ bao gồm các đơn hàng thuộc **đúng ca làm việc hiện tại trong ngày hôm nay** (`shiftDate === today` và khớp `shiftCode` của nhân viên). Đơn của ca khác hoặc từ ngày hôm trước trở về trước bị ẩn hoàn toàn.
 - `GET /api/v1/customers` — Danh sách khách hàng (hỗ trợ `?search=...` tìm thông minh theo SĐT chuẩn hóa hoặc tên tiếng Việt không dấu/đa từ khóa, sắp xếp theo độ liên quan).
-- `GET /api/v1/orders` — Danh sách đơn hàng (lọc theo `search`, `phone`, `status`, `paymentMethod`; `search` hỗ trợ tìm không dấu/đa từ khóa trên mã đơn, tên/SĐT khách, mã/tên sản phẩm trong đơn, nhân viên bán, ghi chú).
-- `GET /api/v1/orders/:id` — Chi tiết đơn hàng (hoặc tra theo `orderCode` qua `GET /api/v1/orders/by-code/:code`)
+- `GET /api/v1/orders/current-shift` *(v4.2 — Xem Bill bán hàng trong ca hiện tại)*
+  - Query: `?search=...&status=PAID|DRAFT|PARTIALLY_RETURNED|FULLY_RETURNED&paymentMethod=CASH|BANKING|CARD|OTHER`
+  - Nghiệp vụ & Phân quyền:
+    - Xác định ngày hiện tại `todayStr` (`YYYY-MM-DD` theo giờ local của server) và ca làm việc hiện tại của nhân viên (`staffShift`: ưu tiên lấy từ bản ghi chấm công `Attendance` hôm nay -> lịch phân ca `ShiftAssignment` hôm nay -> khung giờ thực tế `SHIFT_1` trước `17:30`, `SHIFT_2` từ `17:30` trở đi).
+    - **Với nhân viên `SALES`**: Chỉ trả về các đơn hàng có `shiftDate === todayStr` VÀ thuộc đúng ca làm việc của nhân viên đó (`SHIFT_1` chỉ thấy đơn `SHIFT_1`, `SHIFT_2` chỉ thấy đơn `SHIFT_2`, `BOTH` thấy đơn trong ngày hôm nay, `OFF` trả về danh sách rỗng `[]`). Tuyệt đối không trả về đơn của ca khác hoặc đơn của ngày cũ (`shiftDate < todayStr`).
+    - **Với `CEO` / `ADMIN` / `ACCOUNTANT` / `HR`**: Xem được toàn bộ đơn bán trong ngày hôm nay (có thể truyền thêm `?shiftCode=SHIFT_1|SHIFT_2` để lọc theo ca).
+  - Response:
+    ```json
+    {
+      "data": [Order],
+      "meta": {
+        "total": 5,
+        "date": "2026-11-16",
+        "shiftCode": "SHIFT_1",
+        "shiftLabel": "Ca 1 (08:30 - 17:30)",
+        "summary": {
+          "paidOrdersCount": 4,
+          "draftOrdersCount": 1,
+          "totalRevenue": 2450000,
+          "cashTotal": 1200000,
+          "bankingTotal": 1250000,
+          "cardTotal": 0,
+          "debtTotal": 0
+        }
+      }
+    }
+    ```
+- `GET /api/v1/orders` — Danh sách đơn hàng (lọc theo `search`, `phone`, `status`, `paymentMethod`, `shiftCode`, `date`, `forReturn`; `search` hỗ trợ tìm không dấu/đa từ khóa trên mã đơn, tên/SĐT khách, mã/tên sản phẩm trong đơn, nhân viên bán, ghi chú).
+  - *(v4.2)* **Phân quyền xem đơn theo ca & ngày đối với `SALES`**:
+    - Mặc định (khi không truyền `forReturn=true`), tài khoản `SALES` gọi `GET /api/v1/orders` chỉ nhận được các đơn hàng thuộc **đúng ca làm việc hiện tại của ngày hôm nay** (`shiftDate === todayStr` và khớp `shiftCode`). Qua 00:00 sang ngày mới, toàn bộ đơn hàng của ngày cũ (kể cả đơn nháp hay đơn đã thanh toán) đều không hiển thị cho `SALES`.
+    - Khi truyền `forReturn=true` kèm từ khóa tra cứu (`search` hoặc `phone` từ 2 ký tự trở lên, dùng riêng tại tab **4. Trả / Đổi hàng**), hệ thống cho phép `SALES` tìm đơn gốc để phục vụ đổi/trả hàng cho khách.
+- `GET /api/v1/orders/:id` — Chi tiết đơn hàng (với `SALES`, chỉ cho phép xem đơn trong ca hiện tại của ngày hôm nay trừ khi truyền `?forReturn=true`; vi phạm trả `403 ORDER_SHIFT_RESTRICTED`). Tra cứu theo mã đơn cho nghiệp vụ đổi/trả qua `GET /api/v1/orders/by-code/:code`.
 - `POST /api/v1/orders` *(Cập nhật v2.2 — Chỉ bán tồn Kho Tầng 1 + Giảm giá Sản phẩm, Tặng hàng 0đ & Giảm giá Bill)*
   - Body:
     ```json
@@ -903,8 +934,25 @@
   - Lỗi: `400 ALREADY_CHECKED_IN` nếu ngày đó đã có bản ghi chấm công và `shiftCode !== "OFF"` (dùng PATCH để sửa).
 
 - `GET /api/v1/attendance/config`
-  - Trả về cấu hình danh sách IP Wi-Fi/WAN của các cơ sở công ty (chỉ đọc từ biến môi trường `.env` trên Server: `ATTENDANCE_OFFICE_NAME` / `ATTENDANCE_OFFICE_1_NAME`, `ATTENDANCE_OFFICE_2_NAME`, `ATTENDANCE_REQUIRE_IP`, `ATTENDANCE_OFFICE_1_DOMAIN` / `ATTENDANCE_DDNS_DOMAIN`, `ATTENDANCE_OFFICE_2_DOMAIN`, `ATTENDANCE_ALLOWED_IPS` / `ATTENDANCE_OFFICE_1_ALLOWED_IPS`, `ATTENDANCE_ALLOWED_IPS_2` / `ATTENDANCE_OFFICE_2_ALLOWED_IPS`; trong đó các biến domain DDNS sẽ được server tự động phân giải DNS sang IPv4 hiện tại để gộp vào `allowedIps` / `allowedIps2`), kèm `detectedClientIp` và `isCurrentIpAllowed`. Không cho phép chỉnh sửa qua UI/API (HR và Admin đều không được sửa trên giao diện).
-  - Response: `{ "data": { "config": { "officeName": "...", "office2Name": "...", "allowedIps": ["127.0.0.1", "::1"], "allowedIps2": ["..."], "requireIp": true, "branches": [...] }, "detectedClientIp": "127.0.0.1", "isCurrentIpAllowed": true } }`
+  - Trả về cấu hình danh sách IP Wi-Fi/WAN của các cơ sở công ty (ưu tiên cấu hình lưu trong database `attendance_configs` do Quản trị viên/HR/CEO thiết lập; tự động fallback về biến môi trường `.env` trên Server nếu database chưa có bản ghi: `ATTENDANCE_OFFICE_NAME` / `ATTENDANCE_OFFICE_1_NAME`, `ATTENDANCE_OFFICE_2_NAME`, `ATTENDANCE_REQUIRE_IP`, `ATTENDANCE_OFFICE_1_DOMAIN` / `ATTENDANCE_DDNS_DOMAIN`, `ATTENDANCE_OFFICE_2_DOMAIN`, `ATTENDANCE_ALLOWED_IPS` / `ATTENDANCE_OFFICE_1_ALLOWED_IPS`, `ATTENDANCE_ALLOWED_IPS_2` / `ATTENDANCE_OFFICE_2_ALLOWED_IPS`; trong đó các biến domain DDNS sẽ được server tự động phân giải DNS sang IPv4 hiện tại để gộp vào `allowedIps` / `allowedIps2`), kèm `detectedClientIp` và `isCurrentIpAllowed`.
+  - Response: `{ "data": { "config": { "officeName": "...", "office2Name": "...", "allowedIps": ["127.0.0.1", "::1"], "allowedIps2": ["..."], "office1Domain": "...", "office2Domain": "...", "requireIp": true, "branches": [...] }, "detectedClientIp": "127.0.0.1", "isCurrentIpAllowed": true } }`
+
+- `PUT /api/v1/attendance/config` (Role `HR`, `ADMIN`, `CEO`) — **Cấu hình danh sách IP Wi-Fi chấm công cho cả 2 cơ sở**
+  - Phân quyền & Xác thực: Bắt buộc gửi `Authorization: Bearer <token>` hợp lệ (không chấp nhận `x-user-id` hoặc fallback user) và vai trò thuộc `['CEO', 'ADMIN', 'HR']`. Các vai trò khác hoặc chưa xác thực bằng Bearer token bị chặn (`401 UNAUTHORIZED` / `403 FORBIDDEN`).
+  - Body:
+    ```json
+    {
+      "officeName"?: "Cơ sở 1: Showroom 11Sport - 24 Tố Hữu, Hoà Cường, Đà Nẵng",
+      "office2Name"?: "Cơ sở 2: Văn phòng 11Sport - 89 Lê Thanh Nghị, Hòa Cường, Đà Nẵng",
+      "allowedIps"?: ["113.22.236.87", "113.22.236."],
+      "allowedIps2"?: ["171.231.188.171", "116.110.151.140"],
+      "office1Domain"?: "11sport2.myddns.me",
+      "office2Domain"?: "11sport.myddns.me",
+      "requireIp"?: true
+    }
+    ```
+    *Ghi chú*: `allowedIps` và `allowedIps2` có thể truyền dạng mảng string hoặc chuỗi ngăn cách bởi dấu phẩy/xuống dòng; hỗ trợ khớp IP chính xác và tiền tố dải IP (VD: `113.22.236.`). Nếu lưu danh sách rỗng (`[]`), hệ thống giữ nguyên whitelist rỗng cho cơ sở đó (chỉ fallback về `.env` khi chưa có bản ghi cấu hình trong DB).
+  - Response: `{ "data": { "config": { ... }, "detectedClientIp": "...", "isCurrentIpAllowed": true, "message": "Cập nhật cấu hình IP chấm công thành công" } }`
 
 #### B. Đơn từ & Phê duyệt WFH / Nghỉ phép (`/leave-requests`)
 - **Quy trình làm việc & Cơ chế Tích lũy / Cộng dồn Ngày phép (`PAID_LEAVE`)**:

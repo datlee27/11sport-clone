@@ -1,9 +1,11 @@
 import { Router } from 'express';
 import {
+  attendanceRepo,
   customerRepo,
   orderRepo,
   productRepo,
   returnExchangeRepo,
+  shiftAssignmentRepo,
   stockMovementRepo,
 } from '../config/db';
 import { ApiError } from '../utils/errors';
@@ -13,6 +15,7 @@ import {
   IDebtPaymentRecord,
   IOrderItem,
   ISplitPaymentItem,
+  OrderShiftCode,
   PaymentMethod,
   SplitMethod,
 } from '../models/Order';
@@ -28,6 +31,211 @@ import { filterAndRankBySearch, normalizePhoneDigits } from '../utils/search';
 import { withOrderLock } from '../utils/orderLock';
 
 export const ordersCustomersRouter = Router();
+
+const ORDER_MANAGER_ROLES = new Set(['CEO', 'ADMIN', 'ACCOUNTANT', 'HR']);
+
+function pad2(n: number): string {
+  return String(n).padStart(2, '0');
+}
+
+export function toLocalDateStr(d = new Date()): string {
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
+export function inferShiftCodeFromTime(d = new Date()): 'SHIFT_1' | 'SHIFT_2' {
+  const totalMinutes = d.getHours() * 60 + d.getMinutes();
+  return totalMinutes >= 17 * 60 + 30 ? 'SHIFT_2' : 'SHIFT_1';
+}
+
+export function isSalesOnlyUser(
+  user?: { role?: string; department?: string } | null
+): boolean {
+  if (!user) return false;
+  const role = String(user.role || '').toUpperCase();
+  if (ORDER_MANAGER_ROLES.has(role)) return false;
+  return role === 'SALES' || String(user.department || '').toUpperCase() === 'SALES';
+}
+
+export function getShiftDisplayLabel(
+  shiftCode: 'SHIFT_1' | 'SHIFT_2' | 'BOTH' | 'OFF'
+): string {
+  if (shiftCode === 'SHIFT_1') return 'Ca 1 (08:30 - 17:30)';
+  if (shiftCode === 'SHIFT_2') return 'Ca 2 (12:00 - 21:00)';
+  if (shiftCode === 'BOTH') return 'Ca 1 + Ca 2 (08:30 - 21:00)';
+  return 'Nghỉ (OFF)';
+}
+
+export async function resolveStaffShiftForDate(
+  user: { userId?: string; role?: string; department?: string } | undefined | null,
+  dateStr: string,
+  now = new Date()
+): Promise<'SHIFT_1' | 'SHIFT_2' | 'BOTH' | 'OFF'> {
+  if (!user?.userId) return inferShiftCodeFromTime(now);
+
+  const att =
+    (await attendanceRepo.findOne({ staffId: String(user.userId), date: dateStr })) ||
+    (await attendanceRepo.findOne({ staffId: user.userId as any, date: dateStr }));
+
+  if (
+    att &&
+    (att.shiftCode === 'SHIFT_1' ||
+      att.shiftCode === 'SHIFT_2' ||
+      att.shiftCode === 'BOTH')
+  ) {
+    return att.shiftCode;
+  }
+
+  const assigned =
+    (await shiftAssignmentRepo.findOne({
+      staffId: String(user.userId),
+      date: dateStr,
+    })) ||
+    (await shiftAssignmentRepo.findOne({
+      staffId: user.userId as any,
+      date: dateStr,
+    }));
+
+  if (
+    assigned &&
+    (assigned.shiftCode === 'SHIFT_1' ||
+      assigned.shiftCode === 'SHIFT_2' ||
+      assigned.shiftCode === 'BOTH' ||
+      assigned.shiftCode === 'OFF')
+  ) {
+    return assigned.shiftCode;
+  }
+
+  return inferShiftCodeFromTime(now);
+}
+
+export async function resolveOrderShiftOnWrite(
+  reqUser: any,
+  requestedShiftCode?: unknown,
+  now = new Date()
+): Promise<{ shiftDate: string; shiftCode: OrderShiftCode }> {
+  const shiftDate = toLocalDateStr(now);
+  const rawReq = String(requestedShiftCode || '').trim().toUpperCase();
+
+  if (isSalesOnlyUser(reqUser)) {
+    const staffShift = await resolveStaffShiftForDate(reqUser, shiftDate, now);
+    if (staffShift === 'SHIFT_1' || staffShift === 'SHIFT_2') {
+      return { shiftDate, shiftCode: staffShift };
+    }
+    if (staffShift === 'BOTH') {
+      if (rawReq === 'SHIFT_1' || rawReq === 'SHIFT_2') {
+        return { shiftDate, shiftCode: rawReq };
+      }
+      return { shiftDate, shiftCode: inferShiftCodeFromTime(now) };
+    }
+    return { shiftDate, shiftCode: inferShiftCodeFromTime(now) };
+  }
+
+  if (rawReq === 'SHIFT_1' || rawReq === 'SHIFT_2' || rawReq === 'BOTH') {
+    return { shiftDate, shiftCode: rawReq as OrderShiftCode };
+  }
+  return { shiftDate, shiftCode: inferShiftCodeFromTime(now) };
+}
+
+export function getOrderEffectiveShiftAndDate(order: any): {
+  shiftDate: string;
+  shiftCode: OrderShiftCode;
+} {
+  const refDate =
+    order?.status !== 'DRAFT' && order?.confirmedAt
+      ? new Date(order.confirmedAt)
+      : new Date(order?.createdAt || Date.now());
+  const validDate = !isNaN(refDate.getTime()) ? refDate : new Date();
+
+  const shiftDate =
+    typeof order?.shiftDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(order.shiftDate.trim())
+      ? order.shiftDate.trim()
+      : toLocalDateStr(validDate);
+
+  const rawShift = String(order?.shiftCode || '').trim().toUpperCase();
+  const shiftCode: OrderShiftCode =
+    rawShift === 'SHIFT_1' || rawShift === 'SHIFT_2' || rawShift === 'BOTH'
+      ? (rawShift as OrderShiftCode)
+      : inferShiftCodeFromTime(validDate);
+
+  return { shiftDate, shiftCode };
+}
+
+/**
+ * Kiểm tra đơn hàng có thuộc đúng ca làm việc hiện tại trong ngày hôm nay của nhân viên Sales hay không:
+ * 1. Qua ngày mới (shiftDate !== todayStr): KHÔNG được xem đơn cũ.
+ * 2. Trong cùng ngày hôm nay (shiftDate === todayStr): chỉ được xem đơn thuộc đúng ca làm việc đó
+ *    (SHIFT_1 chỉ xem SHIFT_1, SHIFT_2 chỉ xem SHIFT_2, BOTH xem được đơn trong ngày, OFF không xem được).
+ */
+export function isOrderInSalesCurrentShift(
+  order: any,
+  staffShift: 'SHIFT_1' | 'SHIFT_2' | 'BOTH' | 'OFF',
+  todayStr: string
+): boolean {
+  if (staffShift === 'OFF') return false;
+  const { shiftDate, shiftCode } = getOrderEffectiveShiftAndDate(order);
+  if (shiftDate !== todayStr) return false;
+  if (staffShift === 'BOTH') return true;
+  if (staffShift === 'SHIFT_1') return shiftCode === 'SHIFT_1';
+  if (staffShift === 'SHIFT_2') return shiftCode === 'SHIFT_2';
+  return false;
+}
+
+function computeShiftOrdersSummary(orders: any[]) {
+  let paidOrdersCount = 0;
+  let draftOrdersCount = 0;
+  let totalRevenue = 0;
+  let cashTotal = 0;
+  let bankingTotal = 0;
+  let cardTotal = 0;
+  let debtTotal = 0;
+
+  for (const o of orders) {
+    if (o.status === 'DRAFT') {
+      draftOrdersCount += 1;
+      continue;
+    }
+    paidOrdersCount += 1;
+    const totalAmt = Math.max(0, Number(o.totalAmount) || 0);
+    const debtAmt = Math.max(0, Number(o.debtAmount) || 0);
+    const paidAmt =
+      o.paidAmount !== undefined && o.paidAmount !== null
+        ? Math.max(0, Number(o.paidAmount) || 0)
+        : Math.max(0, totalAmt - debtAmt);
+
+    totalRevenue += totalAmt;
+    debtTotal += debtAmt;
+
+    if (o.paymentMethod === 'CASH') {
+      cashTotal += paidAmt;
+    } else if (o.paymentMethod === 'BANKING') {
+      bankingTotal += paidAmt;
+    } else if (o.paymentMethod === 'CARD') {
+      cardTotal += paidAmt;
+    } else if (o.paymentMethod === 'OTHER') {
+      const splits = Array.isArray(o.splitPayments) ? o.splitPayments : [];
+      if (splits.length > 0) {
+        for (const sp of splits) {
+          const spAmt = Math.max(0, Number(sp?.amount) || 0);
+          if (sp?.method === 'CASH') cashTotal += spAmt;
+          else if (sp?.method === 'BANKING') bankingTotal += spAmt;
+          else if (sp?.method === 'CARD') cardTotal += spAmt;
+        }
+      } else {
+        cashTotal += paidAmt;
+      }
+    }
+  }
+
+  return {
+    paidOrdersCount,
+    draftOrdersCount,
+    totalRevenue,
+    cashTotal,
+    bankingTotal,
+    cardTotal,
+    debtTotal,
+  };
+}
 
 function parseDueDateInput(raw: unknown): Date | null {
   if (!raw) return null;
@@ -62,13 +270,13 @@ ordersCustomersRouter.get('/customers/lookup', async (req, res, next) => {
 
     const targetPhone = customer?.phone || normPhone || rawPhone;
     const allOrders = await orderRepo.find({}, { createdAt: -1 });
-    const orders = allOrders.filter(
+    const allCustomerOrders = allOrders.filter(
       (o) =>
         o.customerPhone === targetPhone ||
         (normPhone && normalizePhoneDigits(o.customerPhone) === normPhone)
     );
     const allReturns = await returnExchangeRepo.find({}, { createdAt: -1 });
-    const returns = allReturns.filter(
+    const allCustomerReturns = allReturns.filter(
       (r) =>
         r.customerPhone === targetPhone ||
         (normPhone && normalizePhoneDigits(r.customerPhone) === normPhone)
@@ -79,7 +287,7 @@ ordersCustomersRouter.get('/customers/lookup', async (req, res, next) => {
     let unpaidOrdersCount = 0;
     let overdueOrdersCount = 0;
 
-    for (const o of orders) {
+    for (const o of allCustomerOrders) {
       if (o.status === 'DRAFT') continue;
       const debt = Math.max(0, Number(o.debtAmount) || 0);
       if (debt > 0) {
@@ -90,6 +298,24 @@ ordersCustomersRouter.get('/customers/lookup', async (req, res, next) => {
         }
       }
     }
+
+    // Bảo mật theo ca & ngày đối với nhân viên SALES:
+    // Chỉ trả về các đơn hàng thuộc đúng ca làm việc hiện tại của ngày hôm nay (không lộ đơn của ca khác hoặc ngày cũ)
+    const now = new Date();
+    const todayStr = toLocalDateStr(now);
+    const isSales = isSalesOnlyUser(req.user);
+    const staffShift = isSales
+      ? await resolveStaffShiftForDate(req.user, todayStr, now)
+      : 'BOTH';
+
+    const orders = isSales
+      ? allCustomerOrders.filter((o) => isOrderInSalesCurrentShift(o, staffShift, todayStr))
+      : allCustomerOrders;
+
+    const visibleOrderIdSet = new Set(orders.map((o) => String(o._id)));
+    const returns = isSales
+      ? allCustomerReturns.filter((r) => visibleOrderIdSet.has(String(r.orderId)))
+      : allCustomerReturns;
 
     res.json({
       data: {
@@ -109,6 +335,14 @@ ordersCustomersRouter.get('/customers/lookup', async (req, res, next) => {
         totalDebtAmount,
         unpaidOrdersCount,
         overdueOrdersCount,
+        ...(isSales
+          ? {
+              shiftRestricted: true,
+              shiftDate: todayStr,
+              shiftCode: staffShift,
+              shiftLabel: getShiftDisplayLabel(staffShift),
+            }
+          : {}),
       },
     });
   } catch (err) {
@@ -138,15 +372,139 @@ ordersCustomersRouter.get('/customers', async (req, res, next) => {
   }
 });
 
+// GET /api/v1/orders/current-shift — Xem Bill bán hàng trong ca làm việc hiện tại của ngày hôm nay
+ordersCustomersRouter.get('/orders/current-shift', async (req, res, next) => {
+  try {
+    const { search, status, paymentMethod, shiftCode: queryShiftCode } = req.query;
+    const now = new Date();
+    const todayStr = toLocalDateStr(now);
+    const isSales = isSalesOnlyUser(req.user);
+
+    const staffShift = await resolveStaffShiftForDate(req.user, todayStr, now);
+    const allOrders = await orderRepo.find({}, { createdAt: -1 });
+
+    // 1. Lọc danh sách đơn thuộc ca hiện tại trong ngày hôm nay (tuyệt đối không lấy đơn ngày cũ hoặc ca khác cho Sales)
+    const shiftOrders = allOrders
+      .filter((o) => {
+        if (isSales) {
+          return isOrderInSalesCurrentShift(o, staffShift, todayStr);
+        }
+        const eff = getOrderEffectiveShiftAndDate(o);
+        if (eff.shiftDate !== todayStr) return false;
+        const qShift = String(queryShiftCode || '').trim().toUpperCase();
+        if (qShift === 'SHIFT_1' || qShift === 'SHIFT_2') {
+          return eff.shiftCode === qShift;
+        }
+        return true;
+      })
+      .map((o) => {
+        const eff = getOrderEffectiveShiftAndDate(o);
+        return {
+          ...o,
+          shiftDate: o.shiftDate || eff.shiftDate,
+          shiftCode: o.shiftCode || eff.shiftCode,
+        };
+      });
+
+    const summary = computeShiftOrdersSummary(shiftOrders);
+
+    // 2. Áp dụng bộ lọc phụ (status, paymentMethod, search) trên các đơn của ca
+    const subFiltered = shiftOrders.filter((o) => {
+      if (status && String(status).toUpperCase() !== 'ALL') {
+        if (o.status !== String(status).toUpperCase()) return false;
+      }
+      if (paymentMethod && String(paymentMethod).toUpperCase() !== 'ALL') {
+        if (o.paymentMethod !== String(paymentMethod).toUpperCase()) return false;
+      }
+      return true;
+    });
+
+    const filtered = search
+      ? filterAndRankBySearch(subFiltered, String(search), (o) => [
+          { text: o.orderCode, weight: 1.6 },
+          { text: o.customerPhone, weight: 1.5 },
+          { text: o.customerName, weight: 1.3 },
+          { text: o.createdByName, weight: 0.9 },
+          { text: o.confirmedByName || '', weight: 0.9 },
+          { text: o.paymentMethodDetail || '', weight: 0.8 },
+          { text: o.note, weight: 0.7 },
+          ...(o.items || []).flatMap((i: any) => [
+            { text: i.productCode, weight: 1.2 },
+            { text: i.productName, weight: 1.1 },
+            { text: i.color || '', weight: 1.1 },
+            { text: i.size || '', weight: 1.0 },
+          ]),
+        ])
+      : subFiltered;
+
+    const effectiveShiftForMeta = isSales
+      ? staffShift
+      : String(queryShiftCode || '').toUpperCase() === 'SHIFT_1'
+        ? 'SHIFT_1'
+        : String(queryShiftCode || '').toUpperCase() === 'SHIFT_2'
+          ? 'SHIFT_2'
+          : 'BOTH';
+
+    res.json({
+      data: filtered,
+      meta: {
+        total: filtered.length,
+        date: todayStr,
+        shiftCode: effectiveShiftForMeta,
+        shiftLabel: getShiftDisplayLabel(effectiveShiftForMeta),
+        summary,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // GET /api/v1/orders
 ordersCustomersRouter.get('/orders', async (req, res, next) => {
   try {
-    const { search, phone, status, paymentMethod, debtStatus } = req.query;
+    const {
+      search,
+      phone,
+      status,
+      paymentMethod,
+      debtStatus,
+      date: queryDate,
+      shiftCode: queryShiftCode,
+      forReturn,
+    } = req.query;
     const allOrders = await orderRepo.find({}, { createdAt: -1 });
     const normFilterPhone = phone ? normalizePhoneDigits(String(phone)) : '';
-    const nowMs = Date.now();
+    const now = new Date();
+    const nowMs = now.getTime();
+    const todayStr = toLocalDateStr(now);
+    const isSales = isSalesOnlyUser(req.user);
+    const staffShift = isSales
+      ? await resolveStaffShiftForDate(req.user, todayStr, now)
+      : 'BOTH';
+
+    // Ngoại lệ duy nhất cho Sales: khi tra cứu ở mục 4. Trả / Đổi hàng (forReturn=true kèm từ khóa cụ thể >= 2 ký tự)
+    const isReturnLookupWithQuery =
+      String(forReturn || '').toLowerCase() === 'true' &&
+      (String(search || '').trim().length >= 2 || String(phone || '').trim().length >= 3);
 
     const baseFiltered = allOrders.filter((o) => {
+      if (isSales && !isReturnLookupWithQuery) {
+        if (!isOrderInSalesCurrentShift(o, staffShift, todayStr)) {
+          return false;
+        }
+      }
+
+      if (!isSales) {
+        const eff = getOrderEffectiveShiftAndDate(o);
+        if (typeof queryDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(queryDate.trim())) {
+          if (eff.shiftDate !== queryDate.trim()) return false;
+        }
+        if (typeof queryShiftCode === 'string' && queryShiftCode.trim() && queryShiftCode !== 'ALL') {
+          if (eff.shiftCode !== queryShiftCode.trim().toUpperCase()) return false;
+        }
+      }
+
       if (phone) {
         const oPhoneNorm = normalizePhoneDigits(o.customerPhone);
         const rawMatch =
@@ -201,7 +559,16 @@ ordersCustomersRouter.get('/orders', async (req, res, next) => {
 
     res.json({
       data: filtered,
-      meta: { total: filtered.length },
+      meta: {
+        total: filtered.length,
+        ...(isSales
+          ? {
+              shiftDate: todayStr,
+              shiftCode: staffShift,
+              shiftLabel: getShiftDisplayLabel(staffShift),
+            }
+          : {}),
+      },
     });
   } catch (err) {
     next(err);
@@ -241,6 +608,20 @@ ordersCustomersRouter.get('/orders/:id', async (req, res, next) => {
 
     if (!order) {
       throw new ApiError(404, 'ORDER_NOT_FOUND', 'Không tìm thấy đơn hàng');
+    }
+
+    const isForReturn = String(req.query.forReturn || '').toLowerCase() === 'true';
+    if (isSalesOnlyUser(req.user) && !isForReturn) {
+      const now = new Date();
+      const todayStr = toLocalDateStr(now);
+      const staffShift = await resolveStaffShiftForDate(req.user, todayStr, now);
+      if (!isOrderInSalesCurrentShift(order, staffShift, todayStr)) {
+        throw new ApiError(
+          403,
+          'ORDER_SHIFT_RESTRICTED',
+          'Nhân viên Sales chỉ được xem đơn hàng trong ca làm việc hiện tại của ngày hôm nay (không được xem đơn của ca khác hoặc ngày cũ).'
+        );
+      }
     }
 
     const returns = await returnExchangeRepo.find({ orderId: order._id }, { createdAt: -1 });
@@ -762,6 +1143,12 @@ ordersCustomersRouter.post('/orders', async (req, res, next) => {
 
     const prepared = await prepareOrderData(req.body, isDraft);
     const orderCode = await generateNextOrderCode();
+    const now = new Date();
+    const { shiftDate, shiftCode } = await resolveOrderShiftOnWrite(
+      req.user,
+      req.body?.shiftCode,
+      now
+    );
 
     const createdOrder = await orderRepo.create({
       orderCode,
@@ -791,11 +1178,13 @@ ordersCustomersRouter.post('/orders', async (req, res, next) => {
       debtAdjustments: [],
       note: prepared.cleanNote,
       status: isDraft ? 'DRAFT' : 'PAID',
+      shiftDate,
+      shiftCode,
       createdBy: req.user?.userId || 'SALES',
       createdByName: req.user?.fullName || 'Nhân viên bán hàng',
       confirmedBy: isDraft ? '' : req.user?.userId || 'SALES',
       confirmedByName: isDraft ? '' : req.user?.fullName || 'Nhân viên bán hàng',
-      confirmedAt: isDraft ? null : new Date(),
+      confirmedAt: isDraft ? null : now,
     });
 
     if (!isDraft) {
@@ -813,7 +1202,7 @@ ordersCustomersRouter.post('/orders', async (req, res, next) => {
 
     res.status(201).json({
       data: createdOrder,
-      meta: { isDraft },
+      meta: { isDraft, shiftDate, shiftCode },
     });
   } catch (err) {
     next(err);
@@ -838,6 +1227,19 @@ ordersCustomersRouter.put('/orders/:id', async (req, res, next) => {
         'ORDER_ALREADY_PAID',
         `Hóa đơn ${existingOrder.orderCode} đã thanh toán (${existingOrder.status}), không thể sửa bản nháp`
       );
+    }
+
+    const now = new Date();
+    const todayStr = toLocalDateStr(now);
+    if (isSalesOnlyUser(req.user)) {
+      const staffShift = await resolveStaffShiftForDate(req.user, todayStr, now);
+      if (!isOrderInSalesCurrentShift(existingOrder, staffShift, todayStr)) {
+        throw new ApiError(
+          403,
+          'ORDER_SHIFT_RESTRICTED',
+          'Nhân viên Sales chỉ được thao tác trên đơn hàng trong ca làm việc hiện tại của ngày hôm nay.'
+        );
+      }
     }
 
     const rawStatus = String(req.body?.status || 'DRAFT').toUpperCase();
@@ -872,6 +1274,10 @@ ordersCustomersRouter.put('/orders/:id', async (req, res, next) => {
       if (customer) customerId = customer._id;
     }
 
+    const resolvedShift = !isDraft
+      ? await resolveOrderShiftOnWrite(req.user, req.body?.shiftCode, now)
+      : null;
+
     const updatedOrder = await orderRepo.updateById(existingOrder._id, {
       customerId,
       customerName: prepared.finalCustomerName,
@@ -900,9 +1306,11 @@ ordersCustomersRouter.put('/orders/:id', async (req, res, next) => {
       ...(isDraft
         ? {}
         : {
+            shiftDate: resolvedShift?.shiftDate || existingOrder.shiftDate,
+            shiftCode: resolvedShift?.shiftCode || existingOrder.shiftCode,
             confirmedBy: req.user?.userId || 'SALES',
             confirmedByName: req.user?.fullName || 'Nhân viên bán hàng',
-            confirmedAt: new Date(),
+            confirmedAt: now,
           }),
     });
 
@@ -935,6 +1343,19 @@ ordersCustomersRouter.post('/orders/:id/confirm', async (req, res, next) => {
       );
     }
 
+    const now = new Date();
+    const todayStr = toLocalDateStr(now);
+    if (isSalesOnlyUser(req.user)) {
+      const staffShift = await resolveStaffShiftForDate(req.user, todayStr, now);
+      if (!isOrderInSalesCurrentShift(existingOrder, staffShift, todayStr)) {
+        throw new ApiError(
+          403,
+          'ORDER_SHIFT_RESTRICTED',
+          'Nhân viên Sales chỉ được xác nhận thanh toán bản nháp trong ca làm việc hiện tại của ngày hôm nay.'
+        );
+      }
+    }
+
     const mergedBody = {
       customerName: req.body?.customerName ?? existingOrder.customerName,
       customerPhone: req.body?.customerPhone ?? existingOrder.customerPhone,
@@ -957,6 +1378,11 @@ ordersCustomersRouter.post('/orders/:id/confirm', async (req, res, next) => {
       existingOrder.orderCode,
       prepared,
       req.user
+    );
+    const { shiftDate, shiftCode } = await resolveOrderShiftOnWrite(
+      req.user,
+      req.body?.shiftCode,
+      now
     );
 
     const updatedOrder = await orderRepo.updateById(existingOrder._id, {
@@ -984,14 +1410,16 @@ ordersCustomersRouter.post('/orders/:id/confirm', async (req, res, next) => {
       debtDueDate: prepared.debtDueDate,
       note: prepared.cleanNote,
       status: 'PAID',
+      shiftDate,
+      shiftCode,
       confirmedBy: req.user?.userId || 'SALES',
       confirmedByName: req.user?.fullName || 'Nhân viên bán hàng',
-      confirmedAt: new Date(),
+      confirmedAt: now,
     });
 
     res.json({
       data: updatedOrder,
-      meta: {},
+      meta: { shiftDate, shiftCode },
     });
   } catch (err) {
     next(err);
@@ -1157,6 +1585,19 @@ ordersCustomersRouter.delete('/orders/:id', async (req, res, next) => {
         'ORDER_ALREADY_PAID',
         `Chỉ được xóa hóa đơn ở trạng thái Bản nháp (DRAFT). Hóa đơn ${existingOrder.orderCode} đang ở trạng thái ${existingOrder.status}`
       );
+    }
+
+    if (isSalesOnlyUser(req.user)) {
+      const now = new Date();
+      const todayStr = toLocalDateStr(now);
+      const staffShift = await resolveStaffShiftForDate(req.user, todayStr, now);
+      if (!isOrderInSalesCurrentShift(existingOrder, staffShift, todayStr)) {
+        throw new ApiError(
+          403,
+          'ORDER_SHIFT_RESTRICTED',
+          'Nhân viên Sales chỉ được xóa bản nháp trong ca làm việc hiện tại của ngày hôm nay.'
+        );
+      }
     }
 
     await orderRepo.deleteById(existingOrder._id);

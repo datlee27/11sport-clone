@@ -16,6 +16,7 @@ import PosTab from "@/components/PosTab";
 import InventoryTab from "@/components/InventoryTab";
 import CustomerTab from "@/components/CustomerTab";
 import ReturnExchangeTab from "@/components/ReturnExchangeTab";
+import PosShiftBillsSection from "@/components/PosShiftBillsSection";
 import MarketingPushProductsTab from "@/components/MarketingPushProductsTab";
 import InvoicePdfModal from "@/components/InvoicePdfModal";
 import MyAttendanceCalendar from "@/components/MyAttendanceCalendar";
@@ -45,6 +46,7 @@ import {
   ArrowLeft,
   Rocket,
   CalendarCheck,
+  FileText,
 } from "lucide-react";
 
 const TABS_CONFIG: TabConfig[] = [
@@ -73,6 +75,13 @@ const TABS_CONFIG: TabConfig[] = [
     id: "RETURN",
     label: "4. Trả / Đổi hàng",
     icon: RotateCcw,
+    allowedRoles: ["SALES", "ADMIN", "CEO"],
+    roleHint: "NV Bán hàng / Quản lý / Giám đốc",
+  },
+  {
+    id: "INVOICE_HISTORY",
+    label: "5. Lịch sử hoá đơn",
+    icon: FileText,
     allowedRoles: ["SALES", "ADMIN", "CEO"],
     roleHint: "NV Bán hàng / Quản lý / Giám đốc",
   },
@@ -582,6 +591,9 @@ export default function WebPosHomePage() {
               <CustomerTab onOpenInvoice={(ord) => setInvoiceOrder(ord)} />
             )}
             {activeTab === "RETURN" && <ReturnExchangeTab />}
+            {activeTab === "INVOICE_HISTORY" && (
+              <PosShiftBillsSection onOpenInvoice={(ord) => setInvoiceOrder(ord)} />
+            )}
             {activeTab === "PUSH_PRODUCTS" && <MarketingPushProductsTab />}
           </>
         )}
