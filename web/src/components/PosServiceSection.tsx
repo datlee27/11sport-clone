@@ -226,9 +226,15 @@ export default function PosServiceSection({
   const [printPaperSize, setPrintPaperSize] = useState<"K80" | "A4">("K80");
   const servicePrintRef = useRef<HTMLDivElement>(null);
 
-  const handlePrintServiceReceipt = () => {
+  const handlePrintServiceReceipt = (
+    mode: "SPLIT_2_BILLS" | "BOTH_2_PAGES" | "COPY_1" | "COPY_2" = "SPLIT_2_BILLS"
+  ) => {
     if (!servicePrintRef.current || !printOrder) return;
-    const printContents = servicePrintRef.current.innerHTML;
+    const copyNodes = servicePrintRef.current.querySelectorAll(".service-bill-copy");
+    const copy1Html = copyNodes[0]?.outerHTML || "";
+    const copy2Html = copyNodes[1]?.outerHTML || "";
+    if (!copy1Html && !copy2Html) return;
+
     const printWindow = window.open("", "_blank", "width=900,height=800");
     if (!printWindow) {
       window.print();
@@ -236,18 +242,35 @@ export default function PosServiceSection({
     }
 
     const isK80 = printPaperSize === "K80";
+    const originUrl = typeof window !== "undefined" ? window.location.origin : "";
+    const effectiveMode =
+      mode === "SPLIT_2_BILLS" && !isK80 ? "BOTH_2_PAGES" : mode;
+
+    const initialStep =
+      effectiveMode === "SPLIT_2_BILLS" || effectiveMode === "COPY_1"
+        ? "1"
+        : effectiveMode === "COPY_2"
+          ? "2"
+          : "all";
+
     printWindow.document.open();
     printWindow.document.write(`
       <!DOCTYPE html>
       <html lang="vi">
         <head>
           <meta charset="utf-8" />
-          <title>Hóa đơn dịch vụ ${printOrder.orderCode} (2 bản)</title>
+          <base href="${originUrl}/" />
+          <title>Hóa đơn dịch vụ ${printOrder.orderCode} - ${
+            initialStep === "1"
+              ? "Liên 1 (Giao Khách)"
+              : initialStep === "2"
+                ? "Liên 2 (Lưu Shop)"
+                : "2 Bản"
+          }</title>
           <script src="https://cdn.tailwindcss.com"></script>
           <style>
             @page {
-              size: ${isK80 ? "80mm auto" : "A4 portrait"};
-              margin: ${isK80 ? "3mm" : "12mm"};
+              ${isK80 ? "margin: 2mm;" : "size: A4 portrait; margin: 12mm;"}
             }
             html, body {
               margin: 0;
@@ -258,35 +281,93 @@ export default function PosServiceSection({
               -webkit-print-color-adjust: exact !important;
               print-color-adjust: exact !important;
             }
-            .print-wrapper {
+            .service-print-page {
               width: ${isK80 ? "74mm" : "100%"};
               max-width: ${isK80 ? "74mm" : "190mm"};
               margin: 0 auto;
+              box-sizing: border-box;
+              page-break-inside: avoid;
+              break-inside: avoid;
             }
-            .service-bill-copy + .service-bill-copy {
-              page-break-before: always;
-              break-before: page;
+            .service-bill-copy {
+              border: none !important;
+              box-shadow: none !important;
+              margin: 0 !important;
+            }
+            /* Chế độ in tách riêng từng bill (ép máy in nhiệt K80 cắt rời từng bill) */
+            body[data-print-step="1"] .bill-page-1 {
+              display: block !important;
+            }
+            body[data-print-step="1"] .bill-page-2 {
+              display: none !important;
+            }
+            body[data-print-step="2"] .bill-page-1 {
+              display: none !important;
+            }
+            body[data-print-step="2"] .bill-page-2 {
+              display: block !important;
+            }
+            /* Chế độ in gộp 2 trang (tách trang chuẩn CSS Paged Media) */
+            body[data-print-step="all"] .bill-page-1 {
+              display: block !important;
+              page-break-after: always !important;
+              break-after: page !important;
+            }
+            body[data-print-step="all"] .bill-page-2 {
+              display: block !important;
+              page-break-before: always !important;
+              break-before: page !important;
               margin-top: 0 !important;
-            }
-            @media print {
-              .no-print-cut-line {
-                display: none !important;
-              }
             }
           </style>
         </head>
-        <body>
-          <div class="print-wrapper">
-            ${printContents}
+        <body data-print-step="${initialStep}">
+          <div class="service-print-page bill-page-1">
+            ${copy1Html}
+          </div>
+          <div class="service-print-page bill-page-2">
+            ${copy2Html}
           </div>
           <script>
-            window.onload = function() {
-              setTimeout(function() {
-                window.focus();
-                window.print();
-                window.close();
-              }, 350);
-            };
+            (function() {
+              var mode = ${JSON.stringify(effectiveMode)};
+              var orderCode = ${JSON.stringify(printOrder.orderCode)};
+              var step2Started = false;
+
+              function finishAndClose() {
+                setTimeout(function() {
+                  window.close();
+                }, 300);
+              }
+
+              function triggerSecondBillPrint() {
+                if (step2Started) return;
+                step2Started = true;
+                document.body.setAttribute("data-print-step", "2");
+                document.title = "Hóa đơn dịch vụ " + orderCode + " - Liên 2 (Lưu Shop)";
+                setTimeout(function() {
+                  window.focus();
+                  window.onafterprint = finishAndClose;
+                  window.print();
+                  finishAndClose();
+                }, 450);
+              }
+
+              window.onload = function() {
+                setTimeout(function() {
+                  window.focus();
+                  if (mode === "SPLIT_2_BILLS") {
+                    window.onafterprint = triggerSecondBillPrint;
+                    window.print();
+                    triggerSecondBillPrint();
+                  } else {
+                    window.onafterprint = finishAndClose;
+                    window.print();
+                    finishAndClose();
+                  }
+                }, 350);
+              };
+            })();
           </script>
         </body>
       </html>
@@ -1838,19 +1919,36 @@ export default function PosServiceSection({
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-1.5">
                 <button
                   type="button"
-                  onClick={handlePrintServiceReceipt}
-                  className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 transition shadow"
+                  onClick={() => handlePrintServiceReceipt("SPLIT_2_BILLS")}
+                  title="Tách thành 2 lệnh in riêng biệt để máy in K80 tự động cắt rời Liên 1 và Liên 2"
+                  className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 transition shadow cursor-pointer"
                 >
                   <Printer className="w-4 h-4" />
-                  In Hóa Đơn Dịch Vụ (2 Bản)
+                  In 2 Bill (Tự cắt rời)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handlePrintServiceReceipt("COPY_1")}
+                  title="Chỉ in Liên 1 (Bản giao khách)"
+                  className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-bold transition cursor-pointer"
+                >
+                  In Liên 1 (Khách)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handlePrintServiceReceipt("COPY_2")}
+                  title="Chỉ in Liên 2 (Bản lưu shop)"
+                  className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-bold transition cursor-pointer"
+                >
+                  In Liên 2 (Shop)
                 </button>
                 <button
                   type="button"
                   onClick={() => setPrintOrder(null)}
-                  className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300"
+                  className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>

@@ -1008,9 +1008,9 @@
     "semantic_hash": ""
   },
   "web/src/components/PosServiceSection.tsx": {
-    "mtime": 1794557317.1906037,
-    "seen": 1794557369.828993,
-    "ast_hash": "067d1ff40ac339fb6d32a9382285fc28",
+    "mtime": 1794992749.0001807,
+    "seen": 1794992793.9786592,
+    "ast_hash": "eea7b3a99c5d15a2423535a7c07fb070",
     "semantic_hash": ""
   },
   "server/tests/services.test.ts": {
