@@ -12,7 +12,7 @@ import {
 } from "@/lib/api";
 import InventoryModule from "@/components/InventoryModule";
 import RevenueDashboardModule from "@/components/RevenueDashboardModule";
-import CategoryModule from "@/components/CategoryModule";
+import CategoryBrandModule from "@/components/CategoryBrandModule";
 import OrdersReturnsModule from "@/components/OrdersReturnsModule";
 import StaffModule from "@/components/StaffModule";
 import StaffActivityModule from "@/components/StaffActivityModule";
@@ -98,8 +98,8 @@ const CMS_MENU_ITEMS: {
     },
     {
       id: "CATEGORIES",
-      label: "Quản lý Category (Danh mục)",
-      desc: "Phân loại nhóm sản phẩm cầu lông & phụ kiện 11Sport",
+      label: "Danh mục, Thương hiệu & Sản phẩm",
+      desc: "Quản lý Category, Thương hiệu (Brand) và Danh mục Sản phẩm chuẩn mã",
       icon: FolderKanban,
     },
     {
@@ -185,6 +185,7 @@ const ROLE_ALLOWED_MODULES: Record<string, CmsModuleType[]> = {
   ACCOUNTANT: [
     "REVENUE",
     "INVENTORY",
+    "CATEGORIES",
     "ORDERS",
     "SERVICES",
     "SHIFT_HANDOVERS",
@@ -575,8 +576,8 @@ export default function CmsDashboardPage() {
               onClick={() => setIsRightDrawerOpen(true)}
               title="Mở Menu Cá Nhân (Chấm công & Thông tin tài khoản)"
               className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs transition cursor-pointer ${effectiveModule === "PROFILE" || effectiveModule === "MY_ATTENDANCE"
-                  ? "bg-emerald-600/25 border-emerald-500 text-white"
-                  : "bg-slate-800 hover:bg-slate-700 border-slate-700"
+                ? "bg-emerald-600/25 border-emerald-500 text-white"
+                : "bg-slate-800 hover:bg-slate-700 border-slate-700"
                 }`}
             >
               <ShieldCheck className="w-4 h-4 text-emerald-400" />
@@ -684,15 +685,15 @@ export default function CmsDashboardPage() {
                       setIsRightDrawerOpen(false);
                     }}
                     className={`w-full text-left px-3 py-3 rounded-xl text-xs font-bold flex items-center justify-between gap-2.5 transition ${effectiveModule === "MY_ATTENDANCE"
-                        ? "bg-emerald-600 text-white shadow-md"
-                        : "text-slate-200 hover:bg-slate-800 hover:text-white"
+                      ? "bg-emerald-600 text-white shadow-md"
+                      : "text-slate-200 hover:bg-slate-800 hover:text-white"
                       }`}
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <div
                         className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${effectiveModule === "MY_ATTENDANCE"
-                            ? "bg-white/20 text-white"
-                            : "bg-amber-500/15 text-amber-400"
+                          ? "bg-white/20 text-white"
+                          : "bg-amber-500/15 text-amber-400"
                           }`}
                       >
                         <CalendarDays className="w-4 h-4" />
@@ -701,8 +702,8 @@ export default function CmsDashboardPage() {
                         <div className="truncate">Chấm công</div>
                         <div
                           className={`text-[10px] font-normal truncate mt-0.5 ${effectiveModule === "MY_ATTENDANCE"
-                              ? "text-emerald-100"
-                              : "text-slate-400"
+                            ? "text-emerald-100"
+                            : "text-slate-400"
                             }`}
                         >
                           Lịch công tháng, đơn từ &amp; tăng ca
@@ -711,8 +712,8 @@ export default function CmsDashboardPage() {
                     </div>
                     <ChevronRight
                       className={`w-4 h-4 shrink-0 ${effectiveModule === "MY_ATTENDANCE"
-                          ? "text-white"
-                          : "text-slate-500"
+                        ? "text-white"
+                        : "text-slate-500"
                         }`}
                     />
                   </button>
@@ -726,15 +727,15 @@ export default function CmsDashboardPage() {
                     setIsRightDrawerOpen(false);
                   }}
                   className={`w-full text-left px-3 py-3 rounded-xl text-xs font-bold flex items-center justify-between gap-2.5 transition ${effectiveModule === "PROFILE"
-                      ? "bg-emerald-600 text-white shadow-md"
-                      : "text-slate-200 hover:bg-slate-800 hover:text-white"
+                    ? "bg-emerald-600 text-white shadow-md"
+                    : "text-slate-200 hover:bg-slate-800 hover:text-white"
                     }`}
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <div
                       className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${effectiveModule === "PROFILE"
-                          ? "bg-white/20 text-white"
-                          : "bg-emerald-500/15 text-emerald-400"
+                        ? "bg-white/20 text-white"
+                        : "bg-emerald-500/15 text-emerald-400"
                         }`}
                     >
                       <User className="w-4 h-4" />
@@ -743,8 +744,8 @@ export default function CmsDashboardPage() {
                       <div className="truncate">Thông tin tài khoản</div>
                       <div
                         className={`text-[10px] font-normal truncate mt-0.5 ${effectiveModule === "PROFILE"
-                            ? "text-emerald-100"
-                            : "text-slate-400"
+                          ? "text-emerald-100"
+                          : "text-slate-400"
                           }`}
                       >
                         Xem hồ sơ &amp; chỉnh sửa thông tin cá nhân
@@ -753,8 +754,8 @@ export default function CmsDashboardPage() {
                   </div>
                   <ChevronRight
                     className={`w-4 h-4 shrink-0 ${effectiveModule === "PROFILE"
-                        ? "text-white"
-                        : "text-slate-500"
+                      ? "text-white"
+                      : "text-slate-500"
                       }`}
                   />
                 </button>
@@ -924,7 +925,7 @@ export default function CmsDashboardPage() {
             onNavigateToInventory={() => setActiveModule("INVENTORY")}
           />
         )}
-        {effectiveModule === "CATEGORIES" && <CategoryModule />}
+        {effectiveModule === "CATEGORIES" && <CategoryBrandModule />}
         {effectiveModule === "ORDERS" && (
           <OrdersReturnsModule onOpenInvoice={(ord) => setInvoiceOrder(ord)} />
         )}

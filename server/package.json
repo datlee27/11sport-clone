@@ -12,7 +12,8 @@
     "lint": "tsc --noEmit",
     "migrate": "ts-node-dev --transpile-only --no-notify --exit-child src/migrations/cli.ts",
     "migrate:prod": "node dist/migrations/cli.js",
-    "start:migrate": "npm run migrate:prod -- up --yes && npm start"
+    "start:migrate": "npm run migrate:prod -- up --yes && npm start",
+    "recode:products": "ts-node-dev --transpile-only --no-notify --exit-child src/scripts/recodeProductsCli.ts"
   },
   "dependencies": {
     "@types/cors": "^2.8.17",

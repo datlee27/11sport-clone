@@ -14,6 +14,8 @@ import {
   formatPhone,
   useDebounce,
   filterAndRankBySearch,
+  findVariantByColorSize,
+  variantEffectiveSellingPrice,
 } from "@/lib/api";
 import {
   Search,
@@ -71,8 +73,15 @@ interface ExchangeItemForm {
   customPriceText?: string;
 }
 
+/** R8 (v5.0): hàng đổi mới dùng giá bán hiệu lực của biến thể (Màu+Size), trống => giá gốc */
+const exchangeUnitPrice = (ex: { product: Product; color?: string; size?: string }): number =>
+  Math.max(
+    0,
+    Math.round(variantEffectiveSellingPrice(ex.product, findVariantByColorSize(ex.product, ex.color, ex.size)) || 0)
+  );
+
 const getExchangeItemPricing = (ex: ExchangeItemForm) => {
-  const originalUnitPrice = Math.max(0, Math.round(Number(ex.product.sellingPrice) || 0));
+  const originalUnitPrice = exchangeUnitPrice(ex);
   const rawDiscVal = Math.max(0, Number(ex.discountValue) || 0);
   const discountPerUnit =
     ex.discountType === "PERCENT"
@@ -118,7 +127,9 @@ export default function ReturnExchangeTab() {
     return rawList.filter((p) => {
       const directF1 = Number(p.stockFloor1 ?? p.stock) || 0;
       const unpackF1 = Math.max(0, Number(p.maxUnpackableFloor1) || 0);
-      return Number(p.sellingPrice) > 0 && directF1 + unpackF1 > 0;
+      const hasPrice =
+        Number(p.sellingPrice) > 0 || (p.variants || []).some((v) => Number(v.sellingPrice || 0) > 0);
+      return hasPrice && directF1 + unpackF1 > 0;
     });
   }, []);
 
@@ -227,6 +238,7 @@ export default function ReturnExchangeTab() {
     return filterAndRankBySearch(exchangeOptions, q, (opt) => [
       { text: opt.variantCode, weight: 1.7 },
       { text: opt.product.code, weight: 1.6 },
+      { text: opt.product.legacyCode, weight: 1.4 },
       { text: opt.product.barcode, weight: 1.5 },
       { text: opt.displayName, weight: 1.4 },
       { text: opt.product.name, weight: 1.3 },
@@ -376,7 +388,7 @@ export default function ReturnExchangeTab() {
     setExchangeRows((prev) =>
       prev.map((ex) => {
         if (ex.optionKey !== optionKey) return ex;
-        const origPrice = Math.max(0, Math.round(Number(ex.product.sellingPrice) || 0));
+        const origPrice = exchangeUnitPrice(ex);
         let cleanVal = Math.max(0, rawVal);
         if (discountType === "PERCENT") {
           cleanVal = Math.min(100, cleanVal);
@@ -413,7 +425,7 @@ export default function ReturnExchangeTab() {
     setExchangeRows((prev) =>
       prev.map((ex) => {
         if (ex.optionKey !== optionKey) return ex;
-        const origPrice = Math.max(0, Math.round(Number(ex.product.sellingPrice) || 0));
+        const origPrice = exchangeUnitPrice(ex);
         if (!digits) {
           return {
             ...ex,
@@ -447,6 +459,16 @@ export default function ReturnExchangeTab() {
       (opt) =>
         opt.variantCode.toUpperCase() === q ||
         (opt.product.code || "").toUpperCase() === q ||
+        (opt.product.legacyCode || "").toUpperCase() === q ||
+        (opt.product.legacyCodes || []).some((c) => c.toUpperCase() === q) ||
+        (() => {
+          const v = findVariantByColorSize(opt.product, opt.color, opt.size);
+          return Boolean(
+            v &&
+              (String(v.legacyVariantCode || "").toUpperCase() === q ||
+                (v.legacyVariantCodes || []).some((c) => c.toUpperCase() === q))
+          );
+        })() ||
         (opt.product.barcode || "").toUpperCase() === q
     );
     const target =
@@ -1239,7 +1261,7 @@ export default function ReturnExchangeTab() {
 
                           <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
                             <span className="font-mono font-extrabold text-xs sm:text-sm text-emerald-700">
-                              {formatVND(opt.product.sellingPrice)}
+                              {formatVND(exchangeUnitPrice(opt))}
                             </span>
                             <button
                               type="button"

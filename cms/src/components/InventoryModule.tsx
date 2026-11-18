@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import ExportExcelButton from "./ExportExcelButton";
 import BarcodeLabelModal, { BarcodeLabelItem } from "./BarcodeLabelModal";
+import ProductCodeCreatorModal, { ProductCodeCreatorResult } from "./ProductCodeCreatorModal";
 import {
   ColorInputWithPicker,
   ColorSwatchBadge,
@@ -35,8 +36,15 @@ import {
   formatNumberDots,
   parseNumberDots,
   formatDateTime,
-  generateProductCode,
-  generateVariantProductCode,
+  resolveVariantCode,
+  findVariantByColorSize,
+  variantEffectiveSellingPrice,
+  variantEffectiveCostPrice,
+  lookupProductByCodeApi,
+  fetchBrandsApi,
+  Brand,
+  describeApiError,
+  getStoredUser,
   extractVariantFromText,
   useDebounce,
   filterAndRankBySearch,
@@ -49,6 +57,7 @@ import {
   Sliders,
   ClipboardList,
   Save,
+  Pencil,
   Plus,
   CheckCircle2,
   AlertCircle,
@@ -76,7 +85,16 @@ import {
 
 interface AdminImportRow {
   stt: number;
+  /** v5.0: id sản phẩm có sẵn (chọn từ gợi ý / quét / vừa tạo) — server dùng đúng sản phẩm này */
+  productId?: string;
+  /** Mã gốc do SERVER sinh (sản phẩm có sẵn). Dòng hàng mới để trống — server tự sinh theo Cate+Brand+Version */
   productCode: string;
+  /** Mã con của biến thể đã chọn */
+  variantCode?: string;
+  /** Cho phép thêm Màu/Size mới cho SP đã chọn */
+  isNewVariant?: boolean;
+  /** Mã màu 2–3 ký tự (tuỳ chọn, server gợi ý nếu trống) */
+  colorCode?: string;
   productName: string;
   categoryId: string;
   brand: string;
@@ -93,6 +111,7 @@ interface AdminImportRow {
 
 type SubTab = "PRODUCTS" | "REPORT" | "MOVEMENTS" | "IMPORTS" | "ADJUSTMENT" | "TRANSFER";
 type ActiveWarehouseTab = "FLOOR_1" | "FLOOR_2" | "ALL";
+type QuickStockFilter = "ALL" | "IN_STOCK" | "ZERO_STOCK" | "MISSING_PRICE" | "CHANGED";
 
 const COMMON_COLORS = [
   "Đỏ",
@@ -163,6 +182,8 @@ export default function InventoryModule() {
   const [subTab, setSubTab] = useState<SubTab>("PRODUCTS");
   const [activeWarehouse, setActiveWarehouse] = useState<ActiveWarehouseTab>("FLOOR_1");
   const [showZeroFloorItems, setShowZeroFloorItems] = useState(false);
+  const [quickStockFilter, setQuickStockFilter] = useState<QuickStockFilter>("ALL");
+  const [showScannerPanel, setShowScannerPanel] = useState(false);
 
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -174,6 +195,9 @@ export default function InventoryModule() {
   // Filter
   const [search, setSearch] = useState("");
   const [categoryId, setCategoryId] = useState("");
+  // v5.0: lọc theo Thương hiệu
+  const [brandFilter, setBrandFilter] = useState("");
+  const [brandOptions, setBrandOptions] = useState<Brand[]>([]);
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [movementType, setMovementType] = useState("");
@@ -188,8 +212,9 @@ export default function InventoryModule() {
   const [impPage, setImpPage] = useState<number>(1);
   const [impPageSize, setImpPageSize] = useState<number>(15);
 
-  // Tên, Category, ĐVT, Số lượng từng tầng (Tầng 1, Tầng 2), Giá gốc & Giá bán chỉnh sửa theo productId
+  // Tên, Ghi chú, Category, ĐVT, Số lượng từng tầng (Tầng 1, Tầng 2), Giá gốc & Giá bán chỉnh sửa theo productId
   const [editingNames, setEditingNames] = useState<Record<string, string>>({});
+  const [editingNotes, setEditingNotes] = useState<Record<string, string>>({});
   const [editingCats, setEditingCats] = useState<Record<string, string>>({});
   const [editingUnits, setEditingUnits] = useState<Record<string, string>>({});
   const [editingFloor1, setEditingFloor1] = useState<Record<string, number>>({});
@@ -221,11 +246,38 @@ export default function InventoryModule() {
   ]);
   const [activeAdminSuggestRowIdx, setActiveAdminSuggestRowIdx] = useState<number | null>(null);
   const [adminSuggestHighlightIdx, setAdminSuggestHighlightIdx] = useState<number>(0);
+  const [importFilterCatId, setImportFilterCatId] = useState<string>("");
+  const [importFilterBrandId, setImportFilterBrandId] = useState<string>("");
   const [importingAdminFile, setImportingAdminFile] = useState(false);
   const [submittingAdminImport, setSubmittingAdminImport] = useState(false);
   const [adminFileImportMode, setAdminFileImportMode] = useState<"replace" | "append">("replace");
   const adminFileInputRef = useRef<HTMLInputElement>(null);
   const [allCatalogProducts, setAllCatalogProducts] = useState<Product[]>([]);
+  // v5.0: Popup tạo / sửa sản phẩm chuẩn mã (Category → Brand → Version → biến thể)
+  const [showCodeCreator, setShowCodeCreator] = useState(false);
+  const [editingProductModal, setEditingProductModal] = useState<Product | null>(null);
+  // R5/AC: role SALES không thấy giá vốn (server cũng không trả costPrice cho SALES)
+  const [canSeeCost, setCanSeeCost] = useState(true);
+  useEffect(() => {
+    setCanSeeCost(String(getStoredUser()?.role || "").toUpperCase() !== "SALES");
+  }, []);
+
+  // v5.0: tra sản phẩm theo mã (mã mới + mã cũ) để lấy MÃ CON DO SERVER SINH thay vì tự sinh ở client
+  const catalogByCode = useMemo(() => {
+    const m = new Map<string, Product>();
+    const add = (code: string | undefined, p: Product) => {
+      const k = String(code || "").trim().toUpperCase();
+      if (k && !m.has(k)) m.set(k, p);
+    };
+    [...products, ...allCatalogProducts].forEach((p) => {
+      add(p.code, p);
+      add(p.legacyCode, p);
+      (p.legacyCodes || []).forEach((c) => add(c, p));
+    });
+    return m;
+  }, [products, allCatalogProducts]);
+  const variantCodeFor = (baseCode?: string, color?: string, size?: string): string =>
+    resolveVariantCode(catalogByCode.get(String(baseCode || "").trim().toUpperCase()), baseCode, color, size);
 
   // Quản lý Phân loại (Màu sắc • Size • Tồn kho từng tầng) & In Tem Label
   const [expandedVariantProdId, setExpandedVariantProdId] = useState<string | null>(null);
@@ -340,6 +392,9 @@ export default function InventoryModule() {
       const mList = Array.isArray(movRes.data) ? movRes.data : [];
       const pList = Array.isArray(allProdRes.data) ? allProdRes.data : [];
       setCategories(cList);
+      fetchBrandsApi()
+        .then(setBrandOptions)
+        .catch(() => undefined);
       setImportsList(iList);
       setAllCatalogProducts(pList);
       setMovements((prev) => (prev.length > 0 ? prev : mList));
@@ -370,6 +425,7 @@ export default function InventoryModule() {
       }
 
       const nameMap: Record<string, string> = {};
+      const noteMap: Record<string, string> = {};
       const catMap: Record<string, string> = {};
       const unitMap: Record<string, string> = {};
       const f1Map: Record<string, number> = {};
@@ -379,6 +435,7 @@ export default function InventoryModule() {
       const varMap: Record<string, ProductVariant[]> = {};
       pList.forEach((p) => {
         nameMap[p._id] = p.name || "";
+        noteMap[p._id] = p.note || "";
         catMap[p._id] =
           typeof p.categoryId === "object" ? p.categoryId?._id || "" : String(p.categoryId || "");
         unitMap[p._id] = p.unit || "Cái";
@@ -388,6 +445,7 @@ export default function InventoryModule() {
         priceMap[p._id] = Number(p.sellingPrice || 0);
         varMap[p._id] = Array.isArray(p.variants)
           ? p.variants.map((v) => ({
+            ...v,
             variantKey: v.variantKey,
             variantCode: v.variantCode,
             barcode: v.barcode,
@@ -401,6 +459,7 @@ export default function InventoryModule() {
           : [];
       });
       setEditingNames(nameMap);
+      setEditingNotes(noteMap);
       setEditingCats(catMap);
       setEditingUnits(unitMap);
       setEditingFloor1(f1Map);
@@ -508,6 +567,7 @@ export default function InventoryModule() {
   const isProductChanged = useCallback(
     (prod: Product) => {
       const origName = String(prod.name ?? "").trim();
+      const origNote = String(prod.note ?? "").trim();
       const origCatId = String(
         typeof prod.categoryId === "object" ? prod.categoryId?._id || "" : prod.categoryId || ""
       );
@@ -518,6 +578,7 @@ export default function InventoryModule() {
       const origPrice = Number(prod.sellingPrice ?? 0);
 
       const newName = String(editingNames[prod._id] ?? origName).trim();
+      const newNote = String(editingNotes[prod._id] ?? origNote).trim();
       const newCatId = String(editingCats[prod._id] ?? origCatId);
       const newUnit = String(editingUnits[prod._id] ?? origUnit).trim() || "Cái";
       const newF1 = Math.max(0, Math.round(Number(editingFloor1[prod._id] ?? origF1)));
@@ -527,6 +588,7 @@ export default function InventoryModule() {
 
       return (
         newName !== origName ||
+        newNote !== origNote ||
         newCatId !== origCatId ||
         newUnit !== origUnit ||
         newF1 !== origF1 ||
@@ -535,7 +597,7 @@ export default function InventoryModule() {
         newPrice !== origPrice
       );
     },
-    [editingNames, editingCats, editingUnits, editingFloor1, editingFloor2, editingCosts, editingPrices]
+    [editingNames, editingNotes, editingCats, editingUnits, editingFloor1, editingFloor2, editingCosts, editingPrices]
   );
 
   // Danh sách các sản phẩm đã có chỉnh sửa (số lượng, giá, tên, ĐVT, danh mục)
@@ -546,6 +608,7 @@ export default function InventoryModule() {
   // Hoàn tác toàn bộ chỉnh sửa chưa lưu về dữ liệu gốc
   const handleResetProductEdits = () => {
     const nameMap: Record<string, string> = {};
+    const noteMap: Record<string, string> = {};
     const catMap: Record<string, string> = {};
     const unitMap: Record<string, string> = {};
     const f1Map: Record<string, number> = {};
@@ -554,6 +617,7 @@ export default function InventoryModule() {
     const priceMap: Record<string, number> = {};
     products.forEach((p) => {
       nameMap[p._id] = p.name || "";
+      noteMap[p._id] = p.note || "";
       catMap[p._id] =
         typeof p.categoryId === "object" ? p.categoryId?._id || "" : String(p.categoryId || "");
       unitMap[p._id] = p.unit || "Cái";
@@ -563,6 +627,7 @@ export default function InventoryModule() {
       priceMap[p._id] = Number(p.sellingPrice || 0);
     });
     setEditingNames(nameMap);
+    setEditingNotes(noteMap);
     setEditingCats(catMap);
     setEditingUnits(unitMap);
     setEditingFloor1(f1Map);
@@ -570,6 +635,73 @@ export default function InventoryModule() {
     setEditingCosts(costMap);
     setEditingPrices(priceMap);
     setStatusMsg(null);
+  };
+
+  // Lưu nhanh 1 sản phẩm trên dòng (hoặc bấm Enter)
+  const handleSaveSingleProductRow = async (prod: Product) => {
+    if (savingBatch) return;
+    setStatusMsg(null);
+    const newName = String(editingNames[prod._id] ?? prod.name ?? "").trim();
+    const newNote = String(editingNotes[prod._id] ?? prod.note ?? "").trim();
+    const newCatId = String(
+      editingCats[prod._id] ??
+      (typeof prod.categoryId === "object" ? prod.categoryId?._id : prod.categoryId) ??
+      ""
+    );
+    const newUnit = String(editingUnits[prod._id] ?? prod.unit ?? "Cái").trim() || "Cái";
+    const newF1 = Math.max(0, Math.round(Number(editingFloor1[prod._id] ?? prod.stockFloor1 ?? prod.stock ?? 0)));
+    const newF2 = Math.max(0, Math.round(Number(editingFloor2[prod._id] ?? prod.stockFloor2 ?? 0)));
+    const newCost = Number(editingCosts[prod._id] ?? prod.costPrice ?? 0);
+    const newPrice = Number(editingPrices[prod._id] ?? prod.sellingPrice ?? 0);
+
+    if (!newName) {
+      setStatusMsg({ type: "error", text: `Tên sản phẩm (Mã: ${prod.code}) không được để trống.` });
+      return;
+    }
+
+    setSavingBatch(true);
+    try {
+      await apiRequest(`/products/${prod._id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          name: newName,
+          note: newNote,
+          ...(newCatId ? { categoryId: newCatId } : {}),
+          unit: newUnit,
+          stockFloor1: newF1,
+          stockFloor2: newF2,
+          stock: newF1 + newF2,
+          allowDirectStock: true,
+          costPrice: newCost,
+          sellingPrice: newPrice,
+        }),
+      });
+      setStatusMsg({
+        type: "success",
+        text: `Đã lưu cập nhật mặt hàng "${newName}" (${prod.code})!`,
+      });
+      await loadProductsAndCats();
+      loadCategoriesAndImports();
+    } catch (err: any) {
+      setStatusMsg({ type: "error", text: err?.message || "Lỗi khi lưu sản phẩm." });
+    } finally {
+      setSavingBatch(false);
+    }
+  };
+
+  // Hoàn tác riêng 1 dòng sản phẩm
+  const handleResetSingleProductRow = (prod: Product) => {
+    setEditingNames((prev) => ({ ...prev, [prod._id]: prod.name || "" }));
+    setEditingNotes((prev) => ({ ...prev, [prod._id]: prod.note || "" }));
+    setEditingCats((prev) => ({
+      ...prev,
+      [prod._id]: typeof prod.categoryId === "object" ? prod.categoryId?._id || "" : String(prod.categoryId || ""),
+    }));
+    setEditingUnits((prev) => ({ ...prev, [prod._id]: prod.unit || "Cái" }));
+    setEditingFloor1((prev) => ({ ...prev, [prod._id]: Number(prod.stockFloor1 ?? prod.stock ?? 0) }));
+    setEditingFloor2((prev) => ({ ...prev, [prod._id]: Number(prod.stockFloor2 ?? 0) }));
+    setEditingCosts((prev) => ({ ...prev, [prod._id]: Number(prod.costPrice || 0) }));
+    setEditingPrices((prev) => ({ ...prev, [prod._id]: Number(prod.sellingPrice || 0) }));
   };
 
   // Gom lại thành 1 nút Lưu duy nhất: Lưu toàn bộ sản phẩm đã có thay đổi
@@ -609,6 +741,7 @@ export default function InventoryModule() {
     try {
       for (const prod of changedProducts) {
         const newName = String(editingNames[prod._id] ?? prod.name ?? "").trim();
+        const newNote = String(editingNotes[prod._id] ?? prod.note ?? "").trim();
         const newCatId = String(
           editingCats[prod._id] ??
           (typeof prod.categoryId === "object" ? prod.categoryId?._id : prod.categoryId) ??
@@ -631,6 +764,7 @@ export default function InventoryModule() {
           method: "PATCH",
           body: JSON.stringify({
             name: newName,
+            note: newNote,
             ...(newCatId ? { categoryId: newCatId } : {}),
             unit: newUnit,
             stockFloor1: newF1,
@@ -708,20 +842,48 @@ export default function InventoryModule() {
     }
   };
 
-  // Gợi ý các sản phẩm đã có trong kho khi gõ tên hàng ở từng dòng trong Popup Nhập kho Admin
+  // Gợi ý các sản phẩm đã có trong kho khi gõ tên hàng/mã hàng ở từng dòng trong Popup Nhập kho Admin
   const getAdminRowSuggestions = useCallback(
     (query: string): Product[] => {
-      const sourceList = allCatalogProducts.length > 0 ? allCatalogProducts : products;
+      const sourceList = (allCatalogProducts.length > 0 ? allCatalogProducts : products).filter((p) => {
+        const catId = typeof p.categoryId === "object" ? p.categoryId?._id || "" : String(p.categoryId || "");
+        if (importFilterCatId && catId !== importFilterCatId) return false;
+        if (importFilterBrandId) {
+          if (p.brandId) {
+            if (String(p.brandId) !== importFilterBrandId) return false;
+          } else {
+            const b = brandOptions.find((x) => x._id === importFilterBrandId);
+            if (!b) return false;
+            const norm = (t?: string) =>
+              String(t || "")
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .toUpperCase()
+                .replace(/[^A-Z0-9]/g, "");
+            const keys = new Set([norm(b.name), norm(b.code), ...(b.aliases || []).map(norm)]);
+            if (!keys.has(norm(p.brand))) return false;
+          }
+        }
+        return true;
+      });
       const q = (query || "").trim();
-      if (!q) return sourceList.slice(0, 8);
+      if (!q) return sourceList.slice(0, 12);
       return filterAndRankBySearch(sourceList, q, (p) => [
-        p.name,
-        p.code,
-        p.brand,
-        p.categoryName,
-      ]).slice(0, 8);
+        { text: p.code, weight: 1.6 },
+        { text: p.legacyCode, weight: 1.3 },
+        { text: p.name, weight: 1.4 },
+        { text: p.versionName, weight: 1.3 },
+        { text: p.brandName || p.brand, weight: 1.1 },
+        { text: p.categoryName, weight: 0.9 },
+        ...(Array.isArray(p.variants)
+          ? p.variants.map((v) => ({
+            text: `${v.variantCode || ""} ${v.color || ""} ${v.size || ""}`,
+            weight: 1.4,
+          }))
+          : []),
+      ]).slice(0, 12);
     },
-    [allCatalogProducts, products]
+    [allCatalogProducts, products, importFilterCatId, importFilterBrandId, brandOptions]
   );
 
   const handleSelectAdminRowSuggestion = (rowIdx: number, prod: Product) => {
@@ -733,20 +895,90 @@ export default function InventoryModule() {
         typeof prod.categoryId === "object"
           ? prod.categoryId?._id || newProdCatId
           : String(prod.categoryId || newProdCatId);
+      const vars = (prod.variants || []).filter((v) => v.color || v.size);
+      const firstVar = vars[0];
+      const vColor = firstVar ? firstVar.color || "" : prod.color || "";
+      const vSize = firstVar ? firstVar.size || "" : prod.size || "";
+      const vHexes = firstVar?.colorHexes || prod.colorHexes;
+      const vCode = firstVar ? resolveVariantCode(prod, prod.code, vColor, vSize) : prod.code;
       next[rowIdx] = {
         ...cur,
+        productId: prod._id,
         productName: prod.name,
-        productCode: prod.code || generateProductCode(prod.name),
-        brand: prod.brand || cur.brand || "",
+        productCode: prod.code || "",
+        variantCode: vCode,
+        isNewVariant: vars.length === 0,
+        brand: prod.brandName || prod.brand || cur.brand || "",
         categoryId: catId,
+        color: vColor,
+        colorHexes: vHexes,
+        size: vSize,
         unit: prod.unit || cur.unit || "Cái",
-        costPrice: Number(cur.costPrice) > 0 ? Number(cur.costPrice) : Number(prod.costPrice || 0),
-        sellingPrice:
-          Number(cur.sellingPrice) > 0 ? Number(cur.sellingPrice) : Number(prod.sellingPrice || 0),
+        costPrice: variantEffectiveCostPrice(prod, firstVar),
+        sellingPrice: variantEffectiveSellingPrice(prod, firstVar),
       };
       return next;
     });
     setActiveAdminSuggestRowIdx(null);
+  };
+
+  const handleSelectAdminRowVariant = (rowIdx: number, prod: Product, selectedVal: string) => {
+    setAdminImportRows((prev) => {
+      const next = [...prev];
+      const cur = next[rowIdx];
+      if (!cur) return prev;
+      if (selectedVal === "__NEW__") {
+        next[rowIdx] = {
+          ...cur,
+          isNewVariant: true,
+          variantCode: undefined,
+          color: "",
+          colorHexes: [],
+          size: "",
+          costPrice: Number(prod.costPrice || 0),
+          sellingPrice: Number(prod.sellingPrice || 0),
+        };
+        return next;
+      }
+      const [cRaw, sRaw] = selectedVal.split("||");
+      const matched = findVariantByColorSize(prod, cRaw, sRaw);
+      const vColor = matched?.color ?? cRaw ?? "";
+      const vSize = matched?.size ?? sRaw ?? "";
+      next[rowIdx] = {
+        ...cur,
+        isNewVariant: false,
+        color: vColor,
+        colorHexes: matched?.colorHexes,
+        size: vSize,
+        variantCode: resolveVariantCode(prod, prod.code, vColor, vSize),
+        costPrice: variantEffectiveCostPrice(prod, matched),
+        sellingPrice: variantEffectiveSellingPrice(prod, matched),
+      };
+      return next;
+    });
+  };
+
+  const handleClearAdminRowProduct = (rowIdx: number) => {
+    setAdminImportRows((prev) => {
+      const next = [...prev];
+      const cur = next[rowIdx];
+      if (!cur) return prev;
+      next[rowIdx] = {
+        ...cur,
+        productId: undefined,
+        productCode: "",
+        variantCode: undefined,
+        isNewVariant: false,
+        productName: "",
+        color: "",
+        colorHexes: [],
+        size: "",
+        costPrice: 0,
+        sellingPrice: 0,
+      };
+      return next;
+    });
+    setActiveAdminSuggestRowIdx(rowIdx);
   };
 
   const handleUpdateAdminRow = (index: number, field: keyof AdminImportRow, value: any) => {
@@ -755,56 +987,50 @@ export default function InventoryModule() {
       const item = { ...next[index], [field]: value };
       const cat = categories.find((c) => c._id === String(item.categoryId || newProdCatId));
 
+      // v5.0: KHÔNG tự sinh mã ở client. Dòng gắn sản phẩm có sẵn (productId) giữ mã server;
+      // đổi tên/danh mục/hãng => tách khỏi sản phẩm cũ, server sẽ sinh mã mới (Cate + Brand + Version).
       if (field === "productName") {
+        const linked = item.productId
+          ? (allCatalogProducts.length > 0 ? allCatalogProducts : products).find((p) => p._id === item.productId)
+          : undefined;
+        if (!linked || linked.name !== String(value)) {
+          item.productId = undefined;
+          item.productCode = "";
+        }
         const extracted = extractVariantFromText(String(value), {
           categoryCode: cat?.code,
           categoryName: cat?.name,
           brand: item.brand,
-          existingCode: item.productCode,
         });
-        item.productCode =
-          extracted.code ||
-          generateProductCode(String(value), {
-            categoryCode: cat?.code,
-            categoryName: cat?.name,
-            brand: item.brand,
-            existingCode: item.productCode,
-          });
         if (!item.brand && extracted.brand) item.brand = extracted.brand;
         if (!item.color && extracted.color) item.color = extracted.color;
         if (!item.size && extracted.size) item.size = extracted.size;
       }
 
       if (field === "categoryId") {
-        const newCatId = String(value || "");
-        item.categoryId = newCatId;
-        const newCat = categories.find((c) => c._id === newCatId);
-        if (newCat && (item.productName.trim() || item.productCode.trim())) {
-          item.productCode = generateProductCode(item.productName || item.productCode, {
-            categoryCode: newCat.code,
-            categoryName: newCat.name,
-            brand: item.brand || "NN",
-            existingCode: item.productCode,
-          });
-        }
+        item.categoryId = String(value || "");
+        item.productId = undefined;
+        item.productCode = "";
       }
 
       if (field === "brand") {
         item.brand = String(value || "");
-        if (item.productName.trim() || item.productCode.trim()) {
-          item.productCode = generateProductCode(item.productName || item.productCode, {
-            categoryCode: cat?.code,
-            categoryName: cat?.name,
-            brand: item.brand || "NN",
-            existingCode: item.productCode,
-          });
-        }
+        item.productId = undefined;
+        item.productCode = "";
       }
 
       if (field === "productCode") {
+        item.productId = undefined;
         item.productCode = String(value || "")
           .toUpperCase()
           .replace(/[^A-Z0-9]/g, "");
+      }
+
+      if (field === "colorCode") {
+        item.colorCode = String(value || "")
+          .toUpperCase()
+          .replace(/[^A-Z0-9]/g, "")
+          .slice(0, 3);
       }
 
       if (field === "size") {
@@ -891,6 +1117,53 @@ export default function InventoryModule() {
         }
       }
       return next;
+    });
+  };
+
+  // v5.0: sau khi tạo SP chuẩn mã / thêm biến thể => nạp lại danh mục và (nếu đang mở phiếu nhập) thêm dòng theo từng biến thể
+  const handleCodeCreatorDone = async (result: ProductCodeCreatorResult) => {
+    const { product, variants, mode } = result;
+    setEditingProductModal(null);
+    setStatusMsg({
+      type: "success",
+      text:
+        mode === "CREATED"
+          ? `Đã tạo sản phẩm "${product.name}" mã ${product.code}.`
+          : mode === "UPDATED"
+            ? `Đã cập nhật sản phẩm "${product.name}" mã ${product.code}.`
+            : `Đã thêm ${variants.length} biến thể vào sản phẩm ${product.code}.`,
+    });
+    setAllCatalogProducts((prev) => [product, ...prev.filter((p) => p._id !== product._id)]);
+    loadProductsAndCats();
+    if (!showAdminImportModal || mode === "UPDATED") return;
+    const catId =
+      typeof product.categoryId === "object" ? product.categoryId?._id || "" : String(product.categoryId || "");
+    const lines = variants.length > 0 ? variants : [{ color: "", size: "" }];
+    setAdminImportRows((prev) => {
+      const base = prev.filter((r) => r.productName.trim() !== "" || r.productCode.trim() !== "");
+      const added: AdminImportRow[] = lines.map((v) => {
+        const pv = findVariantByColorSize(product, v.color, v.size);
+        return {
+          stt: 0,
+          productId: product._id,
+          productCode: product.code,
+          variantCode: resolveVariantCode(product, product.code, v.color, v.size),
+          isNewVariant: false,
+          productName: product.name,
+          categoryId: catId,
+          brand: product.brandName || product.brand || "",
+          color: v.color || "",
+          colorHexes: pv?.colorHexes,
+          size: v.size || "",
+          unit: product.unit || "Cái",
+          quantity: 1,
+          costPrice: variantEffectiveCostPrice(product, pv),
+          sellingPrice: variantEffectiveSellingPrice(product, pv),
+          note: "",
+          isConfirmed: false,
+        };
+      });
+      return [...base, ...added].map((r, idx) => ({ ...r, stt: idx + 1 }));
     });
   };
 
@@ -988,16 +1261,12 @@ export default function InventoryModule() {
       const defaultCat = categories.find((c) => c._id === String(newProdCatId || categories[0]?._id));
       const mappedRows: AdminImportRow[] = parsedItems.map((it: any, idx: number) => {
         const catId = String(it.categoryId || defaultCat?._id || "");
-        const rowCat = categories.find((c) => c._id === catId) || defaultCat;
         return {
           stt: idx + 1,
-          productCode:
-            it.productCode ||
-            generateProductCode(it.productName, {
-              categoryCode: rowCat?.code,
-              categoryName: rowCat?.name,
-              brand: it.brand,
-            }),
+          // v5.0: mã do server đề xuất/khớp khi parse file — client không tự sinh
+          productId: it.productId ? String(it.productId) : undefined,
+          productCode: String(it.productCode || ""),
+          colorCode: it.colorCode ? String(it.colorCode) : undefined,
           productName: it.productName || "",
           categoryId: catId,
           brand: it.brand || "",
@@ -1035,9 +1304,11 @@ export default function InventoryModule() {
     e.preventDefault();
     setStatusMsg(null);
 
-    const validRows = adminImportRows.filter((r) => r.productName.trim() !== "");
+    const validRows = adminImportRows.filter(
+      (r) => r.productName.trim() !== "" || r.productCode.trim() !== "" || Boolean(r.productId)
+    );
     if (validRows.length === 0) {
-      alert("Vui lòng nhập hoặc import ít nhất 1 dòng sản phẩm!");
+      alert("Vui lòng chọn hoặc import ít nhất 1 dòng sản phẩm!");
       return;
     }
 
@@ -1049,10 +1320,24 @@ export default function InventoryModule() {
       return;
     }
 
-    const missingColorRow = validRows.find((r) => !String(r.color || "").trim());
+    const invalidProdRow = confirmedRows.find((r) => {
+      const matched =
+        (r.productId &&
+          (allCatalogProducts.length > 0 ? allCatalogProducts : products).find((p) => p._id === r.productId)) ||
+        (r.productCode && catalogByCode.get(r.productCode.toUpperCase()));
+      return !matched && !r.productId && !r.productCode;
+    });
+    if (invalidProdRow) {
+      alert(
+        `Dòng #${invalidProdRow.stt} chưa chọn Sản phẩm hợp lệ từ danh mục! Vui lòng chọn sản phẩm có sẵn hoặc bấm "+ Tạo SP mới" trên thanh công cụ.`
+      );
+      return;
+    }
+
+    const missingColorRow = confirmedRows.find((r) => !String(r.color || "").trim());
     if (missingColorRow) {
       alert(
-        `Dòng #${missingColorRow.stt} ("${missingColorRow.productName}") chưa điền Màu sắc! Vui lòng điền Màu sắc (bắt buộc) cho tất cả sản phẩm trước khi nhập kho.`
+        `Dòng #${missingColorRow.stt} ("${missingColorRow.productName}") chưa chọn biến thể hoặc chưa điền Màu sắc! Vui lòng chọn Biến thể (Màu • Size) trước khi nhập kho.`
       );
       return;
     }
@@ -1061,23 +1346,29 @@ export default function InventoryModule() {
     const floorText = newProdWarehouse === "FLOOR_2" ? "Kho Tầng 2" : "Kho Tầng 1";
     try {
       const payloadItems = validRows.map((r, idx) => {
-        const cat = categories.find((c) => c._id === String(r.categoryId || newProdCatId));
+        const matchedProd =
+          (r.productId &&
+            (allCatalogProducts.length > 0 ? allCatalogProducts : products).find((p) => p._id === r.productId)) ||
+          (r.productCode ? catalogByCode.get(r.productCode.toUpperCase()) : undefined);
         return {
           stt: idx + 1,
-          productCode:
-            r.productCode ||
-            generateProductCode(r.productName, {
-              categoryCode: cat?.code,
-              categoryName: cat?.name,
-              brand: r.brand,
-            }),
-          productName: r.productName.trim(),
-          brand: r.brand.trim(),
+          // v5.0: gửi productId/productCode của sản phẩm đã chọn
+          ...(r.productId || matchedProd?._id ? { productId: r.productId || matchedProd?._id } : {}),
+          ...(r.productCode || matchedProd?.code ? { productCode: r.productCode || matchedProd?.code } : {}),
+          ...(r.colorCode ? { colorCode: r.colorCode } : {}),
+          productName: (r.productName || matchedProd?.name || "").trim(),
+          brand: (r.brand || matchedProd?.brandName || matchedProd?.brand || "").trim(),
           color: r.color.trim(),
           colorHexes: resolveVariantColorHexes(r.color, r.colorHexes),
           size: r.size.trim().toUpperCase(),
-          categoryId: r.categoryId || newProdCatId || categories[0]?._id,
-          unit: r.unit.trim() || "Cái",
+          categoryId:
+            r.categoryId ||
+            (typeof matchedProd?.categoryId === "object"
+              ? matchedProd.categoryId?._id
+              : matchedProd?.categoryId) ||
+            newProdCatId ||
+            categories[0]?._id,
+          unit: (r.unit || matchedProd?.unit || "Cái").trim() || "Cái",
           expectedQuantity: Math.max(1, Number(r.quantity || 1)),
           actualQuantity: Math.max(1, Number(r.quantity || 1)),
           costPrice: Math.max(0, Number(r.costPrice || 0)),
@@ -1180,6 +1471,46 @@ export default function InventoryModule() {
     }
   };
 
+  // v5.0 (R8): sửa giá bán/giá vốn riêng của biến thể qua PATCH /products/:id { variantPrices }
+  const handleSaveVariantPrice = async (
+    prod: Product,
+    v: ProductVariant,
+    field: "sellingPrice" | "costPrice",
+    value: number
+  ) => {
+    const next = Math.max(0, Math.round(Number(value) || 0));
+    if (next === Math.max(0, Number(v[field] || 0))) return;
+    if (!v.variantKey && !v.variantCode) return;
+    try {
+      await apiRequest(`/products/${prod._id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          variantPrices: [
+            {
+              ...(v.variantKey ? { variantKey: v.variantKey } : { variantCode: v.variantCode }),
+              [field]: next,
+            },
+          ],
+        }),
+      });
+      setEditingVariants((prev) => ({
+        ...prev,
+        [prod._id]: (prev[prod._id] || prod.variants || []).map((it) =>
+          (v.variantKey && it.variantKey === v.variantKey) || (!v.variantKey && it.variantCode === v.variantCode)
+            ? { ...it, [field]: next }
+            : it
+        ),
+      }));
+      setStatusMsg({
+        type: "success",
+        text: `Đã cập nhật ${field === "sellingPrice" ? "giá bán" : "giá vốn"} riêng cho ${v.variantCode || `${v.color} ${v.size}`}${next === 0 ? " (dùng giá gốc)" : ""}.`,
+      });
+      loadProductsAndCats();
+    } catch (err: any) {
+      setStatusMsg({ type: "error", text: describeApiError(err, "Không lưu được giá biến thể.") });
+    }
+  };
+
   const handleAddVariantToProduct = async (prod: Product) => {
     const draft = newVariantInputs[prod._id] || {
       color: "",
@@ -1245,9 +1576,12 @@ export default function InventoryModule() {
     const sellPrice = Number(editingPrices[prod._id] ?? prod.sellingPrice ?? 0);
     const prodVariants = editingVariants[prod._id] ?? prod.variants ?? [];
     const namedVars = prodVariants.filter((v) => v.color || v.size);
+    // R8: giá biến thể riêng (> 0) ưu tiên, trống => giá gốc
+    const variantSellPrice = (v: ProductVariant) =>
+      Number(v.sellingPrice || 0) > 0 ? Number(v.sellingPrice) : sellPrice;
 
     if (specificVariant) {
-      const childCode = generateVariantProductCode(
+      const childCode = variantCodeFor(
         prod.code,
         specificVariant.color,
         specificVariant.size
@@ -1267,7 +1601,7 @@ export default function InventoryModule() {
           productName: prod.name,
           color: specificVariant.color,
           size: specificVariant.size,
-          sellingPrice: sellPrice,
+          sellingPrice: variantSellPrice(specificVariant),
           unit: prod.unit,
           defaultQty: Math.max(1, vQty || 1),
         },
@@ -1276,7 +1610,7 @@ export default function InventoryModule() {
 
     if (namedVars.length > 0) {
       return namedVars.map((v, idx) => {
-        const childCode = generateVariantProductCode(prod.code, v.color, v.size);
+        const childCode = variantCodeFor(prod.code, v.color, v.size);
         const vQty =
           activeWarehouse === "FLOOR_2"
             ? Number(v.stockFloor2 || 0)
@@ -1290,7 +1624,7 @@ export default function InventoryModule() {
           productName: prod.name,
           color: v.color,
           size: v.size,
-          sellingPrice: sellPrice,
+          sellingPrice: variantSellPrice(v),
           unit: prod.unit,
           defaultQty: Math.max(1, vQty || 1),
         };
@@ -1378,7 +1712,7 @@ export default function InventoryModule() {
       { text: p.categoryName, weight: 0.9 },
       ...(Array.isArray(p.variants)
         ? p.variants.map((v) => ({
-          text: `${v.variantCode || generateVariantProductCode(p.code, v.color, v.size)} ${v.color || ""} ${v.size || ""}`,
+          text: `${v.variantCode || variantCodeFor(p.code, v.color, v.size)} ${v.color || ""} ${v.size || ""}`,
           weight: 1.4,
         }))
         : []),
@@ -1919,21 +2253,64 @@ export default function InventoryModule() {
         return f2 > 0 || floor2ImportedCodes.has(p.code);
       }
       return true;
+    }).filter((p) => {
+      if (!brandFilter) return true;
+      if (p.brandId) return String(p.brandId) === brandFilter;
+      // Sản phẩm cũ chưa gắn brandId: khớp theo tên hãng / alias
+      const b = brandOptions.find((x) => x._id === brandFilter);
+      if (!b) return false;
+      const norm = (t?: string) => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+      const keys = new Set([norm(b.name), norm(b.code), ...(b.aliases || []).map(norm)]);
+      return keys.has(norm(p.brand));
+    }).filter((p) => {
+      if (quickStockFilter === "ALL") return true;
+      const f1 = Number(editingFloor1[p._id] ?? p.stockFloor1 ?? p.stock ?? 0);
+      const f2 = Number(editingFloor2[p._id] ?? p.stockFloor2 ?? 0);
+      const q = activeWarehouse === "FLOOR_1" ? f1 : activeWarehouse === "FLOOR_2" ? f2 : f1 + f2;
+      if (quickStockFilter === "IN_STOCK") return q > 0;
+      if (quickStockFilter === "ZERO_STOCK") return q <= 0;
+      if (quickStockFilter === "MISSING_PRICE") {
+        const sp = Number(editingPrices[p._id] ?? p.sellingPrice ?? 0);
+        const cp = Number(editingCosts[p._id] ?? p.costPrice ?? 0);
+        return sp <= 0 || cp <= 0;
+      }
+      if (quickStockFilter === "CHANGED") return isProductChanged(p);
+      return true;
     });
     if (!search.trim()) return byFloor;
     return filterAndRankBySearch(byFloor, search, (p) => [
       { text: p.code, weight: 1.5 },
+      { text: p.legacyCode, weight: 1.2 },
+      { text: p.brandName || p.brand, weight: 1.1 },
+      { text: p.versionName, weight: 1.2 },
       { text: p.name, weight: 1.3 },
+      { text: p.note, weight: 0.9 },
       { text: p.categoryName, weight: 0.9 },
       { text: p.unit, weight: 0.6 },
       ...(Array.isArray(p.variants)
         ? p.variants.map((v) => ({
-          text: `${v.variantCode || generateVariantProductCode(p.code, v.color, v.size)} ${v.color || ""} ${v.size || ""} size ${v.size || ""}`,
+          text: `${v.variantCode || variantCodeFor(p.code, v.color, v.size)} ${v.color || ""} ${v.size || ""} size ${v.size || ""}`,
           weight: 1.4,
         }))
         : []),
     ]);
-  }, [products, activeWarehouse, showZeroFloorItems, importsList, search, onlyShowScanned, scannedCheckCounts]);
+  }, [
+    products,
+    activeWarehouse,
+    showZeroFloorItems,
+    importsList,
+    search,
+    onlyShowScanned,
+    scannedCheckCounts,
+    brandFilter,
+    brandOptions,
+    quickStockFilter,
+    editingFloor1,
+    editingFloor2,
+    editingPrices,
+    editingCosts,
+    isProductChanged,
+  ]);
 
   // Thống kê tổng hợp riêng cho Kho Tầng 1, Kho Tầng 2 và Kho đang chọn
   const totalFloor1Qty = products.reduce(
@@ -2012,6 +2389,28 @@ export default function InventoryModule() {
       const findWithRemoteRetry = async (code: string) => {
         const localHit = findProductAndVariantByScannedBarcode(pool, code);
         if (localHit) return localHit;
+        // v5.0: tra cứu server theo mã mới / mã con / mã cũ (legacy) / mã rút gọn tem cũ
+        try {
+          const hit = await lookupProductByCodeApi(code);
+          if (hit?.product) {
+            const v = hit.variant;
+            return {
+              product: hit.product,
+              matchedVariant: v
+                ? {
+                  ...v,
+                  variantCode: v.variantCode || v.barcode || hit.product.code,
+                  stockFloor1: Number(v.stockFloor1 || 0),
+                  stockFloor2: Number(v.stockFloor2 || 0),
+                  stock: Number(v.stock || 0),
+                }
+                : undefined,
+              isVariantExactMatch: Boolean(v),
+            };
+          }
+        } catch {
+          // ignore -> thử tải lại danh mục
+        }
         try {
           const freshRes = await apiRequest<Product[]>("/products");
           const freshPool = Array.isArray(freshRes.data) ? freshRes.data : [];
@@ -2033,7 +2432,7 @@ export default function InventoryModule() {
             (r.color || r.size) &&
             isScannedCodeMatch(
               rawTrimmed,
-              generateVariantProductCode(r.productCode, r.color, r.size)
+              variantCodeFor(r.productCode, r.color, r.size)
             )
         );
         const matchedRowIdx =
@@ -2051,7 +2450,7 @@ export default function InventoryModule() {
             )
           );
           const row = adminImportRows[matchedRowIdx];
-          const rowCode = generateVariantProductCode(row.productCode, row.color, row.size);
+          const rowCode = variantCodeFor(row.productCode, row.color, row.size);
           playScannerBeep("success");
           setLastScanFeedback({
             type: "success",
@@ -2071,12 +2470,13 @@ export default function InventoryModule() {
               : String(product.categoryId || "");
           const vColor = matchedVariant?.color || "";
           const vSize = matchedVariant?.size || "";
-          const childCode = generateVariantProductCode(product.code, vColor, vSize);
+          const childCode = variantCodeFor(product.code, vColor, vSize);
           setAdminImportRows((prev) => {
             const isSingleBlank =
               prev.length === 1 && !prev[0].productCode.trim() && !prev[0].productName.trim();
             const newRow: AdminImportRow = {
               stt: isSingleBlank ? 1 : prev.length + 1,
+              productId: product._id,
               productCode: product.code,
               productName: product.name,
               categoryId: catId || newProdCatId || categories[0]?._id || "",
@@ -2146,7 +2546,7 @@ export default function InventoryModule() {
       if (matchedVariant && (matchedVariant.color || matchedVariant.size)) {
         const childCode =
           matchedVariant.variantCode ||
-          generateVariantProductCode(product.code, matchedVariant.color, matchedVariant.size);
+          variantCodeFor(product.code, matchedVariant.color, matchedVariant.size);
         setLastScannedVariantCode(childCode);
         const prevVarCount = scannedVariantCounts[product._id]?.[childCode] || 0;
         const nextVarCount = prevVarCount + 1;
@@ -2412,174 +2812,263 @@ export default function InventoryModule() {
 
   return (
     <div className="space-y-6">
-      {/* THANH CHỌN KHO (CHIA RIÊNG KHO TẦNG 1 VÀ KHO TẦNG 2) */}
-      <div className="bg-slate-900 text-white rounded-xl p-4 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div>
-          <div className="text-[11px] font-bold uppercase text-emerald-400">
-            Hệ thống Quản lý 2 Kho tách biệt — 11Sport
+      {/* THANH CHỌN KHO + ĐIỀU HƯỚNG 6 PHÂN HỆ KHO */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-4 sm:p-5 space-y-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-base sm:text-lg font-extrabold text-slate-900 tracking-tight">
+                Trung tâm Quản lý Kho, Giá bán &amp; Sổ kho
+              </h2>
+              <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-bold">
+                {activeWarehouseLabel}
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Quản lý tồn kho tách biệt 2 tầng, điều chỉnh Giá gốc / Giá bán, nhập kho, kiểm kê mã vạch và luân chuyển hàng hoá.
+            </p>
           </div>
-          <h2 className="text-base font-extrabold mt-0.5">
-            Đang quản lý: <span className="text-emerald-300">{activeWarehouseLabel}</span>
-          </h2>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 w-full lg:w-auto">
+            <button
+              type="button"
+              onClick={() => handleSelectWarehouseTab("FLOOR_1")}
+              className={`px-3.5 py-2 rounded-xl text-left transition border cursor-pointer ${
+                activeWarehouse === "FLOOR_1"
+                  ? "bg-slate-900 text-white border-slate-900 shadow-sm"
+                  : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-white hover:border-slate-300"
+              }`}
+            >
+              <div className="text-xs font-extrabold flex items-center justify-between gap-3">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                  🏢 Kho Tầng 1
+                </span>
+                <span
+                  className={`font-mono text-xs px-2 py-0.5 rounded-full ${
+                    activeWarehouse === "FLOOR_1"
+                      ? "bg-emerald-500/20 text-emerald-300"
+                      : "bg-emerald-50 text-emerald-800"
+                  }`}
+                >
+                  {totalFloor1Qty.toLocaleString("vi-VN")} SP
+                </span>
+              </div>
+              <div
+                className={`text-[10px] mt-0.5 ${
+                  activeWarehouse === "FLOOR_1" ? "text-slate-300" : "text-slate-500"
+                }`}
+              >
+                Kho bán hàng POS trực tiếp
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleSelectWarehouseTab("FLOOR_2")}
+              className={`px-3.5 py-2 rounded-xl text-left transition border cursor-pointer ${
+                activeWarehouse === "FLOOR_2"
+                  ? "bg-slate-900 text-white border-slate-900 shadow-sm"
+                  : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-white hover:border-slate-300"
+              }`}
+            >
+              <div className="text-xs font-extrabold flex items-center justify-between gap-3">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-purple-400" />
+                  🏬 Kho Tầng 2
+                </span>
+                <span
+                  className={`font-mono text-xs px-2 py-0.5 rounded-full ${
+                    activeWarehouse === "FLOOR_2"
+                      ? "bg-purple-500/20 text-purple-300"
+                      : "bg-purple-50 text-purple-800"
+                  }`}
+                >
+                  {totalFloor2Qty.toLocaleString("vi-VN")} SP
+                </span>
+              </div>
+              <div
+                className={`text-[10px] mt-0.5 ${
+                  activeWarehouse === "FLOOR_2" ? "text-slate-300" : "text-slate-500"
+                }`}
+              >
+                Kho dự trữ &amp; lưu kho
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleSelectWarehouseTab("ALL")}
+              className={`px-3.5 py-2 rounded-xl text-left transition border cursor-pointer ${
+                activeWarehouse === "ALL"
+                  ? "bg-slate-900 text-white border-slate-900 shadow-sm"
+                  : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-white hover:border-slate-300"
+              }`}
+            >
+              <div className="text-xs font-extrabold flex items-center justify-between gap-3">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-blue-400" />
+                  📊 Gộp 2 Kho
+                </span>
+                <span
+                  className={`font-mono text-xs px-2 py-0.5 rounded-full ${
+                    activeWarehouse === "ALL"
+                      ? "bg-blue-500/20 text-blue-300"
+                      : "bg-blue-50 text-blue-800"
+                  }`}
+                >
+                  {(totalFloor1Qty + totalFloor2Qty).toLocaleString("vi-VN")} SP
+                </span>
+              </div>
+              <div
+                className={`text-[10px] mt-0.5 ${
+                  activeWarehouse === "ALL" ? "text-slate-300" : "text-slate-500"
+                }`}
+              >
+                So sánh Tầng 1 + Tầng 2
+              </div>
+            </button>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 w-full lg:w-auto">
+        {/* Thanh chuyển Sub-Tab trong Module Kho */}
+        <div
+          role="tablist"
+          aria-label="Phân hệ Quản lý kho"
+          className="flex flex-wrap items-center gap-1.5"
+        >
           <button
             type="button"
-            onClick={() => handleSelectWarehouseTab("FLOOR_1")}
-            className={`px-4 py-2.5 rounded-xl text-left transition border-2 ${activeWarehouse === "FLOOR_1"
-              ? "bg-emerald-500 text-slate-950 border-emerald-300 shadow-lg"
-              : "bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700"
-              }`}
+            role="tab"
+            aria-selected={subTab === "PRODUCTS"}
+            onClick={() => setSubTab("PRODUCTS")}
+            className={`px-3.5 py-2 rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition cursor-pointer ${
+              subTab === "PRODUCTS"
+                ? "bg-emerald-600 text-white shadow-xs"
+                : "text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200/80"
+            }`}
           >
-            <div className="text-xs font-extrabold flex items-center justify-between gap-2">
-              <span>🏢 KHO TẦNG 1</span>
-              <span className="font-mono text-sm">
-                {totalFloor1Qty.toLocaleString("vi-VN")} SP
-              </span>
-            </div>
-            <div
-              className={`text-[10px] mt-0.5 ${activeWarehouse === "FLOOR_1" ? "text-slate-900 font-semibold" : "text-slate-400"
-                }`}
+            <Package className="w-4 h-4" />
+            <span>1. Tồn kho &amp; Giá bán</span>
+            <span
+              className={`px-1.5 py-0.2 rounded-full font-mono text-[10px] ${
+                subTab === "PRODUCTS" ? "bg-white/20 text-white" : "bg-white text-slate-600"
+              }`}
             >
-              Quản lý tồn & giá bán Kho Tầng 1
-            </div>
+              {products.length}
+            </span>
           </button>
 
           <button
             type="button"
-            onClick={() => handleSelectWarehouseTab("FLOOR_2")}
-            className={`px-4 py-2.5 rounded-xl text-left transition border-2 ${activeWarehouse === "FLOOR_2"
-              ? "bg-purple-500 text-white border-purple-300 shadow-lg"
-              : "bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700"
-              }`}
+            role="tab"
+            aria-selected={subTab === "REPORT"}
+            onClick={() => setSubTab("REPORT")}
+            className={`px-3.5 py-2 rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition cursor-pointer ${
+              subTab === "REPORT"
+                ? "bg-emerald-600 text-white shadow-xs"
+                : "text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200/80"
+            }`}
           >
-            <div className="text-xs font-extrabold flex items-center justify-between gap-2">
-              <span>🏬 KHO TẦNG 2</span>
-              <span className="font-mono text-sm">
-                {totalFloor2Qty.toLocaleString("vi-VN")} SP
-              </span>
-            </div>
-            <div
-              className={`text-[10px] mt-0.5 ${activeWarehouse === "FLOOR_2" ? "text-purple-100 font-semibold" : "text-slate-400"
-                }`}
-            >
-              Quản lý tồn & giá bán Kho Tầng 2
-            </div>
+            <BarChart3 className="w-4 h-4" />
+            <span>2. Báo cáo Nhập-Xuất-Tồn</span>
           </button>
 
           <button
             type="button"
-            onClick={() => handleSelectWarehouseTab("ALL")}
-            className={`px-4 py-2.5 rounded-xl text-left transition border-2 ${activeWarehouse === "ALL"
-              ? "bg-blue-500 text-white border-blue-300 shadow-lg"
-              : "bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700"
-              }`}
+            role="tab"
+            aria-selected={subTab === "MOVEMENTS"}
+            onClick={() => setSubTab("MOVEMENTS")}
+            className={`px-3.5 py-2 rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition cursor-pointer ${
+              subTab === "MOVEMENTS"
+                ? "bg-emerald-600 text-white shadow-xs"
+                : "text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200/80"
+            }`}
           >
-            <div className="text-xs font-extrabold flex items-center justify-between gap-2">
-              <span>📊 XEM GỘP 2 KHO</span>
-              <span className="font-mono text-sm">
-                {(totalFloor1Qty + totalFloor2Qty).toLocaleString("vi-VN")} SP
-              </span>
-            </div>
-            <div
-              className={`text-[10px] mt-0.5 ${activeWarehouse === "ALL" ? "text-blue-100 font-semibold" : "text-slate-400"
+            <BookOpen className="w-4 h-4" />
+            <span>3. Sổ kho</span>
+          </button>
+
+          <button
+            type="button"
+            role="tab"
+            aria-selected={subTab === "IMPORTS"}
+            onClick={() => setSubTab("IMPORTS")}
+            className={`px-3.5 py-2 rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition cursor-pointer ${
+              subTab === "IMPORTS"
+                ? "bg-emerald-600 text-white shadow-xs"
+                : "text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200/80"
+            }`}
+          >
+            <ClipboardList className="w-4 h-4" />
+            <span>4. Phiếu nhập kho</span>
+            {importsList.length > 0 && (
+              <span
+                className={`px-1.5 py-0.2 rounded-full font-mono text-[10px] ${
+                  subTab === "IMPORTS" ? "bg-white/20 text-white" : "bg-white text-slate-600"
                 }`}
-            >
-              So sánh Tầng 1 + Tầng 2 trên cùng bảng
-            </div>
+              >
+                {importsList.length}
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            role="tab"
+            aria-selected={subTab === "ADJUSTMENT"}
+            onClick={() => setSubTab("ADJUSTMENT")}
+            className={`px-3.5 py-2 rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition cursor-pointer ${
+              subTab === "ADJUSTMENT"
+                ? "bg-emerald-600 text-white shadow-xs"
+                : "text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200/80"
+            }`}
+          >
+            <Sliders className="w-4 h-4" />
+            <span>5. Điều chỉnh kho</span>
+          </button>
+
+          <button
+            type="button"
+            role="tab"
+            aria-selected={subTab === "TRANSFER"}
+            onClick={() => setSubTab("TRANSFER")}
+            className={`px-3.5 py-2 rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition cursor-pointer ${
+              subTab === "TRANSFER"
+                ? "bg-indigo-600 text-white shadow-xs"
+                : "text-indigo-700 bg-indigo-50/70 hover:bg-indigo-100 border border-indigo-200"
+            }`}
+          >
+            <ArrowLeftRight className="w-4 h-4" />
+            <span>6. Chuyển tầng (Kho 1 ↔ Kho 2)</span>
           </button>
         </div>
-      </div>
-
-      {/* Thanh chuyển Sub-Tab trong Module Kho */}
-      <div className="bg-white rounded-xl border border-slate-200 p-2 shadow-sm flex flex-wrap items-center gap-1.5">
-        <button
-          type="button"
-          onClick={() => setSubTab("PRODUCTS")}
-          className={`px-4 py-2.5 rounded-lg text-xs font-extrabold flex items-center gap-2 transition ${subTab === "PRODUCTS"
-            ? "bg-slate-900 text-white shadow"
-            : "text-slate-600 hover:bg-slate-100"
-            }`}
-        >
-          <Package className="w-4 h-4 text-emerald-400" />
-          1. Sản phẩm, Số lượng, Giá gốc & Giá bán
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setSubTab("REPORT")}
-          className={`px-4 py-2.5 rounded-lg text-xs font-extrabold flex items-center gap-2 transition ${subTab === "REPORT"
-            ? "bg-slate-900 text-white shadow"
-            : "text-slate-600 hover:bg-slate-100"
-            }`}
-        >
-          <BarChart3 className="w-4 h-4 text-emerald-400" />
-          2. Báo cáo Tồn kho theo kỳ (SL, Giá gốc, Giá bán)
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setSubTab("MOVEMENTS")}
-          className={`px-4 py-2.5 rounded-lg text-xs font-extrabold flex items-center gap-2 transition ${subTab === "MOVEMENTS"
-            ? "bg-slate-900 text-white shadow"
-            : "text-slate-600 hover:bg-slate-100"
-            }`}
-        >
-          <BookOpen className="w-4 h-4 text-emerald-400" />
-          3. Sổ kho (Số lượng, Giá gốc, Giá bán)
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setSubTab("IMPORTS")}
-          className={`px-4 py-2.5 rounded-lg text-xs font-extrabold flex items-center gap-2 transition ${subTab === "IMPORTS"
-            ? "bg-slate-900 text-white shadow"
-            : "text-slate-600 hover:bg-slate-100"
-            }`}
-        >
-          <ClipboardList className="w-4 h-4 text-emerald-400" />
-          4. Danh sách Phiếu nhập kho
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setSubTab("ADJUSTMENT")}
-          className={`px-4 py-2.5 rounded-lg text-xs font-extrabold flex items-center gap-2 transition ${subTab === "ADJUSTMENT"
-            ? "bg-slate-900 text-white shadow"
-            : "text-slate-600 hover:bg-slate-100"
-            }`}
-        >
-          <Sliders className="w-4 h-4 text-emerald-400" />
-          5. Lập Phiếu Điều chỉnh Kho
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setSubTab("TRANSFER")}
-          className={`px-4 py-2.5 rounded-lg text-xs font-extrabold flex items-center gap-2 transition ${subTab === "TRANSFER"
-            ? "bg-indigo-700 text-white shadow"
-            : "text-indigo-700 bg-indigo-50 hover:bg-indigo-100"
-            }`}
-        >
-          <ArrowLeftRight className="w-4 h-4" />
-          6. Xuất Kho Chuyển Tầng (Kho 1 ↔ Kho 2)
-        </button>
       </div>
 
       {statusMsg && (
         <div
-          className={`p-3.5 rounded-xl border text-xs font-bold flex items-center gap-2 ${statusMsg.type === "success"
-            ? "bg-emerald-50 border-emerald-200 text-emerald-800"
-            : "bg-red-50 border-red-200 text-red-700"
-            }`}
+          className={`p-3.5 rounded-xl border text-xs font-bold flex items-center justify-between gap-2 ${
+            statusMsg.type === "success"
+              ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+              : "bg-red-50 border-red-200 text-red-700"
+          }`}
         >
-          {statusMsg.type === "success" ? (
-            <CheckCircle2 className="w-4 h-4 shrink-0" />
-          ) : (
-            <AlertCircle className="w-4 h-4 shrink-0" />
-          )}
-          <span>{statusMsg.text}</span>
+          <div className="flex items-center gap-2">
+            {statusMsg.type === "success" ? (
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
+            ) : (
+              <AlertCircle className="w-4 h-4 shrink-0" />
+            )}
+            <span>{statusMsg.text}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setStatusMsg(null)}
+            className="p-1 rounded hover:bg-black/5 cursor-pointer"
+            aria-label="Đóng thông báo"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
         </div>
       )}
 
@@ -2923,9 +3412,10 @@ export default function InventoryModule() {
 
           {/* Bảng danh sách sản phẩm: Chia rõ Kho Tầng 1 & Kho Tầng 2 */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
+            {/* Hàng 1: Tiêu đề + Cụm nút tác vụ chính */}
+            <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100">
               <div>
-                <h3 className="font-bold text-slate-900 text-base flex items-center gap-2">
+                <h3 className="font-bold text-slate-900 text-base flex flex-wrap items-center gap-2">
                   <span>Danh mục Sản phẩm — {activeWarehouseLabel}</span>
                   <span className="px-2.5 py-0.5 rounded-full text-xs font-mono bg-emerald-100 text-emerald-800">
                     {displayedProducts.length} mặt hàng · {totalStockQty.toLocaleString("vi-VN")} đơn vị
@@ -2935,7 +3425,7 @@ export default function InventoryModule() {
                   {activeWarehouse === "FLOOR_1"
                     ? "Đang xem và chỉnh sửa trực tiếp tồn kho tại Kho Tầng 1. Bấm sang tab 'Kho Tầng 2' ở trên để quản lý riêng Kho Tầng 2."
                     : activeWarehouse === "FLOOR_2"
-                      ? "Đang xem và chỉnh sửa trực tiếp tồn kho tại Kho Tầng 2. Có thể bật 'Hiện toàn bộ SP' nếu muốn nhập số lượng Tầng 2 cho các mã hàng khác."
+                      ? "Đang xem và chỉnh sửa trực tiếp tồn kho tại Kho Tầng 2. Có thể bật 'Hiện cả SP ngoài Tầng 2' nếu muốn nhập số lượng Tầng 2 cho các mã hàng khác."
                       : "Đang xem gộp cả 2 kho: có thể chỉnh sửa riêng cột Tồn Kho Tầng 1 và Tồn Kho Tầng 2 trên cùng một dòng."}
                 </p>
               </div>
@@ -2955,7 +3445,7 @@ export default function InventoryModule() {
                     type="button"
                     onClick={handleResetProductEdits}
                     disabled={savingBatch}
-                    className="px-3 py-2 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold inline-flex items-center gap-1.5 transition"
+                    className="px-3 py-2 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold inline-flex items-center gap-1.5 transition cursor-pointer"
                     title="Hoàn tác các thay đổi chưa lưu"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
@@ -2966,10 +3456,11 @@ export default function InventoryModule() {
                   type="button"
                   onClick={handleSaveAllProductChanges}
                   disabled={changedProducts.length === 0 || savingBatch}
-                  className={`px-4 py-2 rounded-lg text-xs font-extrabold inline-flex items-center gap-1.5 transition ${changedProducts.length > 0 && !savingBatch
-                    ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-md ring-2 ring-emerald-200 cursor-pointer"
-                    : "bg-slate-200 text-slate-400 cursor-not-allowed"
-                    }`}
+                  className={`px-4 py-2 rounded-lg text-xs font-extrabold inline-flex items-center gap-1.5 transition ${
+                    changedProducts.length > 0 && !savingBatch
+                      ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-md ring-2 ring-emerald-200 cursor-pointer"
+                      : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
+                  }`}
                   title={
                     changedProducts.length > 0
                       ? `Lưu toàn bộ ${changedProducts.length} sản phẩm đã thay đổi`
@@ -2983,8 +3474,84 @@ export default function InventoryModule() {
                       ? `Lưu thay đổi (${changedProducts.length} SP)`
                       : "Lưu thay đổi"}
                 </button>
+                <button
+                  type="button"
+                  disabled={displayedProducts.length === 0}
+                  onClick={handleOpenPrintLabelsForDisplayed}
+                  className="px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 text-white text-xs font-extrabold inline-flex items-center gap-1.5 shadow-sm transition cursor-pointer"
+                  title="In tem nhãn mã vạch"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  In Tem Label
+                </button>
+                <ExportExcelButton
+                  onExport={() => exportProducts(displayedProducts, { hideCost: !canSeeCost })}
+                  disabled={displayedProducts.length === 0}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowScannerPanel((v) => !v)}
+                  className={`px-3 py-2 rounded-lg border text-xs font-extrabold inline-flex items-center gap-1.5 transition cursor-pointer ${
+                    showScannerPanel || Object.keys(scannedCheckCounts).length > 0
+                      ? "bg-emerald-50 border-emerald-400 text-emerald-900"
+                      : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
+                  }`}
+                  title="Bật/tắt khung Máy quét Label kiểm hàng"
+                >
+                  <ScanBarcode className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>
+                    Máy quét kiểm kho
+                    {Object.keys(scannedCheckCounts).length > 0
+                      ? ` (${Object.keys(scannedCheckCounts).length})`
+                      : ""}
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            {/* Hàng 2: Thanh tìm kiếm + Bộ lọc Category/Brand + Quick Filter Chips */}
+            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 bg-slate-50/80 p-3 rounded-xl border border-slate-200/80">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="relative w-full sm:w-64">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="search"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Tìm mã gốc, mã con, tên, ghi chú..."
+                    className="w-full pl-8 pr-3 py-2 rounded-lg border border-slate-300 bg-white text-xs"
+                  />
+                </div>
+                <select
+                  value={categoryId}
+                  onChange={(e) => setCategoryId(e.target.value)}
+                  className="px-3 py-2 rounded-lg border border-slate-300 text-xs font-semibold bg-white"
+                >
+                  <option value="">Tất cả Category</option>
+                  {categories.map((c) => (
+                    <option key={c._id} value={c._id}>
+                      {c.skuCode ? `[${c.skuCode}] ` : ""}
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  aria-label="Lọc theo thương hiệu"
+                  value={brandFilter}
+                  onChange={(e) => setBrandFilter(e.target.value)}
+                  className="px-3 py-2 rounded-lg border border-slate-300 text-xs font-semibold bg-white"
+                >
+                  <option value="">Tất cả Thương hiệu</option>
+                  {brandOptions
+                    .filter((b) => !categoryId || b.isSystem || (b.categoryIds || []).map(String).includes(categoryId))
+                    .map((b) => (
+                      <option key={b._id} value={b._id}>
+                        [{b.code}] {b.name}
+                      </option>
+                    ))}
+                </select>
                 {activeWarehouse !== "ALL" && (
-                  <label className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 bg-slate-100 px-3 py-2 rounded-lg cursor-pointer">
+                  <label className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 px-3 py-2 rounded-lg cursor-pointer">
                     <input
                       type="checkbox"
                       checked={showZeroFloorItems}
@@ -2994,173 +3561,184 @@ export default function InventoryModule() {
                     Hiện cả SP ngoài {activeWarehouse === "FLOOR_2" ? "Tầng 2" : "Tầng 1"} ({products.length} SP)
                   </label>
                 )}
-                <ExportExcelButton
-                  onExport={() => exportProducts(displayedProducts)}
-                  disabled={displayedProducts.length === 0}
-                />
-                <button
-                  type="button"
-                  disabled={displayedProducts.length === 0}
-                  onClick={handleOpenPrintLabelsForDisplayed}
-                  className="px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 text-white text-xs font-extrabold inline-flex items-center gap-1.5 shadow-sm transition"
-                  title="In tem nhãn mã vạch (chỉ in mã sản phẩm chung HOALIỀN)"
-                >
-                  <Printer className="w-3.5 h-3.5" />
-                  In Tem Label
-                </button>
-                <div className="relative w-full sm:w-64">
-                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-                  <input
-                    type="text"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Tìm mã hoặc tên sản phẩm..."
-                    className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-300 text-xs"
-                  />
-                </div>
-                <select
-                  value={categoryId}
-                  onChange={(e) => setCategoryId(e.target.value)}
-                  className="px-3 py-2 rounded-lg border border-slate-300 text-xs bg-white"
-                >
-                  <option value="">Tất cả Category</option>
-                  {categories.map((c) => (
-                    <option key={c._id} value={c._id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-1.5">
+                {(
+                  [
+                    { id: "ALL", label: "Tất cả" },
+                    { id: "IN_STOCK", label: "Còn hàng (>0)" },
+                    { id: "ZERO_STOCK", label: "Hết hàng (=0)" },
+                    { id: "MISSING_PRICE", label: "Chưa có giá" },
+                    ...(changedProducts.length > 0
+                      ? [{ id: "CHANGED" as QuickStockFilter, label: `Đang sửa (${changedProducts.length})` }]
+                      : []),
+                  ] as { id: QuickStockFilter; label: string }[]
+                ).map((chip) => {
+                  const active = quickStockFilter === chip.id;
+                  return (
+                    <button
+                      key={chip.id}
+                      type="button"
+                      onClick={() => setQuickStockFilter(chip.id)}
+                      className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition cursor-pointer ${
+                        active
+                          ? "bg-slate-900 text-white shadow-2xs"
+                          : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-100"
+                      }`}
+                    >
+                      {chip.label}
+                    </button>
+                  );
+                })}
+                {(search || categoryId || brandFilter || quickStockFilter !== "ALL") && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearch("");
+                      setCategoryId("");
+                      setBrandFilter("");
+                      setQuickStockFilter("ALL");
+                    }}
+                    className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-red-600 hover:bg-red-50 inline-flex items-center gap-1 cursor-pointer"
+                  >
+                    <X className="w-3 h-3" /> Xoá lọc
+                  </button>
+                )}
               </div>
             </div>
 
             {/* THANH MÁY QUÉT LABEL — QUÉT KIỂM HÀNG & ĐỐI CHIẾU TỒN KHO TRÊN CMS */}
-            <div className="rounded-xl border-2 border-emerald-500/80 bg-gradient-to-r from-emerald-50/90 via-white to-teal-50/70 p-3 shadow-xs">
-              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-                    <ScanBarcode className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-xs font-extrabold uppercase tracking-wider text-emerald-900">
-                        Máy Quét Label — Quét Kiểm Hàng &amp; Đối Chiếu Tồn Kho (CMS)
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setScannerEnabled((v) => !v)}
-                        className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold transition ${scannerEnabled
-                          ? "bg-emerald-600 text-white"
-                          : "bg-slate-200 text-slate-600"
-                          }`}
-                      >
-                        {scannerEnabled ? "● ĐANG BẬT MÁY QUÉT (TỰ ĐỘNG)" : "○ ĐÃ TẮT MÁY QUÉT"}
-                      </button>
+            {(showScannerPanel || Object.keys(scannedCheckCounts).length > 0 || lastScanFeedback) && (
+              <div className="rounded-xl border border-emerald-300 bg-emerald-50/50 p-3 shadow-2xs">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                      <ScanBarcode className="w-4 h-4" />
                     </div>
-                    <p className="text-[11px] text-slate-600 mt-0.5">
-                      Bắn trực tiếp mã vạch để <b>đếm số lượng thực tế (+1 mỗi lần quét)</b>, tự động chuyển trang &amp; bung phân loại Màu/Size (tự động khử lỗi bộ gõ Tiếng Việt Unikey).
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      if (!scannerInput.trim()) return;
-                      handleBarcodeScanInCms(scannerInput);
-                      setScannerInput("");
-                    }}
-                    className="flex items-center gap-1.5"
-                  >
-                    <input
-                      type="text"
-                      data-barcode-input="true"
-                      value={scannerInput}
-                      onChange={(e) => setScannerInput(e.target.value)}
-                      placeholder="Quét hoặc gõ mã SP + Enter..."
-                      className="w-48 sm:w-56 px-3 py-1.5 rounded-lg border-2 border-emerald-400 bg-white text-xs font-mono font-extrabold text-slate-900 uppercase focus:border-emerald-600 focus:outline-none"
-                    />
-                    <button
-                      type="submit"
-                      className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold whitespace-nowrap"
-                    >
-                      +1 Kiểm
-                    </button>
-                  </form>
-
-                  {Object.keys(scannedCheckCounts).length > 0 && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => setOnlyShowScanned((v) => !v)}
-                        className={`px-2.5 py-1.5 rounded-lg border text-xs font-extrabold transition ${onlyShowScanned
-                          ? "bg-emerald-700 text-white border-emerald-700"
-                          : "bg-white text-emerald-800 border-emerald-300 hover:bg-emerald-50"
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-xs font-extrabold uppercase tracking-wider text-emerald-950">
+                          Máy Quét Label — Kiểm Hàng &amp; Đối Chiếu Tồn Kho
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setScannerEnabled((v) => !v)}
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold transition cursor-pointer ${
+                            scannerEnabled ? "bg-emerald-600 text-white" : "bg-slate-200 text-slate-600"
                           }`}
+                        >
+                          {scannerEnabled ? "● ĐANG BẬT TỰ ĐỘNG" : "○ ĐÃ TẮT"}
+                        </button>
+                      </div>
+                      <p className="text-[11px] text-slate-600">
+                        Bắn mã vạch hoặc nhập tay để cộng +1 kiểm đếm và tự động bung dòng biến thể Màu/Size.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        if (!scannerInput.trim()) return;
+                        handleBarcodeScanInCms(scannerInput);
+                        setScannerInput("");
+                      }}
+                      className="flex items-center gap-1.5"
+                    >
+                      <input
+                        type="text"
+                        data-barcode-input="true"
+                        value={scannerInput}
+                        onChange={(e) => setScannerInput(e.target.value)}
+                        placeholder="Quét hoặc gõ mã SP + Enter..."
+                        className="w-48 sm:w-56 px-3 py-1.5 rounded-lg border border-emerald-400 bg-white text-xs font-mono font-bold text-slate-900 uppercase focus:border-emerald-600 focus:outline-none"
+                      />
+                      <button
+                        type="submit"
+                        className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold whitespace-nowrap cursor-pointer"
                       >
-                        {onlyShowScanned
-                          ? `Đang lọc mã đã quét (${Object.keys(scannedCheckCounts).length})`
-                          : `Chỉ hiện mã đã quét (${Object.keys(scannedCheckCounts).length})`}
+                        +1 Kiểm
                       </button>
-                      {lastScannedProdId && (scannedCheckCounts[lastScannedProdId] || 0) > 0 && (
+                    </form>
+
+                    {Object.keys(scannedCheckCounts).length > 0 && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => setOnlyShowScanned((v) => !v)}
+                          className={`px-2.5 py-1.5 rounded-lg border text-xs font-extrabold transition cursor-pointer ${
+                            onlyShowScanned
+                              ? "bg-emerald-700 text-white border-emerald-700"
+                              : "bg-white text-emerald-800 border-emerald-300 hover:bg-emerald-50"
+                          }`}
+                        >
+                          {onlyShowScanned
+                            ? `Đang lọc mã đã quét (${Object.keys(scannedCheckCounts).length})`
+                            : `Chỉ hiện mã đã quét (${Object.keys(scannedCheckCounts).length})`}
+                        </button>
+                        {lastScannedProdId && (scannedCheckCounts[lastScannedProdId] || 0) > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setScannedCheckCounts((prev) => {
+                                const cur = prev[lastScannedProdId] || 0;
+                                const copy = { ...prev };
+                                if (cur <= 1) delete copy[lastScannedProdId];
+                                else copy[lastScannedProdId] = cur - 1;
+                                return copy;
+                              });
+                            }}
+                            className="px-2.5 py-1.5 rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-bold inline-flex items-center gap-1 cursor-pointer"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" /> Hoàn tác -1
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => {
-                            setScannedCheckCounts((prev) => {
-                              const cur = prev[lastScannedProdId] || 0;
-                              const copy = { ...prev };
-                              if (cur <= 1) delete copy[lastScannedProdId];
-                              else copy[lastScannedProdId] = cur - 1;
-                              return copy;
-                            });
+                            setScannedCheckCounts({});
+                            setScannedVariantCounts({});
+                            setLastScannedProdId(null);
+                            setLastScannedVariantCode(null);
+                            setOnlyShowScanned(false);
+                            setLastScanFeedback(null);
                           }}
-                          className="px-2.5 py-1.5 rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-bold inline-flex items-center gap-1"
+                          className="px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-600 text-xs font-bold cursor-pointer"
                         >
-                          <RotateCcw className="w-3.5 h-3.5" /> Hoàn tác -1
+                          Reset bộ đếm
                         </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setScannedCheckCounts({});
-                          setScannedVariantCounts({});
-                          setLastScannedProdId(null);
-                          setLastScannedVariantCode(null);
-                          setOnlyShowScanned(false);
-                          setLastScanFeedback(null);
-                        }}
-                        className="px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-600 text-xs font-bold"
-                      >
-                        Reset bộ đếm
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {lastScanFeedback && (
-                <div
-                  className={`mt-2.5 px-3 py-2 rounded-lg text-xs font-bold flex items-center justify-between gap-2 border ${lastScanFeedback.type === "success"
-                    ? "bg-emerald-100/90 border-emerald-300 text-emerald-950"
-                    : lastScanFeedback.type === "warning"
-                      ? "bg-amber-100/90 border-amber-300 text-amber-950"
-                      : "bg-red-100/90 border-red-300 text-red-900"
-                    }`}
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    {lastScanFeedback.type === "error" ? (
-                      <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
-                    ) : (
-                      <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+                      </>
                     )}
-                    <span className="truncate">{lastScanFeedback.message}</span>
                   </div>
-                  <span className="text-[10px] font-mono opacity-75 shrink-0">
-                    {lastScanFeedback.time}
-                  </span>
                 </div>
-              )}
-            </div>
+
+                {lastScanFeedback && (
+                  <div
+                    className={`mt-2.5 px-3 py-2 rounded-lg text-xs font-bold flex items-center justify-between gap-2 border ${
+                      lastScanFeedback.type === "success"
+                        ? "bg-emerald-100/90 border-emerald-300 text-emerald-950"
+                        : lastScanFeedback.type === "warning"
+                          ? "bg-amber-100/90 border-amber-300 text-amber-950"
+                          : "bg-red-100/90 border-red-300 text-red-900"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      {lastScanFeedback.type === "error" ? (
+                        <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
+                      ) : (
+                        <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+                      )}
+                      <span className="truncate">{lastScanFeedback.message}</span>
+                    </div>
+                    <span className="text-[10px] font-mono opacity-75 shrink-0">
+                      {lastScanFeedback.time}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="overflow-x-auto border border-slate-200 rounded-xl">
               <table className="w-full text-xs text-left">
@@ -3242,6 +3820,19 @@ export default function InventoryModule() {
                           </td>
                           <td className="py-3 px-2.5 font-mono font-bold text-slate-800 align-top break-all max-w-[180px] text-[11px] leading-snug">
                             <div>{p.code}</div>
+                            {(p.brandName || p.brand || p.versionName) && (
+                              <div className="mt-0.5 font-sans font-semibold text-[10px] text-slate-500 break-normal">
+                                {p.brandCode ? `[${p.brandCode}] ` : ""}
+                                {p.brandName || p.brand || ""}
+                                {p.versionName ? ` · ${p.versionName}` : ""}
+                                {p.versionCode ? ` (${p.versionCode})` : ""}
+                              </div>
+                            )}
+                            {p.legacyCode && p.legacyCode !== p.code && (
+                              <div className="text-[10px] text-slate-400 font-normal" title="Mã cũ trước chuẩn hoá — vẫn quét được">
+                                Mã cũ: {p.legacyCode}
+                              </div>
+                            )}
                             {scannedQty > 0 && (
                               <span
                                 className={`mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-extrabold font-mono border ${scannedQty === activeQty
@@ -3276,6 +3867,18 @@ export default function InventoryModule() {
                                 }))
                               }
                               className="w-full px-2.5 py-1.5 rounded border border-slate-300 font-semibold text-slate-900 whitespace-pre-wrap break-words leading-snug resize-y"
+                            />
+                            <input
+                              type="text"
+                              value={editingNotes[p._id] ?? p.note ?? ""}
+                              onChange={(e) =>
+                                setEditingNotes((prev) => ({
+                                  ...prev,
+                                  [p._id]: e.target.value,
+                                }))
+                              }
+                              placeholder="Ghi chú sản phẩm..."
+                              className="w-full px-2.5 py-1 rounded border border-slate-200 bg-slate-50/70 text-[11px] text-slate-700 placeholder:text-slate-400"
                             />
                             <div className="space-y-1">
                               {namedVars.length > 0 && (() => {
@@ -3334,7 +3937,7 @@ export default function InventoryModule() {
                                           {displayVars.map((v, vIdx) => {
                                             const childCode =
                                               v.variantCode ||
-                                              generateVariantProductCode(p.code, v.color, v.size);
+                                              variantCodeFor(p.code, v.color, v.size);
                                             const vScanned = scannedVariantCounts[p._id]?.[childCode] || 0;
                                             const vQty =
                                               activeWarehouse === "FLOOR_2"
@@ -3424,9 +4027,9 @@ export default function InventoryModule() {
                                   type="button"
                                   onClick={() => handleOpenSetLinkModal(p)}
                                   className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-[10px] font-extrabold transition cursor-pointer ${(p.parentSetProductId && (p.packSize || 0) > 0) ||
-                                      (Array.isArray(p.linkedRetailProducts) && p.linkedRetailProducts.length > 0)
-                                      ? "bg-amber-100 hover:bg-amber-200 text-amber-950 border-amber-400"
-                                      : "bg-slate-100 hover:bg-amber-50 text-slate-700 hover:text-amber-800 border-slate-300"
+                                    (Array.isArray(p.linkedRetailProducts) && p.linkedRetailProducts.length > 0)
+                                    ? "bg-amber-100 hover:bg-amber-200 text-amber-950 border-amber-400"
+                                    : "bg-slate-100 hover:bg-amber-50 text-slate-700 hover:text-amber-800 border-slate-300"
                                     }`}
                                   title="Cấu hình liên kết tự động tách từ Sản phẩm Bộ/Hộp sang Sản phẩm Lẻ"
                                 >
@@ -3674,10 +4277,35 @@ export default function InventoryModule() {
                           <td className="py-3 px-2.5 text-right align-top whitespace-nowrap">
                             <div className="inline-flex items-center gap-1">
                               {isProductChanged(p) && (
-                                <span className="px-2 py-1 rounded-md bg-amber-100 text-amber-800 border border-amber-300 text-[10px] font-extrabold">
-                                  Đã sửa
-                                </span>
+                                <>
+                                  <button
+                                    type="button"
+                                    disabled={savingBatch}
+                                    onClick={() => handleSaveSingleProductRow(p)}
+                                    className="px-2 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-extrabold inline-flex items-center gap-1 shadow-2xs cursor-pointer"
+                                    title="Lưu riêng dòng sản phẩm này"
+                                  >
+                                    <Save className="w-3 h-3" /> Lưu
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={savingBatch}
+                                    onClick={() => handleResetSingleProductRow(p)}
+                                    className="p-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-600 inline-flex items-center justify-center cursor-pointer"
+                                    title="Hoàn tác dòng này"
+                                  >
+                                    <RotateCcw className="w-3.5 h-3.5" />
+                                  </button>
+                                </>
                               )}
+                              <button
+                                type="button"
+                                onClick={() => setEditingProductModal(p)}
+                                className="p-1.5 rounded-lg border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 inline-flex items-center justify-center cursor-pointer"
+                                title="Sửa đầy đủ Category, Thương hiệu, Version, Mã Version, Tên SP, Giá và Biến thể"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
                               <button
                                 type="button"
                                 onClick={() => {
@@ -3689,7 +4317,7 @@ export default function InventoryModule() {
                                   }
                                   setSubTab("TRANSFER");
                                 }}
-                                className="p-1.5 rounded-lg border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 inline-flex items-center justify-center"
+                                className="p-1.5 rounded-lg border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 inline-flex items-center justify-center cursor-pointer"
                                 title="Dời sản phẩm giữa Kho Tầng 1 và Kho Tầng 2 (Lập phiếu xuất kho)"
                               >
                                 <ArrowLeftRight className="w-3.5 h-3.5" />
@@ -3697,7 +4325,7 @@ export default function InventoryModule() {
                               <button
                                 type="button"
                                 onClick={() => handleDeleteProduct(p)}
-                                className="p-1.5 rounded-lg border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 inline-flex items-center justify-center"
+                                className="p-1.5 rounded-lg border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 inline-flex items-center justify-center cursor-pointer"
                                 title="Xóa sản phẩm"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
@@ -3820,6 +4448,10 @@ export default function InventoryModule() {
                                         <th className="py-2 px-2.5 text-right">🏢 Tồn Kho Tầng 1</th>
                                         <th className="py-2 px-2.5 text-right">🏬 Tồn Kho Tầng 2</th>
                                         <th className="py-2 px-2.5 text-right">Tổng SL</th>
+                                        <th className="py-2 px-2.5 text-right" title="Trống/0 = dùng giá bán gốc">Giá bán</th>
+                                        {canSeeCost && (
+                                          <th className="py-2 px-2.5 text-right" title="Trống/0 = dùng giá vốn gốc">Giá vốn</th>
+                                        )}
                                         <th className="py-2 px-2.5 text-center">In tem</th>
                                         <th className="py-2 px-2.5 text-center w-16">Xóa</th>
                                       </tr>
@@ -3827,7 +4459,7 @@ export default function InventoryModule() {
                                     <tbody className="divide-y divide-slate-200">
                                       {prodVariants.length === 0 ? (
                                         <tr>
-                                          <td colSpan={9} className="py-3 text-center text-slate-400">
+                                          <td colSpan={canSeeCost ? 11 : 10} className="py-3 text-center text-slate-400">
                                             Chưa có phân loại Size/Màu. Hãy thêm ở dòng bên dưới.
                                           </td>
                                         </tr>
@@ -3841,7 +4473,7 @@ export default function InventoryModule() {
                                             }
                                             const q = cmsVarSearch.trim().toLowerCase();
                                             if (!q) return true;
-                                            const childCode = generateVariantProductCode(
+                                            const childCode = variantCodeFor(
                                               p.code,
                                               v.color,
                                               v.size
@@ -3851,7 +4483,7 @@ export default function InventoryModule() {
                                               .includes(q);
                                           })
                                           .map(({ v, vIdx }) => {
-                                            const childCode = generateVariantProductCode(
+                                            const childCode = variantCodeFor(
                                               p.code,
                                               v.color,
                                               v.size
@@ -3988,6 +4620,36 @@ export default function InventoryModule() {
                                                 <td className="py-1.5 px-2.5 text-right font-mono font-extrabold text-slate-900">
                                                   {(Number(v.stockFloor1) || 0) + (Number(v.stockFloor2) || 0)}
                                                 </td>
+                                                <td className="py-1.5 px-2.5 text-right">
+                                                  <input
+                                                    type="text"
+                                                    inputMode="numeric"
+                                                    aria-label={`Giá bán riêng ${childCode}`}
+                                                    disabled={!v.variantKey && !v.variantCode}
+                                                    defaultValue={Number(v.sellingPrice || 0) > 0 ? formatNumberDots(Number(v.sellingPrice)) : ""}
+                                                    key={`sp_${p._id}_${vIdx}_${v.sellingPrice || 0}`}
+                                                    placeholder={formatNumberDots(sellVal)}
+                                                    onBlur={(e) => handleSaveVariantPrice(p, v, "sellingPrice", parseNumberDots(e.target.value))}
+                                                    className="w-28 px-2 py-1 rounded border border-slate-300 font-mono text-right disabled:bg-slate-100"
+                                                    title="Giá bán riêng của biến thể — để trống = dùng giá bán gốc (R8). Rời ô để lưu."
+                                                  />
+                                                </td>
+                                                {canSeeCost && (
+                                                  <td className="py-1.5 px-2.5 text-right">
+                                                    <input
+                                                      type="text"
+                                                      inputMode="numeric"
+                                                      aria-label={`Giá vốn riêng ${childCode}`}
+                                                      disabled={!v.variantKey && !v.variantCode}
+                                                      defaultValue={Number(v.costPrice || 0) > 0 ? formatNumberDots(Number(v.costPrice)) : ""}
+                                                      key={`cp_${p._id}_${vIdx}_${v.costPrice || 0}`}
+                                                      placeholder={formatNumberDots(costVal)}
+                                                      onBlur={(e) => handleSaveVariantPrice(p, v, "costPrice", parseNumberDots(e.target.value))}
+                                                      className="w-28 px-2 py-1 rounded border border-slate-300 font-mono text-right disabled:bg-slate-100"
+                                                      title="Giá vốn riêng của biến thể — để trống = dùng giá vốn gốc. Rời ô để lưu."
+                                                    />
+                                                  </td>
+                                                )}
                                                 <td className="py-1.5 px-2.5 text-center">
                                                   <button
                                                     type="button"
@@ -5335,8 +5997,8 @@ export default function InventoryModule() {
                                 2
                               )}
                               className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-bold transition ${isSelectedVar
-                                  ? "ring-2 ring-indigo-600 text-indigo-950 shadow-xs"
-                                  : "border-slate-200 text-slate-800 hover:bg-slate-100"
+                                ? "ring-2 ring-indigo-600 text-indigo-950 shadow-xs"
+                                : "border-slate-200 text-slate-800 hover:bg-slate-100"
                                 }`}
                             >
                               <ColorSwatchBadge
@@ -5380,8 +6042,8 @@ export default function InventoryModule() {
                         <div
                           key={p._id}
                           className={`p-2.5 rounded-lg border text-left transition flex flex-col justify-between gap-2 text-xs ${totalSelectedForProd > 0
-                              ? "border-indigo-500 bg-indigo-50/50"
-                              : "border-slate-200 hover:border-indigo-300 bg-white"
+                            ? "border-indigo-500 bg-indigo-50/50"
+                            : "border-slate-200 hover:border-indigo-300 bg-white"
                             }`}
                         >
                           <div
@@ -5468,8 +6130,8 @@ export default function InventoryModule() {
                                     title={`Bấm để thêm +1 Màu ${v.color || "Mặc định"}${v.size?.trim() ? ` - Size ${v.size.trim()}` : ""
                                       }`}
                                     className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[10px] font-bold transition ${inCartVar
-                                        ? "ring-1 ring-indigo-600 text-indigo-950"
-                                        : "border-slate-200 text-slate-800 hover:bg-indigo-50"
+                                      ? "ring-1 ring-indigo-600 text-indigo-950"
+                                      : "border-slate-200 text-slate-800 hover:bg-indigo-50"
                                       }`}
                                   >
                                     <ColorSwatchBadge
@@ -5590,7 +6252,7 @@ export default function InventoryModule() {
                         );
                         const childCode =
                           item.color || item.size
-                            ? generateVariantProductCode(
+                            ? variantCodeFor(
                               prod.code,
                               item.color,
                               item.size
@@ -5968,7 +6630,7 @@ export default function InventoryModule() {
                                         const itSize = String(it.size || "").trim();
                                         const childCode =
                                           itColor || itSize
-                                            ? generateVariantProductCode(
+                                            ? variantCodeFor(
                                               it.productCode,
                                               itColor,
                                               itSize
@@ -6265,7 +6927,7 @@ export default function InventoryModule() {
                           </td>
                           <td className="py-2 px-3 font-mono font-bold text-slate-900">
                             <div>
-                              {generateVariantProductCode(it.productCode, it.color, it.size)}
+                              {it.variantCode || variantCodeFor(it.productCode, it.color, it.size)}
                             </div>
                             {(it.color || it.size) && (
                               <div className="text-[10px] text-slate-400 font-normal">
@@ -6384,16 +7046,16 @@ export default function InventoryModule() {
               <div>
                 <h3 className="text-sm sm:text-base font-extrabold flex items-center gap-2">
                   <Plus className="w-4 h-4 text-emerald-400" />
-                  <span>Nhập Kho Sản Phẩm — Dành cho Admin (Hỗ trợ Nhập nhiều dòng & Import PDF / Excel)</span>
+                  <span>Nhập Kho Sản Phẩm — Chọn Sản phẩm & Biến thể từ Danh mục</span>
                 </h3>
                 <p className="text-[11px] text-slate-300 mt-0.5">
-                  Mã SP tự sinh: <strong>Chữ đầu Category + Tên Hãng (hoặc NN) + 6 chữ số</strong> (VD: GASIA221401, GNN527368)
+                  Chọn sản phẩm/biến thể đã tạo sẵn (hoặc quét mã vạch), nhập <strong>Số lượng</strong> và <strong>Giá nhập</strong> là xong. Hàng mới chưa có trong danh mục thì bấm <strong>+ Tạo SP mới</strong>.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setShowAdminImportModal(false)}
-                className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white"
+                className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -6412,21 +7074,65 @@ export default function InventoryModule() {
                 className="hidden"
               />
 
-              {/* Khung Ghi chú & Chọn Kho Tầng 1 / Tầng 2 */}
+              {/* Khung Ghi chú, Chọn Kho & Bộ lọc nhanh Category / Thương hiệu */}
               <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
-                <div className="md:col-span-8">
+                <div className="md:col-span-5">
                   <label className="block text-xs font-bold uppercase text-slate-600 mb-1">
-                    Ghi chú Phiếu nhập kho (Admin)
+                    Ghi chú Phiếu nhập kho
                   </label>
                   <input
                     type="text"
                     value={adminImportNote}
                     onChange={(e) => setAdminImportNote(e.target.value)}
-                    placeholder="VD: Admin nhập lô hàng Giày Asia & Áo Kamito đợt mới..."
+                    placeholder="VD: Nhập lô hàng Giày Asics & Vợt Kamito đợt mới..."
                     className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm"
                   />
                 </div>
-                <div className="md:col-span-4">
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-bold uppercase text-slate-600 mb-1">
+                    Lọc Category gợi ý
+                  </label>
+                  <select
+                    value={importFilterCatId}
+                    onChange={(e) => {
+                      setImportFilterCatId(e.target.value);
+                      setImportFilterBrandId("");
+                    }}
+                    className="w-full px-2.5 py-2 rounded-lg border border-slate-300 text-xs font-semibold bg-white"
+                  >
+                    <option value="">Tất cả Category</option>
+                    {categories.map((c) => (
+                      <option key={c._id} value={c._id}>
+                        [{c.skuCode || c.code}] {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-bold uppercase text-slate-600 mb-1">
+                    Lọc Thương hiệu gợi ý
+                  </label>
+                  <select
+                    value={importFilterBrandId}
+                    onChange={(e) => setImportFilterBrandId(e.target.value)}
+                    className="w-full px-2.5 py-2 rounded-lg border border-slate-300 text-xs font-semibold bg-white"
+                  >
+                    <option value="">Tất cả Thương hiệu</option>
+                    {brandOptions
+                      .filter(
+                        (b) =>
+                          !importFilterCatId ||
+                          b.isSystem ||
+                          (b.categoryIds || []).map(String).includes(importFilterCatId)
+                      )
+                      .map((b) => (
+                        <option key={b._id} value={b._id}>
+                          [{b.code}] {b.name}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+                <div className="md:col-span-3">
                   <label className="block text-xs font-bold uppercase text-emerald-700 mb-1">
                     Nhập vào Kho (Chọn Tầng) *
                   </label>
@@ -6445,9 +7151,19 @@ export default function InventoryModule() {
                 </div>
               </div>
 
-              {/* Thanh công cụ Import File Excel/PDF & Tick xác nhận tất cả */}
+              {/* Thanh công cụ gọn: + Tạo SP mới (nếu chưa có), Import File, In Tem & Tick xác nhận */}
               <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100">
                 <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowCodeCreator(true)}
+                    className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-extrabold flex items-center gap-1.5 shadow-sm transition cursor-pointer"
+                    title="Nếu mặt hàng mới về chưa có trong danh mục, bấm để khai báo SP chuẩn mã rồi tự động đưa vào phiếu nhập"
+                  >
+                    <CopyPlus className="w-4 h-4" />
+                    <span>+ Tạo SP mới (chưa có trong danh mục)</span>
+                  </button>
+
                   <button
                     type="button"
                     disabled={importingAdminFile}
@@ -6455,13 +7171,13 @@ export default function InventoryModule() {
                       setAdminFileImportMode("replace");
                       adminFileInputRef.current?.click();
                     }}
-                    className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold flex items-center gap-2 shadow-sm transition cursor-pointer"
+                    className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold flex items-center gap-1.5 shadow-sm transition cursor-pointer"
                   >
                     <Upload className="w-4 h-4 text-emerald-400" />
                     <span>
                       {importingAdminFile
                         ? "Đang đọc file..."
-                        : "📄 Import PDF / Excel (.xlsx, .csv, .pdf)"}
+                        : "📄 Import PDF / Excel"}
                     </span>
                   </button>
 
@@ -6473,20 +7189,20 @@ export default function InventoryModule() {
                         setAdminFileImportMode("append");
                         adminFileInputRef.current?.click();
                       }}
-                      className="px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                      className="px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
                     >
                       <Upload className="w-3.5 h-3.5" />
-                      <span>+ Nối thêm từ file</span>
+                      <span>+ Nối thêm file</span>
                     </button>
                   )}
 
                   <button
                     type="button"
                     onClick={handleDownloadAdminSampleCsv}
-                    className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                    className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
                   >
                     <Download className="w-4 h-4 text-slate-600" />
-                    <span>Tải File Excel Mẫu</span>
+                    <span>File Mẫu</span>
                   </button>
 
                   <button
@@ -6497,19 +7213,36 @@ export default function InventoryModule() {
                         alert("Chưa có dòng sản phẩm nào để in tem mã vạch!");
                         return;
                       }
+                      const printable = valid.filter((it) => {
+                        if (!it.productCode) return false;
+                        const prod = catalogByCode.get(it.productCode.toUpperCase());
+                        if (!prod) return false;
+                        if (!prod.versionCode || (!it.color && !it.size)) return true;
+                        return Boolean(findVariantByColorSize(prod, it.color, it.size));
+                      });
+                      if (printable.length === 0) {
+                        alert(
+                          "Các dòng chưa có mã do hệ thống sinh (biến thể mới). Hãy Hoàn thành nhập kho trước rồi in tem."
+                        );
+                        return;
+                      }
+                      if (printable.length < valid.length) {
+                        alert(
+                          `${valid.length - printable.length} dòng là biến thể mới chưa có mã — sẽ bỏ qua khi in. Hoàn thành nhập kho để hệ thống sinh mã.`
+                        );
+                      }
                       setLabelItems(
-                        valid.map((it, idx) => {
-                          const baseCode = it.productCode || generateProductCode(it.productName);
-                          const childCode = generateVariantProductCode(
-                            baseCode,
-                            it.color,
-                            it.size
-                          );
-                          const matchedProd = productByCode.get(baseCode);
+                        printable.map((it, idx) => {
+                          const baseCode = it.productCode;
+                          const childCode = variantCodeFor(baseCode, it.color, it.size);
+                          const matchedProd = catalogByCode.get(baseCode.toUpperCase());
+                          const matchedVariant = findVariantByColorSize(matchedProd, it.color, it.size);
                           const resolvedSellPrice =
                             Number(it.sellingPrice) > 0
                               ? Number(it.sellingPrice)
-                              : Number(matchedProd?.sellingPrice || 0);
+                              : matchedProd
+                                ? variantEffectiveSellingPrice(matchedProd, matchedVariant)
+                                : 0;
                           return {
                             id: `${childCode}_${idx}`,
                             code: childCode,
@@ -6525,23 +7258,22 @@ export default function InventoryModule() {
                       );
                       setShowLabelModal(true);
                     }}
-                    className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-extrabold flex items-center gap-1.5 shadow-sm transition cursor-pointer"
+                    className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-extrabold flex items-center gap-1.5 shadow-sm transition cursor-pointer"
                   >
                     <Printer className="w-4 h-4" />
                     <span>
-                      🖨️ Xuất Mã Vạch / In Tem Label (
-                      {adminImportRows.filter((r) => r.productName.trim() !== "").length} dòng)
+                      🖨️ In Tem ({adminImportRows.filter((r) => r.productName.trim() !== "").length})
                     </span>
                   </button>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2 text-xs">
                   <span className="px-2.5 py-1 rounded-full bg-blue-100 text-blue-800 font-bold">
-                    Xác nhận nhập: {adminImportRows.filter((r) => r.isConfirmed).length}/
+                    Xác nhận: {adminImportRows.filter((r) => r.isConfirmed).length}/
                     {adminImportRows.length}
                   </span>
                   <span className="px-2.5 py-1 rounded-full bg-slate-900 text-white font-bold">
-                    Tổng giá gốc:{" "}
+                    Tổng vốn:{" "}
                     {formatVND(
                       adminImportRows.reduce(
                         (s, r) => s + (Number(r.costPrice) || 0) * (Number(r.quantity) || 0),
@@ -6550,7 +7282,7 @@ export default function InventoryModule() {
                     )}
                   </span>
                   <span className="px-2.5 py-1 rounded-full bg-emerald-700 text-white font-bold">
-                    Tổng giá bán:{" "}
+                    Tổng bán:{" "}
                     {formatVND(
                       adminImportRows.reduce(
                         (s, r) => s + (Number(r.sellingPrice) || 0) * (Number(r.quantity) || 0),
@@ -6572,7 +7304,7 @@ export default function InventoryModule() {
                 </div>
               </div>
 
-              {/* Bảng nhập nhiều dòng sản phẩm */}
+              {/* Bảng nhập gọn: Chọn Sản phẩm có sẵn -> Chọn Biến thể (Màu • Size) -> SL -> Giá */}
               <div
                 className={`overflow-x-auto border border-slate-200 rounded-xl transition-all ${activeAdminSuggestRowIdx !== null ? "pb-60" : ""
                   }`}
@@ -6581,260 +7313,331 @@ export default function InventoryModule() {
                   <thead className="bg-slate-900 text-white uppercase">
                     <tr>
                       <th className="py-3 px-2 text-center w-10">STT</th>
-                      <th className="py-3 px-2.5 min-w-[155px]">MÃ SP (CATE+HÃNG+6 SỐ)</th>
-                      <th className="py-3 px-2.5 min-w-[210px]">TÊN SẢN PHẨM</th>
-                      <th className="py-3 px-2 min-w-[130px] text-cyan-300">CATEGORY</th>
-                      <th className="py-3 px-2 min-w-[105px] text-cyan-300">HÃNG (NN)</th>
-                      <th className="py-3 px-2 min-w-[155px] text-amber-300">MÀU SẮC (BẮT BUỘC) *</th>
-                      <th className="py-3 px-2 w-24 min-w-[80px] text-center text-amber-300">
-                        SIZE
+                      <th className="py-3 px-3 min-w-[280px]">
+                        SẢN PHẨM (CHỌN TỪ DANH MỤC / QUÉT MÃ) *
                       </th>
-                      <th className="py-3 px-2 w-20 min-w-[70px] text-center">ĐVT</th>
+                      <th className="py-3 px-3 min-w-[230px] text-amber-300">
+                        BIẾN THỂ (MÀU • SIZE & MÃ CON) *
+                      </th>
+                      <th className="py-3 px-2 w-16 text-center">ĐVT</th>
                       <th className="py-3 px-2 w-24 min-w-[85px] text-right bg-slate-800 text-amber-300">
                         SỐ LƯỢNG
                       </th>
-                      <th className="py-3 px-2.5 w-32 min-w-[120px] text-right">GIÁ GỐC (VND)</th>
+                      <th className="py-3 px-2.5 w-32 min-w-[120px] text-right">
+                        GIÁ GỐC NHẬP (VND)
+                      </th>
                       <th className="py-3 px-2.5 w-32 min-w-[120px] text-right text-emerald-300">
-                        GIÁ BÁN (VND)
+                        GIÁ BÁN LẺ (VND)
                       </th>
                       <th className="py-3 px-2 min-w-[120px]">GHI CHÚ</th>
-                      <th className="py-3 px-2 w-24 text-center bg-slate-800 text-emerald-300">
+                      <th className="py-3 px-2 w-20 text-center bg-slate-800 text-emerald-300">
                         XÁC NHẬN
                       </th>
-                      <th className="py-3 px-2 w-16 text-center">THÊM/XÓA</th>
+                      <th className="py-3 px-2 w-16 text-center">THAO TÁC</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200">
                     {adminImportRows.map((row, idx) => {
-                      const existingProd = row.productCode
-                        ? productByCode.get(row.productCode)
-                        : undefined;
+                      const existingProd =
+                        (row.productId &&
+                          (allCatalogProducts.length > 0 ? allCatalogProducts : products).find(
+                            (p) => p._id === row.productId
+                          )) ||
+                        (row.productCode
+                          ? catalogByCode.get(row.productCode.toUpperCase()) ||
+                          productByCode.get(row.productCode)
+                          : undefined);
+                      const prodVariants = (existingProd?.variants || []).filter(
+                        (v) => v.color || v.size
+                      );
+                      const currentVarKey = row.isNewVariant
+                        ? "__NEW__"
+                        : `${row.color || ""}||${row.size || ""}`;
+                      const resolvedVarCode = existingProd
+                        ? resolveVariantCode(existingProd, existingProd.code, row.color, row.size)
+                        : variantCodeFor(row.productCode, row.color, row.size);
+
                       return (
                         <tr
                           key={idx}
-                          className={`hover:bg-slate-50 ${row.isConfirmed ? "bg-emerald-50/20" : ""
-                            }`}
+                          className={`hover:bg-slate-50 ${row.isConfirmed ? "bg-emerald-50/20" : ""}`}
                         >
                           <td className="py-2.5 px-2 text-center font-mono font-bold text-slate-700 align-top pt-3.5">
                             {idx + 1}
                           </td>
 
-                          {/* MÃ SP */}
-                          <td className="py-2.5 px-2.5 align-top">
-                            <input
-                              type="text"
-                              value={row.productCode}
-                              onChange={(e) =>
-                                handleUpdateAdminRow(idx, "productCode", e.target.value)
-                              }
-                              placeholder="VD: GASIA221401"
-                              className="w-full bg-blue-50/70 text-blue-900 font-mono text-xs font-extrabold px-2.5 py-1.5 rounded border border-blue-300 uppercase focus:border-blue-600 focus:outline-none"
-                            />
-                            <div className="mt-1 text-[10px] text-slate-500 space-y-0.5">
-                              {(row.color || row.size) && row.productCode && (
-                                <div className="font-mono font-extrabold text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded inline-block">
-                                  {generateVariantProductCode(row.productCode, row.color, row.size)}
+                          {/* CỘT 1: CHỌN SẢN PHẨM TỪ DANH MỤC */}
+                          <td className="py-2.5 px-3 align-top">
+                            {existingProd ? (
+                              <div className="p-2 rounded-lg bg-slate-50 border border-slate-200 space-y-1">
+                                <div className="flex items-start justify-between gap-2">
+                                  <div>
+                                    <span className="font-mono font-extrabold text-[11px] text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded mr-1.5">
+                                      {existingProd.code}
+                                    </span>
+                                    <span className="font-bold text-slate-900 text-xs">
+                                      {existingProd.name}
+                                    </span>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleClearAdminRowProduct(idx)}
+                                    className="px-2 py-0.5 rounded text-[10px] font-bold text-slate-600 hover:text-red-600 bg-white border border-slate-200 hover:border-red-200 shrink-0 cursor-pointer"
+                                  >
+                                    Đổi SP
+                                  </button>
                                 </div>
-                              )}
-                              <div>
-                                {existingProd ? (
-                                  <span className="text-emerald-700 font-bold">
-                                    ✓ Đã có mã gốc (Tồn: {existingProd.stock})
+                                <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-slate-500">
+                                  <span className="px-1.5 py-0.5 rounded bg-white border border-slate-200 font-semibold text-slate-700">
+                                    {existingProd.categoryName || "Danh mục"}
                                   </span>
-                                ) : (
-                                  <span>Mã gốc: Cate + Hãng/NN + 6 số</span>
-                                )}
+                                  {(existingProd.brandName || existingProd.brand) && (
+                                    <span className="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 font-bold">
+                                      {existingProd.brandCode ? `[${existingProd.brandCode}] ` : ""}
+                                      {existingProd.brandName || existingProd.brand}
+                                    </span>
+                                  )}
+                                  {existingProd.versionName && (
+                                    <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 font-semibold">
+                                      Ver: {existingProd.versionName}
+                                    </span>
+                                  )}
+                                  <span className="text-emerald-700 font-bold ml-auto">
+                                    Tồn: {existingProd.stock} {existingProd.unit}
+                                  </span>
+                                </div>
                               </div>
-                            </div>
-                          </td>
-
-                          {/* TÊN SẢN PHẨM + GỢI Ý */}
-                          <td className="py-2.5 px-2.5 align-top">
-                            <div className="relative">
-                              <input
-                                type="text"
-                                value={row.productName}
-                                onFocus={() => {
-                                  setActiveAdminSuggestRowIdx(idx);
-                                  setAdminSuggestHighlightIdx(0);
-                                }}
-                                onBlur={() => {
-                                  setTimeout(() => {
-                                    setActiveAdminSuggestRowIdx((prev) =>
-                                      prev === idx ? null : prev
-                                    );
-                                  }, 180);
-                                }}
-                                onChange={(e) => {
-                                  handleUpdateAdminRow(idx, "productName", e.target.value);
-                                  setActiveAdminSuggestRowIdx(idx);
-                                  setAdminSuggestHighlightIdx(0);
-                                }}
-                                onKeyDown={(e) => {
-                                  if (activeAdminSuggestRowIdx !== idx) return;
-                                  const suggestions = getAdminRowSuggestions(row.productName);
-                                  if (suggestions.length === 0) return;
-                                  if (e.key === "ArrowDown") {
-                                    e.preventDefault();
-                                    setAdminSuggestHighlightIdx(
-                                      (prev) => (prev + 1) % suggestions.length
-                                    );
-                                  } else if (e.key === "ArrowUp") {
-                                    e.preventDefault();
-                                    setAdminSuggestHighlightIdx(
-                                      (prev) =>
-                                        (prev - 1 + suggestions.length) % suggestions.length
-                                    );
-                                  } else if (e.key === "Enter") {
-                                    const picked =
-                                      suggestions[adminSuggestHighlightIdx] || suggestions[0];
-                                    if (picked && picked.name !== row.productName) {
+                            ) : (
+                              <div className="relative">
+                                <input
+                                  type="text"
+                                  value={row.productName}
+                                  onFocus={() => {
+                                    setActiveAdminSuggestRowIdx(idx);
+                                    setAdminSuggestHighlightIdx(0);
+                                  }}
+                                  onBlur={() => {
+                                    setTimeout(() => {
+                                      setActiveAdminSuggestRowIdx((prev) =>
+                                        prev === idx ? null : prev
+                                      );
+                                    }, 180);
+                                  }}
+                                  onChange={(e) => {
+                                    handleUpdateAdminRow(idx, "productName", e.target.value);
+                                    setActiveAdminSuggestRowIdx(idx);
+                                    setAdminSuggestHighlightIdx(0);
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (activeAdminSuggestRowIdx !== idx) return;
+                                    const suggestions = getAdminRowSuggestions(row.productName);
+                                    if (suggestions.length === 0) return;
+                                    if (e.key === "ArrowDown") {
                                       e.preventDefault();
-                                      handleSelectAdminRowSuggestion(idx, picked);
+                                      setAdminSuggestHighlightIdx(
+                                        (prev) => (prev + 1) % suggestions.length
+                                      );
+                                    } else if (e.key === "ArrowUp") {
+                                      e.preventDefault();
+                                      setAdminSuggestHighlightIdx(
+                                        (prev) =>
+                                          (prev - 1 + suggestions.length) % suggestions.length
+                                      );
+                                    } else if (e.key === "Enter") {
+                                      const picked =
+                                        suggestions[adminSuggestHighlightIdx] || suggestions[0];
+                                      if (picked) {
+                                        e.preventDefault();
+                                        handleSelectAdminRowSuggestion(idx, picked);
+                                      }
+                                    } else if (e.key === "Escape") {
+                                      setActiveAdminSuggestRowIdx(null);
                                     }
-                                  } else if (e.key === "Escape") {
-                                    setActiveAdminSuggestRowIdx(null);
-                                  }
-                                }}
-                                placeholder="Gõ tên hàng (VD: Giày Asia 221401)..."
-                                className="w-full px-2.5 py-1.5 rounded border border-slate-300 font-medium text-slate-900 focus:border-emerald-600 focus:outline-none"
-                              />
-
-                              {activeAdminSuggestRowIdx === idx &&
-                                (() => {
-                                  const suggestions = getAdminRowSuggestions(row.productName);
-                                  if (suggestions.length === 0) return null;
-                                  return (
-                                    <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-white rounded-xl border-2 border-emerald-500 shadow-2xl overflow-hidden min-w-[320px] sm:min-w-[380px]">
-                                      <div className="px-3 py-1.5 bg-slate-900 text-white text-[10px] font-bold flex items-center justify-between gap-2">
-                                        <span>
-                                          📦 Gợi ý sản phẩm trong kho ({suggestions.length})
-                                        </span>
-                                        <span className="text-emerald-300 font-normal">
-                                          Bấm chọn để lấy Mã chung & Giá
-                                        </span>
-                                      </div>
-                                      <div className="max-h-52 overflow-y-auto divide-y divide-slate-100">
-                                        {suggestions.map((p, sIdx) => {
-                                          const isHighlighted = sIdx === adminSuggestHighlightIdx;
-                                          return (
+                                  }}
+                                  placeholder="🔍 Gõ tên, mã SP, version để chọn..."
+                                  className="w-full px-2.5 py-2 rounded-lg border-2 border-emerald-500/70 font-medium text-slate-900 focus:border-emerald-600 focus:outline-none"
+                                />
+                                {activeAdminSuggestRowIdx === idx &&
+                                  (() => {
+                                    const suggestions = getAdminRowSuggestions(row.productName);
+                                    return (
+                                      <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-white rounded-xl border-2 border-emerald-500 shadow-2xl overflow-hidden min-w-[340px]">
+                                        <div className="px-3 py-1.5 bg-slate-900 text-white text-[10px] font-bold flex items-center justify-between gap-2">
+                                          <span>
+                                            📦 Chọn sản phẩm từ danh mục ({suggestions.length})
+                                          </span>
+                                          <button
+                                            type="button"
+                                            onMouseDown={(e) => {
+                                              e.preventDefault();
+                                              setActiveAdminSuggestRowIdx(null);
+                                              setShowCodeCreator(true);
+                                            }}
+                                            className="text-amber-300 hover:underline font-extrabold cursor-pointer"
+                                          >
+                                            + Tạo SP mới
+                                          </button>
+                                        </div>
+                                        {suggestions.length === 0 ? (
+                                          <div className="p-3 text-center text-xs text-slate-500">
+                                            Không tìm thấy sản phẩm khớp. Bấm{" "}
                                             <button
-                                              key={p._id}
                                               type="button"
                                               onMouseDown={(e) => {
                                                 e.preventDefault();
-                                                handleSelectAdminRowSuggestion(idx, p);
+                                                setActiveAdminSuggestRowIdx(null);
+                                                setShowCodeCreator(true);
                                               }}
-                                              onMouseEnter={() =>
-                                                setAdminSuggestHighlightIdx(sIdx)
-                                              }
-                                              className={`w-full text-left px-3 py-2 transition flex flex-col gap-0.5 ${isHighlighted
-                                                ? "bg-emerald-50/90"
-                                                : "hover:bg-slate-50"
-                                                }`}
+                                              className="font-extrabold text-indigo-600 underline cursor-pointer"
                                             >
-                                              <div className="font-bold text-xs text-slate-900">
-                                                {p.name}
-                                              </div>
-                                              <div className="flex flex-wrap items-center justify-between gap-2 text-[10px] text-slate-500">
-                                                <span className="font-mono font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">
-                                                  {p.code}
-                                                </span>
-                                                <span className="text-emerald-700 font-bold">
-                                                  Tổng tồn: {p.stock} {p.unit}
-                                                </span>
-                                                {Number(p.sellingPrice) > 0 && (
-                                                  <span className="font-mono font-bold text-slate-800">
-                                                    Bán: {formatVND(p.sellingPrice)}
-                                                  </span>
-                                                )}
-                                              </div>
-                                            </button>
-                                          );
-                                        })}
+                                              + Tạo SP mới
+                                            </button>{" "}
+                                            để khai báo.
+                                          </div>
+                                        ) : (
+                                          <div className="max-h-56 overflow-y-auto divide-y divide-slate-100">
+                                            {suggestions.map((p, sIdx) => {
+                                              const isHighlighted =
+                                                sIdx === adminSuggestHighlightIdx;
+                                              return (
+                                                <button
+                                                  key={p._id}
+                                                  type="button"
+                                                  onMouseDown={(e) => {
+                                                    e.preventDefault();
+                                                    handleSelectAdminRowSuggestion(idx, p);
+                                                  }}
+                                                  onMouseEnter={() =>
+                                                    setAdminSuggestHighlightIdx(sIdx)
+                                                  }
+                                                  className={`w-full text-left px-3 py-2 transition flex flex-col gap-0.5 cursor-pointer ${isHighlighted
+                                                      ? "bg-emerald-50/90"
+                                                      : "hover:bg-slate-50"
+                                                    }`}
+                                                >
+                                                  <div className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
+                                                    <span className="font-mono font-extrabold text-[11px] text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">
+                                                      {p.code}
+                                                    </span>
+                                                    <span>{p.name}</span>
+                                                  </div>
+                                                  <div className="flex flex-wrap items-center justify-between gap-2 text-[10px] text-slate-500">
+                                                    <span>
+                                                      {p.categoryName}
+                                                      {p.brandName || p.brand
+                                                        ? ` • ${p.brandName || p.brand}`
+                                                        : ""}
+                                                      {p.versionName
+                                                        ? ` • ${p.versionName}`
+                                                        : ""}
+                                                    </span>
+                                                    <span className="text-emerald-700 font-bold">
+                                                      {(p.variants || []).length} biến thể • Tồn:{" "}
+                                                      {p.stock} {p.unit}
+                                                    </span>
+                                                  </div>
+                                                </button>
+                                              );
+                                            })}
+                                          </div>
+                                        )}
                                       </div>
-                                    </div>
-                                  );
-                                })()}
-                            </div>
-                          </td>
-
-                          {/* CATEGORY */}
-                          <td className="py-2.5 px-2 align-top">
-                            <select
-                              value={String(
-                                row.categoryId || newProdCatId || categories[0]?._id || ""
-                              )}
-                              onChange={(e) => {
-                                setNewProdCatId(e.target.value);
-                                handleUpdateAdminRow(idx, "categoryId", e.target.value);
-                              }}
-                              className="w-full px-2 py-1.5 rounded border border-slate-300 bg-white font-semibold text-slate-900 focus:border-emerald-600 focus:outline-none"
-                            >
-                              {categories.map((c) => (
-                                <option key={c._id} value={c._id}>
-                                  {c.name} ({c.code})
-                                </option>
-                              ))}
-                            </select>
-                          </td>
-
-                          {/* HÃNG (NN) */}
-                          <td className="py-2.5 px-2 align-top">
-                            <input
-                              type="text"
-                              value={row.brand}
-                              onChange={(e) =>
-                                handleUpdateAdminRow(idx, "brand", e.target.value)
-                              }
-                              placeholder="NN (Không hãng)"
-                              className="w-full px-2 py-1.5 rounded border border-slate-300 font-semibold text-slate-900 focus:border-emerald-600 focus:outline-none"
-                            />
-                          </td>
-
-                          {/* MÀU SẮC (Bắt buộc điền — kèm ô nhỏ chọn 1 hoặc nhiều màu trực quan & viền box) */}
-                          <td className="py-2.5 px-2 align-top">
-                            <ColorInputWithPicker
-                              listId="cms-color-suggestions"
-                              value={row.color}
-                              colorHexes={row.colorHexes}
-                              onChange={(nextColor, nextHexes) =>
-                                handleUpdateAdminRowColor(idx, nextColor, nextHexes)
-                              }
-                              placeholder="Bắt buộc chọn/nhập màu *"
-                            />
-                            {row.productName.trim() !== "" && !String(row.color || "").trim() && (
-                              <div className="mt-1 text-[10px] font-bold text-red-600">
-                                * Bắt buộc điền màu sắc
+                                    );
+                                  })()}
                               </div>
                             )}
                           </td>
 
-                          {/* SIZE */}
-                          <td className="py-2.5 px-2 align-top">
-                            <input
-                              type="text"
-                              list="cms-size-suggestions"
-                              value={row.size}
-                              onChange={(e) =>
-                                handleUpdateAdminRow(idx, "size", e.target.value.toUpperCase())
-                              }
-                              placeholder="S, M, L, 42..."
-                              className="w-full px-2 py-1.5 rounded border border-slate-300 text-center font-mono font-extrabold uppercase text-indigo-800 focus:border-emerald-600 focus:outline-none"
-                            />
+                          {/* CỘT 2: CHỌN BIẾN THỂ (MÀU • SIZE & MÃ CON) */}
+                          <td className="py-2.5 px-3 align-top">
+                            {existingProd && prodVariants.length > 0 && !row.isNewVariant ? (
+                              <div className="space-y-1.5">
+                                <select
+                                  value={currentVarKey}
+                                  onChange={(e) =>
+                                    handleSelectAdminRowVariant(idx, existingProd, e.target.value)
+                                  }
+                                  className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white font-bold text-xs text-slate-900 focus:border-emerald-600 focus:outline-none"
+                                >
+                                  {prodVariants.map((v, vIdx) => {
+                                    const val = `${v.color || ""}||${v.size || ""}`;
+                                    const vCode = resolveVariantCode(
+                                      existingProd,
+                                      existingProd.code,
+                                      v.color,
+                                      v.size
+                                    );
+                                    return (
+                                      <option key={`${val}_${vIdx}`} value={val}>
+                                        {v.color || "Mặc định"}
+                                        {v.size ? ` - Size ${v.size}` : ""} ({vCode}) • Tồn:{" "}
+                                        {v.stock ?? 0}
+                                      </option>
+                                    );
+                                  })}
+                                  <option value="__NEW__">+ Thêm Màu / Size mới cho SP này...</option>
+                                </select>
+                                {resolvedVarCode && (
+                                  <div className="flex items-center justify-between text-[10px]">
+                                    <span className="font-mono font-extrabold text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded">
+                                      Mã con: {resolvedVarCode}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="space-y-1.5">
+                                <div className="grid grid-cols-1 sm:grid-cols-12 gap-1.5">
+                                  <div className="sm:col-span-8">
+                                    <ColorInputWithPicker
+                                      listId="cms-color-suggestions"
+                                      value={row.color}
+                                      colorHexes={row.colorHexes}
+                                      onChange={(nextColor, nextHexes) =>
+                                        handleUpdateAdminRowColor(idx, nextColor, nextHexes)
+                                      }
+                                      placeholder="Màu sắc *"
+                                    />
+                                  </div>
+                                  <div className="sm:col-span-4">
+                                    <input
+                                      type="text"
+                                      list="cms-size-suggestions"
+                                      value={row.size}
+                                      onChange={(e) =>
+                                        handleUpdateAdminRow(
+                                          idx,
+                                          "size",
+                                          e.target.value.toUpperCase()
+                                        )
+                                      }
+                                      placeholder="Size (41, L..)"
+                                      className="w-full px-2 py-1.5 rounded border border-slate-300 text-center font-mono font-extrabold uppercase text-indigo-800 focus:border-emerald-600 focus:outline-none"
+                                    />
+                                  </div>
+                                </div>
+                                {existingProd && prodVariants.length > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      handleSelectAdminRowVariant(
+                                        idx,
+                                        existingProd,
+                                        `${prodVariants[0].color || ""}||${prodVariants[0].size || ""}`
+                                      )
+                                    }
+                                    className="text-[10px] font-bold text-blue-600 hover:underline cursor-pointer"
+                                  >
+                                    ← Chọn từ {prodVariants.length} biến thể có sẵn
+                                  </button>
+                                )}
+                              </div>
+                            )}
                           </td>
 
                           {/* ĐVT */}
-                          <td className="py-2.5 px-2 align-top">
-                            <input
-                              type="text"
-                              value={row.unit}
-                              onChange={(e) =>
-                                handleUpdateAdminRow(idx, "unit", e.target.value)
-                              }
-                              placeholder="Cái"
-                              className="w-full px-2 py-1.5 rounded border border-slate-300 text-center font-medium text-slate-900"
-                            />
+                          <td className="py-2.5 px-2 text-center align-top pt-3.5 font-semibold text-slate-700">
+                            {existingProd?.unit || row.unit || "Cái"}
                           </td>
 
                           {/* SỐ LƯỢNG */}
@@ -6901,7 +7704,7 @@ export default function InventoryModule() {
                             />
                           </td>
 
-                          {/* XÁC NHẬN (MẶC ĐỊNH KHÔNG TICK) */}
+                          {/* XÁC NHẬN */}
                           <td className="py-2.5 px-2 text-center bg-emerald-50/30 align-top pt-3">
                             <label className="inline-flex flex-col items-center gap-1 cursor-pointer">
                               <input
@@ -6928,7 +7731,7 @@ export default function InventoryModule() {
                                 type="button"
                                 onClick={() => handleDuplicateAdminRow(idx)}
                                 className="p-1.5 text-blue-600 hover:bg-blue-50 rounded cursor-pointer"
-                                title="Thêm nhanh Size / Màu khác cho cùng Mã SP này"
+                                title="Thêm nhanh biến thể khác cho cùng sản phẩm này"
                               >
                                 <CopyPlus className="w-4 h-4" />
                               </button>
@@ -6956,10 +7759,10 @@ export default function InventoryModule() {
                     className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold flex items-center gap-1.5 shadow-sm transition cursor-pointer"
                   >
                     <Plus className="w-4 h-4" />
-                    <span>Thêm dòng mới</span>
+                    <span>Thêm dòng nhập kho</span>
                   </button>
                   <span className="text-[11px] text-slate-500">
-                    Bấm <strong>Thêm dòng mới</strong> để thêm mặt hàng hoặc bấm biểu tượng nhân bản ở cuối dòng để thêm Size / Màu cùng Mã SP
+                    Chọn <strong>Sản phẩm</strong> → chọn <strong>Biến thể (Màu • Size)</strong> → điền <strong>Số lượng</strong>. Bấm biểu tượng nhân bản ở cuối dòng để nhập thêm Màu/Size khác của cùng sản phẩm.
                   </span>
                 </div>
               </div>
@@ -6988,9 +7791,10 @@ export default function InventoryModule() {
                       {submittingAdminImport
                         ? "Đang nhập kho..."
                         : `✅ Hoàn thành Nhập Kho (${adminImportRows.filter(
-                          (r) => r.productName.trim() !== "" && r.isConfirmed
-                        ).length
-                        } dòng đã tick)`}
+                          (r) =>
+                            (r.productName.trim() !== "" || r.productCode.trim() !== "") &&
+                            r.isConfirmed
+                        ).length} dòng đã tick)`}
                     </span>
                   </button>
                 </div>
@@ -7052,8 +7856,8 @@ export default function InventoryModule() {
                   type="button"
                   onClick={() => setSetLinkMode("AS_RETAIL")}
                   className={`p-3 rounded-xl border-2 text-left transition cursor-pointer ${setLinkMode === "AS_RETAIL"
-                      ? "border-amber-500 bg-amber-50 text-amber-950 shadow-xs"
-                      : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                    ? "border-amber-500 bg-amber-50 text-amber-950 shadow-xs"
+                    : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
                     }`}
                 >
                   <div className="font-extrabold text-xs">
@@ -7068,8 +7872,8 @@ export default function InventoryModule() {
                   type="button"
                   onClick={() => setSetLinkMode("AS_SET")}
                   className={`p-3 rounded-xl border-2 text-left transition cursor-pointer ${setLinkMode === "AS_SET"
-                      ? "border-teal-600 bg-teal-50 text-teal-950 shadow-xs"
-                      : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                    ? "border-teal-600 bg-teal-50 text-teal-950 shadow-xs"
+                    : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
                     }`}
                 >
                   <div className="font-extrabold text-xs">
@@ -7173,8 +7977,8 @@ export default function InventoryModule() {
                       type="button"
                       onClick={() => setSetChildMode("CREATE_NEW_RETAIL")}
                       className={`px-3 py-1.5 rounded-lg font-extrabold text-xs transition cursor-pointer ${setChildMode === "CREATE_NEW_RETAIL"
-                          ? "bg-teal-700 text-white"
-                          : "bg-white border border-slate-300 text-slate-700"
+                        ? "bg-teal-700 text-white"
+                        : "bg-white border border-slate-300 text-slate-700"
                         }`}
                     >
                       ✨ Tạo nhanh Sản phẩm Lẻ mới từ Bộ này
@@ -7183,8 +7987,8 @@ export default function InventoryModule() {
                       type="button"
                       onClick={() => setSetChildMode("EXISTING_RETAIL")}
                       className={`px-3 py-1.5 rounded-lg font-extrabold text-xs transition cursor-pointer ${setChildMode === "EXISTING_RETAIL"
-                          ? "bg-teal-700 text-white"
-                          : "bg-white border border-slate-300 text-slate-700"
+                        ? "bg-teal-700 text-white"
+                        : "bg-white border border-slate-300 text-slate-700"
                         }`}
                     >
                       🔗 Chọn Sản phẩm Lẻ đã có sẵn trong kho
@@ -7428,6 +8232,20 @@ export default function InventoryModule() {
       )}
 
       {/* MODAL IN TEM NHÃN MÃ VẠCH CODE128 (CHỈ MÃ SẢN PHẨM CHUNG, KHÔNG KÈM MÀU/SIZE) */}
+      <ProductCodeCreatorModal
+        open={showCodeCreator || Boolean(editingProductModal)}
+        onClose={() => {
+          setShowCodeCreator(false);
+          setEditingProductModal(null);
+        }}
+        categories={categories}
+        defaultCategoryId={newProdCatId || categoryId || undefined}
+        editingProduct={editingProductModal}
+        canSeeCost={canSeeCost}
+        onDone={handleCodeCreatorDone}
+        colorSuggestions={COMMON_COLORS}
+        sizeSuggestions={COMMON_SIZES}
+      />
       <BarcodeLabelModal
         open={showLabelModal}
         onClose={() => setShowLabelModal(false)}

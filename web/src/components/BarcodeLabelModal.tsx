@@ -296,7 +296,10 @@ export default function BarcodeLabelModal({
       const baseCode = String(item.productCode || item.code || "ITEM").trim();
       const rawCode = String(item.code || item.productCode || "ITEM").trim();
       const hasAttr = Boolean((item.color && item.color.trim()) || (item.size && item.size.trim()));
-      const code = hasAttr
+      // v5.0: ưu tiên mã con do server sinh (item.code). Chỉ tự ghép mã (công thức cũ) khi caller
+      // không truyền mã con riêng — tem in đúng nguyên mã, không cắt bớt.
+      const hasExplicitChildCode = Boolean(item.code && item.code.trim() && item.code.trim() !== baseCode);
+      const code = hasAttr && !hasExplicitChildCode
         ? generateVariantProductCode(baseCode, item.color, item.size)
         : rawCode;
       const name = String(item.name || item.productName || "Sản phẩm").trim();

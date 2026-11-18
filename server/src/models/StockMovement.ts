@@ -13,6 +13,8 @@ export interface IStockMovement extends Document {
   type: StockMovementType;
   productId: string;
   productCode: string;
+  /** v5.0: mã cũ trước chuẩn hoá */
+  legacyCode?: string;
   productName: string;
   color?: string;
   size?: string;
@@ -48,6 +50,7 @@ const StockMovementSchema = new Schema<IStockMovement>(
     },
     productId: { type: String, required: true, index: true },
     productCode: { type: String, required: true },
+    legacyCode: { type: String },
     productName: { type: String, required: true },
     color: { type: String, default: '' },
     size: { type: String, default: '' },

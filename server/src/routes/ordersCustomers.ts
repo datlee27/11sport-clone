@@ -26,7 +26,7 @@ import {
   formatProductWithVariant,
 } from '../utils/warehouseFloor';
 import { executeUnpackSetToRetail } from '../utils/unpackSet';
-import { buildVariantKey } from '../utils/productCode';
+import { buildVariantKey, resolveVariantPricing } from '../utils/productCode';
 import { filterAndRankBySearch, normalizePhoneDigits } from '../utils/search';
 import { withOrderLock } from '../utils/orderLock';
 
@@ -731,8 +731,11 @@ async function prepareOrderData(body: any, isDraft: boolean) {
     const rawItemDiscType = String(rawItem.discountType || 'NONE').toUpperCase();
     const isGift = Boolean(rawItem.isGift) || rawItemDiscType === 'GIFT';
 
+    // v5.0 (R8): giá hiệu lực theo biến thể (màu + size), fallback giá sản phẩm gốc
+    const variantPricing = resolveVariantPricing(product, itemColor, itemSize);
+
     // BR-04: Chặn bán sản phẩm có sellingPrice <= 0 (trừ khi chọn làm hàng tặng)
-    if (!isGift && (!product.sellingPrice || product.sellingPrice <= 0)) {
+    if (!isGift && variantPricing.sellingPrice <= 0) {
       throw new ApiError(
         400,
         'PRODUCT_PRICE_NOT_SET',
@@ -749,8 +752,8 @@ async function prepareOrderData(body: any, isDraft: boolean) {
     const totalRequestedForVariant = (requestedQtyByVariant.get(variantKey) || 0) + qty;
     requestedQtyByVariant.set(variantKey, totalRequestedForVariant);
 
-    const originalUnitPrice = Math.round(Number(product.sellingPrice) || 0);
-    const unitCost = Math.max(0, Math.round(Number(product.costPrice) || 0));
+    const originalUnitPrice = variantPricing.sellingPrice;
+    const unitCost = variantPricing.costPrice;
 
     if (isGift) {
       orderItems.push({

@@ -14,7 +14,19 @@ import {
   buildVariantKey,
   isStandardSixDigitProductCode,
   normalizeToCompactUpperCode,
+  buildVariantSku,
+  isNewSchemeProduct,
 } from '../utils/productCode';
+import {
+  ImportSchemeContext,
+  loadImportSchemeContext,
+  findExistingProductForImport,
+  proposeImportProduct,
+  resolveImportColorCode,
+  resolveExplicitImportSchemeItem,
+  findCodeConflictsInList,
+  createProductFromImportProposal,
+} from '../utils/productScheme';
 import {
   matchTagToItems,
   isScannedCodeMatchServer,
@@ -128,7 +140,9 @@ function enrichReceiptRoles(
           (it.color && String(it.color).trim()) || (it.size && String(it.size).trim())
         );
         const computedVariantCode = hasAttr
-          ? generateVariantProductCode(it.productCode || '', it.color || '', it.size || '')
+          ? isStandardSixDigitProductCode(it.productCode)
+            ? generateVariantProductCode(it.productCode || '', it.color || '', it.size || '')
+            : it.variantCode || buildVariantSku(it.productCode || '', it.colorCode || '', it.size || '')
           : it.variantCode || it.productCode || '';
         const matchedProdPrice =
           productPriceMap?.get(String(it.productId || '').trim()) ||
@@ -205,16 +219,17 @@ function parseSellingPrice(raw: any, stt: number): number {
 function normalizeImportItems(
   rawItems: any[],
   defaultCategoryId = '',
-  categories: any[] = []
+  categories: any[] = [],
+  ctx?: ImportSchemeContext
 ): IImportReceiptItem[] {
   if (!Array.isArray(rawItems)) return [];
   const catMap = new Map(categories.map((c) => [String(c._id), c]));
   return rawItems
-    .filter((item) => item && (item.productName || item.productCode))
+    .filter((item) => item && (item.productName || item.productCode || item.versionName || item.versionCode))
     .map((item, idx) => {
       const resolvedCatId = item.categoryId ? String(item.categoryId) : defaultCategoryId;
       const cat = catMap.get(String(resolvedCatId));
-      const rawName = String(item.productName || item.productCode || '').trim();
+      const rawName = String(item.productName || item.versionName || item.productCode || '').trim();
       const extracted = extractVariantFromText(rawName, {
         categoryCode: cat?.code,
         categoryName: cat?.name,
@@ -224,8 +239,11 @@ function normalizeImportItems(
       const color = item.color !== undefined ? String(item.color).trim() : extracted.color;
       const size =
         item.size !== undefined ? String(item.size).trim().toUpperCase() : extracted.size;
-      const brand = item.brand !== undefined ? String(item.brand).trim() : extracted.brand;
-      const productName =
+      let brand = item.brand !== undefined ? String(item.brand).trim() : extracted.brand;
+      let brandId = item.brandId ? String(item.brandId).trim() : '';
+      let versionName = item.versionName ? String(item.versionName).trim() : '';
+      let versionCode = item.versionCode ? String(item.versionCode).trim().toUpperCase() : '';
+      let productName =
         item.color !== undefined || item.size !== undefined
           ? extracted.baseName || rawName
           : rawName;
@@ -240,11 +258,92 @@ function normalizeImportItems(
       const explicitCleanCode = item.productCode
         ? generateProductCode(String(item.productCode), { keepVariantInCode: true })
         : '';
-      const productCode =
+      let productCode =
         explicitCleanCode && isStandardSixDigitProductCode(explicitCleanCode)
           ? explicitCleanCode
           : autoCode || explicitCleanCode;
-      const variantCode = generateVariantProductCode(productCode, color, size);
+      let variantCode = generateVariantProductCode(productCode, color, size);
+      let productId = item.productId ? String(item.productId) : '';
+      let colorCode = item.colorCode ? String(item.colorCode).trim().toUpperCase() : '';
+      const hasExplicitScheme = Boolean(brandId && (versionCode || versionName));
+
+      // v5.0: dòng hàng khớp CHÍNH XÁC sản phẩm có sẵn (productId / mã gốc / mã con / mã cũ) => giữ đúng mã sản phẩm đó;
+      // nếu dòng truyền brandId + (versionCode | versionName) => sinh mã theo scheme mới chính xác từ các trường đó (không đoán từ tên);
+      // sản phẩm chưa có và không truyền brandId => đề xuất mã theo quy chuẩn mới (Cate + Brand + Version), không khớp mờ theo tên.
+      if (ctx) {
+        let target = productId
+          ? findExistingProductForImport({ productId }, ctx.products)
+          : !hasExplicitScheme
+          ? findExistingProductForImport({ productId, productCode: item.productCode }, ctx.products)
+          : null;
+        let proposedCode = '';
+        const explicitLegacy = Boolean(explicitCleanCode && isStandardSixDigitProductCode(explicitCleanCode));
+        if (!target && hasExplicitScheme) {
+          const explicitProposal = resolveExplicitImportSchemeItem(ctx, {
+            categoryId: resolvedCatId,
+            brandId,
+            versionName,
+            versionCode,
+            color,
+            colorCode: item.colorCode,
+            size,
+          });
+          brand = explicitProposal.brand.isSystem ? '' : explicitProposal.brand.name;
+          brandId = String(explicitProposal.brand._id || brandId);
+          versionName = explicitProposal.versionName;
+          versionCode = explicitProposal.versionCode;
+          colorCode = explicitProposal.colorCode;
+          variantCode = explicitProposal.variantCode;
+          if (!String(item.productName || '').trim()) {
+            productName = `${brand ? brand + ' ' : ''}${versionName}`.trim();
+          }
+          if (explicitProposal.existing) {
+            target = explicitProposal.existing;
+            productId = String(target._id);
+            productCode = target.code;
+          } else {
+            productId = '';
+            productCode = explicitProposal.code;
+          }
+        } else {
+          if (!target && !explicitLegacy) {
+            const proposal = proposeImportProduct(ctx, {
+              name: extracted.baseName || productName,
+              brand,
+              categoryId: resolvedCatId,
+            });
+            if (proposal?.existing) target = proposal.existing;
+            else if (proposal) proposedCode = proposal.code;
+          }
+          if (target) {
+            productId = String(target._id);
+            productCode = target.code;
+            if (target.brandId) brandId = String(target.brandId);
+            if (target.versionName) versionName = String(target.versionName);
+            if (target.versionCode) versionCode = String(target.versionCode);
+            if (isNewSchemeProduct(target)) {
+              colorCode = resolveImportColorCode(ctx, target.code, target.variants || [], color, item.colorCode);
+              variantCode = buildVariantSku(target.code, colorCode, size);
+              const conflicts = findCodeConflictsInList(ctx.products, [variantCode], String(target._id));
+              if (conflicts.length > 0) {
+                throw new ApiError(
+                  409,
+                  'CODE_CONFLICT',
+                  `Mã ${conflicts[0].code} đã được dùng bởi sản phẩm ${conflicts[0].productCode}`,
+                  { code: conflicts[0].code, conflictProductId: conflicts[0].productId }
+                );
+              }
+            } else {
+              variantCode = generateVariantProductCode(target.code, color, size);
+            }
+          } else if (proposedCode) {
+            productId = '';
+            productCode = proposedCode;
+            colorCode = resolveImportColorCode(ctx, proposedCode, [], color, item.colorCode);
+            variantCode = buildVariantSku(proposedCode, colorCode, size);
+          }
+        }
+      }
       const expectedQuantity = Math.max(0, Math.round(Number(item.expectedQuantity ?? item.quantity ?? 0)));
       const actualQuantity =
         item.actualQuantity !== undefined
@@ -257,12 +356,16 @@ function normalizeImportItems(
 
       return {
         stt: Number(item.stt) || idx + 1,
-        productId: item.productId ? String(item.productId) : '',
+        productId,
         productCode,
         variantCode,
         productName,
         brand,
+        brandId,
+        versionName,
+        versionCode,
         color,
+        colorCode,
         colorHexes: sanitizeColorHexes(item.colorHexes),
         size,
         categoryId: resolvedCatId,
@@ -635,8 +738,12 @@ importsRouter.post('/imports/parse-file', async (req, res, next) => {
       parsedRows = parseRawTextToImportRows(rawText);
     }
 
+    const parseCtx = await loadImportSchemeContext();
     const finalItems: IImportReceiptItem[] = parsedRows.map((row, index) => {
-      let existingProd = prodByCode.get(row.productCode);
+      let existingProd =
+        prodByCode.get(row.productCode) ||
+        (row.hasExplicitCode ? findExistingProductForImport({ productCode: row.productCode }, parseCtx.products) : null) ||
+        undefined;
       if (!existingProd && row.productName) {
         const lowerName = row.productName.trim().toLowerCase();
         existingProd = catalogProducts.find(
@@ -674,7 +781,27 @@ importsRouter.post('/imports/parse-file', async (req, res, next) => {
             brand: row.brand,
             existingCode: row.productCode,
           });
-      const finalVariantCode = generateVariantProductCode(finalCode, row.color, row.size);
+      let finalCode2 = finalCode;
+      let finalVariantCode = generateVariantProductCode(finalCode, row.color, row.size);
+      let rowColorCode = '';
+      if (existingProd && isNewSchemeProduct(existingProd)) {
+        rowColorCode = resolveImportColorCode(parseCtx, existingProd.code, existingProd.variants || [], row.color);
+        finalVariantCode = buildVariantSku(existingProd.code, rowColorCode, row.size);
+      } else if (!existingProd && !row.hasExplicitCode) {
+        // v5.0: sản phẩm chưa có & file không có cột Mã SP => đề xuất mã theo quy chuẩn mới
+        const proposal = proposeImportProduct(parseCtx, {
+          name: row.productName,
+          brand: row.brand,
+          categoryId: String(resolvedCatId),
+        });
+        if (proposal) {
+          finalCode2 = proposal.code;
+          const baseVariants = proposal.existing?.variants || [];
+          rowColorCode = resolveImportColorCode(parseCtx, proposal.code, baseVariants, row.color);
+          finalVariantCode = buildVariantSku(proposal.code, rowColorCode, row.size);
+          if (proposal.existing) existingProd = proposal.existing;
+        }
+      }
 
       const costPrice =
         row.costPrice > 0 ? row.costPrice : Number(existingProd?.costPrice || 0);
@@ -684,11 +811,12 @@ importsRouter.post('/imports/parse-file', async (req, res, next) => {
       return {
         stt: index + 1,
         productId: existingProd ? String(existingProd._id) : '',
-        productCode: finalCode,
+        productCode: finalCode2,
         variantCode: finalVariantCode,
         productName: existingProd ? existingProd.name : row.productName,
         brand: row.brand || existingProd?.brand || '',
         color: row.color || '',
+        colorCode: rowColorCode,
         size: row.size || '',
         categoryId: resolvedCatId,
         unit: row.unit || existingProd?.unit || 'Cái',
@@ -854,7 +982,12 @@ importsRouter.post('/imports', async (req, res, next) => {
     const categories = await categoryRepo.find({ status: 'ACTIVE' });
     const fallbackCatId = defaultCategoryId || categories[0]?._id || '';
 
-    const normalizedItems = normalizeImportItems(items || [], fallbackCatId, categories);
+    const normalizedItems = normalizeImportItems(
+      items || [],
+      fallbackCatId,
+      categories,
+      await loadImportSchemeContext()
+    );
 
     const count = await importReceiptRepo.countDocuments({});
     const code = `PN-${String(count + 1).padStart(4, '0')}`;
@@ -912,7 +1045,12 @@ importsRouter.put('/imports/:id', async (req, res, next) => {
     if (items !== undefined) {
       const categories = await categoryRepo.find({});
       updateData.items = keepCheckerFields(
-        normalizeImportItems(items, defaultCategoryId || receipt.defaultCategoryId, categories),
+        normalizeImportItems(
+          items,
+          defaultCategoryId || receipt.defaultCategoryId,
+          categories,
+          await loadImportSchemeContext()
+        ),
         receipt.items
       );
     }
@@ -946,7 +1084,12 @@ importsRouter.post('/imports/:id/finish-listing', async (req, res, next) => {
     const categories = await categoryRepo.find({});
     const itemsToSave = req.body?.items
       ? keepCheckerFields(
-          normalizeImportItems(req.body.items, receipt.defaultCategoryId, categories),
+          normalizeImportItems(
+            req.body.items,
+            receipt.defaultCategoryId,
+            categories,
+            await loadImportSchemeContext()
+          ),
           receipt.items
         )
       : receipt.items;
@@ -1391,12 +1534,16 @@ importsRouter.post('/imports/:id/complete', async (req, res, next) => {
       categories.find((c) => String(c._id) === String(receipt.defaultCategoryId)) ||
       categories[0];
 
+    const schemeCtx = await loadImportSchemeContext();
     const finalItems = req.body?.items
       ? keepCheckerFields(
-          normalizeImportItems(req.body.items, receipt.defaultCategoryId, categories),
+          normalizeImportItems(req.body.items, receipt.defaultCategoryId, categories, schemeCtx),
           receipt.items
         )
       : receipt.items;
+    // Phiên hoàn thành dùng colorCode đã lưu trên từng dòng (tem đã in) => làm mới bộ nhớ đệm màu & đề xuất
+    schemeCtx.colorCodes.clear();
+    schemeCtx.proposals.clear();
 
     const confirmedItems = finalItems.filter((i) => i.isConfirmed);
     if (confirmedItems.length === 0) {
@@ -1432,8 +1579,65 @@ importsRouter.post('/imports/:id/complete', async (req, res, next) => {
       const itemSize =
         item.size !== undefined ? String(item.size).trim().toUpperCase() : extracted.size;
       const cleanBaseName = extracted.baseName || item.productName;
+      const hasExplicitScheme = Boolean(
+        item.brandId && (String(item.versionCode || '').trim() || String(item.versionName || '').trim())
+      );
 
-      let code =
+      // v5.0: ưu tiên khớp CHÍNH XÁC sản phẩm có sẵn (productId / mã gốc / mã con / mã cũ),
+      // nếu dòng truyền brandId + (versionCode | versionName) => sinh mã theo scheme mới chính xác từ các trường đó;
+      // sản phẩm chưa có => tạo theo quy chuẩn mã mới (không sinh lại mã cũ theo tên).
+      let product: any = item.productId
+        ? findExistingProductForImport({ productId: item.productId }, schemeCtx.products)
+        : !hasExplicitScheme
+        ? findExistingProductForImport(item, schemeCtx.products)
+        : null;
+
+      if (!product && itemCat && hasExplicitScheme) {
+        const explicitProposal = resolveExplicitImportSchemeItem(schemeCtx, {
+          categoryId: String(itemCat._id),
+          brandId: String(item.brandId),
+          versionName: item.versionName,
+          versionCode: item.versionCode,
+          color: itemColor,
+          colorCode: item.colorCode,
+          size: itemSize,
+        });
+        if (explicitProposal.existing) {
+          product = explicitProposal.existing;
+        } else {
+          const defaultProdName =
+            cleanBaseName ||
+            `${explicitProposal.brand.isSystem ? '' : explicitProposal.brand.name + ' '}${explicitProposal.versionName}`.trim();
+          product = await createProductFromImportProposal(explicitProposal, {
+            name: defaultProdName,
+            categoryId: String(itemCat._id),
+            unit: itemUnit,
+            sellingPrice: Math.max(0, Math.round(Number(item.sellingPrice) || 0)),
+            costPrice: Math.max(0, Math.round(Number(item.costPrice) || 0)),
+          });
+          schemeCtx.products.push(product);
+        }
+      } else if (!product && itemCat && !isStandardSixDigitProductCode(item.productCode)) {
+        const proposal = proposeImportProduct(schemeCtx, {
+          name: cleanBaseName,
+          brand: item.brand,
+          categoryId: String(itemCat._id),
+        });
+        if (proposal?.existing) {
+          product = proposal.existing;
+        } else if (proposal) {
+          product = await createProductFromImportProposal(proposal, {
+            name: cleanBaseName,
+            categoryId: String(itemCat._id),
+            unit: itemUnit,
+            sellingPrice: Math.max(0, Math.round(Number(item.sellingPrice) || 0)),
+            costPrice: Math.max(0, Math.round(Number(item.costPrice) || 0)),
+          });
+          schemeCtx.products.push(product);
+        }
+      }
+
+      let code = product ? product.code :
         (item.productCode && isStandardSixDigitProductCode(item.productCode)
           ? item.productCode
           : '') ||
@@ -1443,9 +1647,11 @@ importsRouter.post('/imports/:id/complete', async (req, res, next) => {
           categoryName: itemCat?.name,
           brand: item.brand || extracted.brand,
         });
-      let product = await productRepo.findOne({ code });
+      if (!product) product = await productRepo.findOne({ code });
       if (
         product &&
+        !isNewSchemeProduct(product) &&
+        !findExistingProductForImport(item, schemeCtx.products) &&
         String(product.unit || 'Cái').trim().toLowerCase() !== itemUnit.toLowerCase()
       ) {
         code = generateProductCode(cleanBaseName, {
@@ -1457,7 +1663,25 @@ importsRouter.post('/imports/:id/complete', async (req, res, next) => {
         product = await productRepo.findOne({ code });
       }
 
-      const childVariantCode = generateVariantProductCode(code, itemColor, itemSize);
+      const newScheme = product ? isNewSchemeProduct(product) : false;
+      const itemColorCode =
+        newScheme && product
+          ? resolveImportColorCode(schemeCtx, product.code, product.variants || [], itemColor, item.colorCode)
+          : '';
+      let childVariantCode = newScheme
+        ? buildVariantSku(code, itemColorCode, itemSize)
+        : generateVariantProductCode(code, itemColor, itemSize);
+      if (newScheme && product) {
+        const conflicts = findCodeConflictsInList(schemeCtx.products, [childVariantCode], String(product._id));
+        if (conflicts.length > 0) {
+          throw new ApiError(
+            409,
+            'CODE_CONFLICT',
+            `Mã ${conflicts[0].code} đã được dùng bởi sản phẩm ${conflicts[0].productCode}`,
+            { code: conflicts[0].code, conflictProductId: conflicts[0].productId }
+          );
+        }
+      }
       const itemCostPrice = Math.max(0, Math.round(Number(item.costPrice) || 0));
       const itemSellingPrice = Math.max(0, Math.round(Number(item.sellingPrice) || 0));
       const itemBarcode = childVariantCode || sanitizeBarcode(item.barcode) || code;
@@ -1492,9 +1716,19 @@ importsRouter.post('/imports/:id/complete', async (req, res, next) => {
         qtyToAdd,
         itemColor,
         itemSize,
-        item.colorHexes
+        item.colorHexes,
+        itemColorCode
       );
       const balanceAfter = nextFloors.stock;
+      const touchedVariant =
+        itemColor || itemSize
+          ? nextFloors.variants.find((v) => v.variantKey === buildVariantKey(itemColor, itemSize))
+          : undefined;
+      if (touchedVariant) {
+        if (touchedVariant.variantCode) childVariantCode = touchedVariant.variantCode;
+        // v5.0 (R8): nhập kho cập nhật giá vốn của đúng biến thể
+        if (itemCostPrice > 0) touchedVariant.costPrice = itemCostPrice;
+      }
 
       const productUpdate: Record<string, any> = {
         variants: nextFloors.variants,
@@ -1507,7 +1741,12 @@ importsRouter.post('/imports/:id/complete', async (req, res, next) => {
       if (!product.barcode) productUpdate.barcode = code;
       if (item.brand && !product.brand) productUpdate.brand = item.brand;
 
-      await productRepo.updateById(product._id, productUpdate);
+      const savedProduct = await productRepo.updateById(product._id, productUpdate);
+      if (savedProduct) {
+        const idx = schemeCtx.products.findIndex((p) => String(p._id) === String(savedProduct._id));
+        if (idx >= 0) schemeCtx.products[idx] = savedProduct;
+        else schemeCtx.products.push(savedProduct);
+      }
 
       const actorId = req.user?.userId || receipt.createdBy || 'ACCOUNTANT';
       const actorName = req.user?.fullName || receipt.createdByName || 'Kế toán kho';
@@ -1540,10 +1779,14 @@ importsRouter.post('/imports/:id/complete', async (req, res, next) => {
         ...item,
         productId: product._id,
         productCode: product.code,
+        brandId: (product as any).brandId || item.brandId || '',
+        versionName: (product as any).versionName || item.versionName || '',
+        versionCode: (product as any).versionCode || item.versionCode || '',
         variantCode: childVariantCode,
+        colorCode: itemColorCode,
         color: itemColor,
         size: itemSize,
-        barcode: itemBarcode,
+        barcode: itemColor || itemSize ? childVariantCode : itemBarcode,
       });
     }
 

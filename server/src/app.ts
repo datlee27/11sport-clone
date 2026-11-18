@@ -7,6 +7,7 @@ import { getDbMode } from './config/db';
 import { attachUserContext, errorHandler } from './middleware/auth';
 import { authStaffRouter } from './routes/authStaff';
 import { categoriesRouter } from './routes/categories';
+import { brandsRouter } from './routes/brands';
 import { productsInventoryRouter } from './routes/productsInventory';
 import { importsRouter } from './routes/imports';
 import { ordersCustomersRouter } from './routes/ordersCustomers';
@@ -108,6 +109,7 @@ export function createApp() {
   // Mount API v1 routers
   app.use('/api/v1', authStaffRouter);
   app.use('/api/v1', categoriesRouter);
+  app.use('/api/v1', brandsRouter);
   app.use('/api/v1', productsInventoryRouter);
   app.use('/api/v1', importsRouter);
   app.use('/api/v1', ordersCustomersRouter);

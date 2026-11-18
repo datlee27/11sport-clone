@@ -1,4 +1,6 @@
-# Hợp đồng API (API Contract) - 11 Sport (v1.0)
+# Hợp đồng API (API Contract) - 11 Sport (v5.0)
+
+> **v5.0 (2026-11-17)**: Chuẩn hoá mã sản phẩm `CATE + BRAND + VERSION + MÀU + SIZE`, danh mục Thương hiệu (`/brands`), giá theo biến thể, `POST /products/preview-code`, `GET /products/lookup`. Xem **mục 2.19**.
 
 > Mọi thay đổi chạm API giữa `server/`, `web/`, và `cms/` bắt buộc phải cập nhật tài liệu này TRƯỚC khi code.
 
@@ -1219,3 +1221,143 @@
     - **Drawer Menu bên trái (`Menu CMS`)**: Chỉ chứa các phân hệ quản trị nghiệp vụ theo vai trò.
     - **Drawer Menu bên phải (`MENU CÁ NHÂN`)**: Trượt từ bên phải khi bấm nút Tài khoản / Menu cá nhân ở góc phải Header CMS, tích hợp **1. Chấm công & Lịch công tháng (`MY_ATTENDANCE`)**, **2. Thông tin tài khoản cá nhân (`PROFILE`)**, **Đổi mật khẩu** và **Đăng xuất tài khoản**.
 
+
+---
+
+### 2.19 Chuẩn hoá Mã Sản Phẩm `CATE + BRAND + VERSION + MÀU + SIZE`, Thương hiệu (`/brands`) & Giá theo biến thể *(v5.0)*
+
+> Nguồn yêu cầu: `docs/requirements/ma-san-pham-brand-version-v1.md` (R1–R11). Các endpoint/trường cũ vẫn giữ để tương thích ngược; trường `brand` (string) của sản phẩm luôn = `brandName`.
+
+#### A. Quy tắc mã
+| Phần | Nguồn | Ràng buộc |
+|---|---|---|
+| `CateCode` | `Category.skuCode` | 1–3 ký tự `A-Z0-9`, duy nhất giữa các Category |
+| `BrandCode` | `Brand.code` | 2–4 ký tự `A-Z0-9`, duy nhất. Brand hệ thống `NN` (không hãng) dùng cho mọi Category |
+| `VersionCode` | `Product.versionCode` | 1–6 ký tự `A-Z0-9` (gợi ý tự động từ `versionName`, admin sửa được) |
+| `ColorCode` | `variants[].colorCode` | 2–3 ký tự `A-Z0-9` (gợi ý tự động từ tên màu, sửa được). Trong 1 sản phẩm: 1 màu ↔ 1 colorCode |
+| `SizeCode` | `variants[].size` | Viết liền, IN HOA, bỏ ký tự đặc biệt (`42,5` → `425`) |
+
+- **Mã gốc** `code` = `CateCode + BrandCode + VersionCode` (VD `G`+`ASC`+`SSFF4` = `GASCSSFF4`).
+- **Mã con** `variants[].variantCode` = `barcode` = Mã gốc + `ColorCode` + `SizeCode` (VD `GASCSSFF4DO40`). Không màu/size thì bỏ phần đó.
+- **Duy nhất (R4)**: bộ `(categoryId, brandId, versionCode)` chỉ có 1 sản phẩm gốc; `(màu, size)` trong 1 sản phẩm chỉ có 1 biến thể.
+- Mã gốc mới **không được** trùng định dạng mã cũ `[A-Z]{2,}[0-9]{6}` (tránh nhập nhằng với tem cũ) → `400 INVALID_VERSION_CODE`.
+- Mã sản phẩm (và vì vậy `brandId`, `versionCode`, `skuCode` của category đang có sản phẩm) **không sửa được** sau khi tạo (`PRODUCT_CODE_IMMUTABLE`).
+- Tạo mới **không bao giờ** tự khớp/gộp về sản phẩm cũ theo tên (R9). Trùng bộ R4 → `409 PRODUCT_DUPLICATE`.
+
+#### B. Thương hiệu (`/brands`)
+Đối tượng Brand:
+```json
+{
+  "_id": "...", "code": "ASC", "name": "Asics", "status": "ACTIVE | INACTIVE",
+  "aliases": ["ASICS", "Asic"], "categoryIds": ["<categoryId>"], "isSystem": false,
+  "productCount": 3, "createdAt": "...", "updatedAt": "..."
+}
+```
+- `GET /api/v1/brands` — mọi role đã đăng nhập.
+  - Query: `?categoryId=<id>` (chỉ Brand gắn Category đó **+ Brand hệ thống `NN`**), `?status=ACTIVE|INACTIVE`, `?search=` (theo code/name/aliases).
+  - Response: `{ "data": Brand[], "meta": { "total": n } }` (kèm `productCount`).
+- `POST /api/v1/brands` — chỉ `CEO`/`ADMIN` (`403 FORBIDDEN`).
+  - Body: `{ "code": "ASC", "name": "Asics", "categoryIds": ["..."], "aliases"?: ["Asic"], "status"?: "ACTIVE" }`. Nếu thiếu `code` → server gợi ý từ `name`.
+  - Lỗi: `400 VALIDATION_ERROR` (thiếu `name`, `categoryIds` rỗng), `400 INVALID_BRAND_CODE` (không đúng 2–4 ký tự `A-Z0-9`), `400 DUPLICATE_BRAND_CODE`, `400 DUPLICATE_BRAND_NAME`, `400 CATEGORY_NOT_FOUND`.
+- `PATCH /api/v1/brands/:id` — chỉ `CEO`/`ADMIN`.
+  - Body (tuỳ chọn): `{ "name", "aliases", "categoryIds", "status", "code" }`.
+  - Lỗi: `404 BRAND_NOT_FOUND`; `400 BRAND_CODE_IMMUTABLE` (đổi `code` khi đã có sản phẩm); `400 BRAND_SYSTEM_LOCKED` (sửa code/status/categoryIds của `NN`); `400 BRAND_CATEGORY_IN_USE` (bỏ Category đang có sản phẩm của Brand này, `fields.categoryIds`).
+- `DELETE /api/v1/brands/:id` — chỉ `CEO`/`ADMIN`.
+  - `409 BRAND_HAS_PRODUCTS` nếu `productCount > 0` (chỉ được ngừng sử dụng: `PATCH status=INACTIVE`) — R11. `400 BRAND_SYSTEM_LOCKED` với `NN`.
+
+#### C. Category — trường mới
+- `skuCode` (1–3 ký tự). `POST /categories` nhận `skuCode` tuỳ chọn (thiếu → gợi ý chữ cái đầu của tên, tự tránh trùng). `PATCH /categories/:id` nhận `skuCode`; lỗi `400 INVALID_SKU_CODE`, `400 DUPLICATE_SKU_CODE`, `400 CATEGORY_SKU_CODE_IMMUTABLE` (đã có sản phẩm). `code` cũ (VD `VOT`, `BONG_THI_DAU`) giữ nguyên làm khoá định danh.
+
+#### D. Product — trường mới (response `GET /products`, `POST/PATCH /products`)
+```json
+{
+  "code": "GASCSSFF4", "barcode": "GASCSSFF4", "name": "Asics Solution Speed FF4",
+  "brand": "Asics", "brandId": "...", "brandCode": "ASC", "brandName": "Asics",
+  "versionName": "Solution Speed FF4", "versionCode": "SSFF4",
+  "legacyCode": "GASICS497140", "legacyCodes": ["GASICS497140"],
+  "note": "Hàng chính hãng bảo hành 6 tháng",
+  "sellingPrice": 1300000, "costPrice": 900000,
+  "variants": [
+    {
+      "variantKey": "DO_40", "color": "Đỏ", "colorCode": "DO", "size": "40",
+      "variantCode": "GASCSSFF4DO40", "barcode": "GASCSSFF4DO40",
+      "sellingPrice": 1200000, "costPrice": 850000,
+      "effectiveSellingPrice": 1200000,
+      "legacyVariantCode": "GASICS497140CHERRYTOMATO40",
+      "stockFloor1": 1, "stockFloor2": 0, "stock": 1
+    }
+  ]
+}
+```
+- `variants[].sellingPrice` / `costPrice`: tuỳ chọn, số nguyên VND; `0`/trống → dùng giá sản phẩm gốc (R8). `effectiveSellingPrice` do server tính sẵn. Role `SALES` không nhận `costPrice` (gốc và biến thể).
+- `note` *(tuỳ chọn)*: ghi chú của sản phẩm (string, mặc định `""`), lưu khi tạo/sửa sản phẩm (`POST /products`, `PATCH /products/:id`) và trả về trong `GET /products`, `GET /products/lookup`. Hỗ trợ tìm kiếm theo từ khoá trong `GET /products?search=`.
+- `legacyCode`/`legacyCodes`/`legacyVariantCode`: mã cũ trước chuẩn hoá — chỉ dùng tra cứu/quét tem cũ. `GET /products?search=` tìm được cả theo mã cũ, `brandName`, `versionName`, `note`.
+
+#### E. `POST /api/v1/products/preview-code` (xem trước mã, không ghi DB)
+- Body: `{ "categoryId": "...", "brandId": "...", "versionName": "Solution Speed FF4", "versionCode"?: "SSFF4", "variants"?: [{ "color": "Đỏ", "colorCode"?: "DO", "size": "40" }] }`
+- Response `200`:
+```json
+{ "data": {
+  "categoryCode": "G", "brandCode": "ASC", "versionCode": "SSFF4", "suggestedVersionCode": "SSFF4",
+  "code": "GASCSSFF4",
+  "variants": [{ "color": "Đỏ", "colorCode": "DO", "size": "40", "sizeCode": "40", "variantCode": "GASCSSFF4DO40" }],
+  "duplicate": null,
+  "conflicts": []
+} }
+```
+  - `duplicate`: sản phẩm đã có cùng bộ R4 (`{ _id, code, name, versionName }`) hoặc `null`.
+  - `conflicts`: danh sách `{ type: "CODE_CONFLICT", code, productId, productCode }` khi mã gốc/mã con trùng với mã (kể cả mã cũ) của sản phẩm khác.
+- Lỗi: `400 VALIDATION_ERROR`, `400 CATEGORY_NOT_FOUND`, `400 BRAND_NOT_FOUND`, `400 BRAND_NOT_IN_CATEGORY`, `400 INVALID_VERSION_CODE`, `400 INVALID_COLOR_CODE`.
+
+#### F. `POST /api/v1/products` — luồng mới (khi body có `brandId`)
+- Body: `{ "categoryId", "brandId", "versionName", "versionCode"?, "name"?, "unit"?, "note"?, "sellingPrice"?, "costPrice"?, "quantity"?, "targetWarehouse"?, "color"?, "colorCode"?, "size"?, "variants"?: [{ "color", "colorCode"?, "size", "sellingPrice"?, "costPrice"?, "stockFloor1"?, "stockFloor2"?, "quantity"? }], "parentSetProductId"?, "packSize"? }`
+  - `name` mặc định = `brandName + " " + versionName`. Phân quyền giá/tồn giữ như cũ (`SELLING_PRICE_FORBIDDEN`, `COST_PRICE_FORBIDDEN`, `DIRECT_STOCK_FORBIDDEN`).
+- `201`: sản phẩm mới với mã sinh theo mục A.
+- Lỗi:
+  - `409 PRODUCT_DUPLICATE` — trùng bộ (Category, Brand, VersionCode). `fields.existingProductId`, `fields.existingProductCode`; admin chủ động dùng `POST /products/:id/variants` để thêm biến thể vào sản phẩm đó.
+  - `409 CODE_CONFLICT` — mã gốc/mã con sinh ra trùng mã (hoặc mã cũ) của sản phẩm khác (R10) → admin sửa `versionCode`/`colorCode`. `fields.code`, `fields.conflictProductId`.
+  - `400 BRAND_NOT_IN_CATEGORY`, `400 BRAND_NOT_FOUND`, `400 BRAND_INACTIVE`, `400 INVALID_VERSION_CODE`, `400 INVALID_COLOR_CODE`, `400 COLOR_CODE_DUPLICATE` (2 màu khác nhau cùng colorCode / 1 màu 2 colorCode), `400 DUPLICATE_VARIANT`.
+- Luồng cũ (không có `brandId`) vẫn hoạt động cho tương thích (deprecated). **Thay đổi hành vi**: chỉ cộng dồn vào sản phẩm đã có khi gửi `upsertIfExists: true`; nếu không → `409 PRODUCT_DUPLICATE` (trước đây tự gộp khi có màu/size). Khi `upsertIfExists: true` cộng dồn vào sản phẩm đích là mã mới (có `versionCode` hoặc `brandId` hoặc mã gốc theo scheme mới), hệ thống luôn truyền `newScheme: true` trong `applyFloorDelta` / `summarizeVariants` để sinh `variantCode` theo scheme mới (`Mã gốc + ColorCode + SizeCode`), không sinh theo công thức cũ.
+
+#### G. `POST /api/v1/products/:id/variants` & `PATCH /api/v1/products/:id/variants` — thêm / sửa biến thể trên sản phẩm có sẵn
+- `POST /api/v1/products/:id/variants` — thêm biến thể mới vào sản phẩm có sẵn:
+  - Quyền: `CEO`/`ADMIN`/`ACCOUNTANT` khi thêm biến thể có tồn = `0`; **chỉ `CEO`/`ADMIN`** khi truyền số lượng tồn > `0` (`quantity > 0` hoặc `stockFloor1 > 0` hoặc `stockFloor2 > 0`; các role khác trả `403 DIRECT_STOCK_FORBIDDEN`).
+  - Body: `{ "targetWarehouse"?: "FLOOR_1 | FLOOR_2", "variants": [{ "color", "colorCode"?, "size", "sellingPrice"?, "costPrice"?, "colorHexes"?, "quantity"?, "stockFloor1"?, "stockFloor2"?, "targetWarehouse"?: "FLOOR_1 | FLOOR_2" }] }`
+  - Khi biến thể có số lượng tồn > `0`: cộng tồn vào tầng kho tương ứng (`stockFloor1` / `stockFloor2`) và ghi `StockMovement` loại `ADJUSTMENT` (`referenceType: "ADJUSTMENT"`) như nhập trực tiếp.
+  - `200`: sản phẩm sau cập nhật. Lỗi: `404 PRODUCT_NOT_FOUND`, `400 INVALID_QUANTITY`, `400 DUPLICATE_VARIANT`, `400 COLOR_CODE_DUPLICATE`, `400 INVALID_COLOR_CODE`, `403 DIRECT_STOCK_FORBIDDEN`, `409 CODE_CONFLICT`.
+- `PATCH /api/v1/products/:id/variants` — sửa thuộc tính (`color`, `size`, `colorCode`, giá, màu Hex) của biến thể hiện có:
+  - Quyền: `CEO`/`ADMIN`/`ACCOUNTANT`.
+  - Body: `{ "variants": [{ "variantCode"?, "variantKey"?, "fromVariantCode"?, "fromVariantKey"?, "color"?, "colorCode"?, "size"?, "sellingPrice"?, "costPrice"?, "colorHexes"? }] }` (hoặc truyền trực tiếp 1 object biến thể ở cấp gốc body).
+  - **Hành vi trên sản phẩm mã mới (`isNewSchemeProduct`)**:
+    - Khi sửa `color`, `size` hoặc `colorCode`, hệ thống kiểm tra `INVALID_COLOR_CODE`, `COLOR_CODE_DUPLICATE`, `DUPLICATE_VARIANT`, `CODE_CONFLICT` và **sinh lại `variantCode` (cùng `barcode`) theo scheme mới** (`Mã gốc + ColorCode + SizeCode`).
+    - Nếu `variantCode` mới khác `variantCode` trước khi sửa: tự động đẩy `variantCode` cũ vào mảng `legacyVariantCodes` và gán `legacyVariantCode = <variantCode cũ>` (nếu `legacyVariantCode` chưa có) để các tem nhãn đã in trước đó vẫn quét tra cứu (`GET /products/lookup`), bán hàng POS và kiểm kho bình thường.
+  - `200`: sản phẩm sau cập nhật. Lỗi: `404 PRODUCT_NOT_FOUND`, `404 VARIANT_NOT_FOUND`, `400 INVALID_COLOR_CODE`, `400 COLOR_CODE_DUPLICATE`, `400 DUPLICATE_VARIANT`, `409 CODE_CONFLICT`.
+
+#### H. `PATCH /api/v1/products/:id` — trường mới
+- `versionName` (sửa được), `note` (ghi chú sản phẩm, sửa được), `variantPrices: [{ "variantKey" | "variantCode", "sellingPrice"?, "costPrice"? }]` (sửa giá biến thể, không cần `allowDirectStock`; `sellingPrice` cần quyền sửa giá bán, `costPrice` cần `CEO/ADMIN/ACCOUNTANT`; lỗi `404 VARIANT_NOT_FOUND`).
+- Gửi `brandId`/`versionCode` khác giá trị hiện tại → `400 PRODUCT_CODE_IMMUTABLE`. Đổi `categoryId` của sản phẩm mã mới sang category có `skuCode` khác → `400 PRODUCT_CODE_IMMUTABLE`.
+- Khi gửi `variants[]` (sửa tồn trực tiếp), các trường `colorCode`/`sellingPrice`/`costPrice`/`legacyVariantCode`/`legacyVariantCodes` không gửi lên sẽ được giữ nguyên; nếu sửa `color`/`size`/`colorCode` trên sản phẩm mã mới làm đổi `variantCode` thì `variantCode` cũ cũng được đẩy vào `legacyVariantCodes` (và đặt `legacyVariantCode` nếu chưa có).
+
+#### I. `GET /api/v1/products/lookup?code=<mã quét>`
+- Tra theo thứ tự: mã gốc/barcode → mã con → mã cũ (`legacyCode(s)`) → mã con cũ (`legacyVariantCode(s)`) → mã rút gọn Code128 cũ.
+- `200`: `{ "data": { "product": {...}, "variant": {...} | null, "matchedBy": "CODE | VARIANT_CODE | LEGACY_CODE | LEGACY_VARIANT_CODE | COMPACT_BARCODE", "sellingPrice": 1200000 } }` (`sellingPrice` = giá hiệu lực của biến thể).
+- `404 PRODUCT_NOT_FOUND`.
+
+#### J. Giá biến thể & Mã mới trong nghiệp vụ
+- **POS/Đơn hàng** (`POST/PUT /orders`): `originalUnitPrice` = giá bán biến thể (theo `color`+`size`) nếu > 0, ngược lại giá gốc; `unitCost` tương tự với giá vốn. `PRODUCT_PRICE_NOT_SET` xét theo giá hiệu lực.
+- **Đổi trả** (`POST /returns`, `/returns/calculate`): hàng đổi mới dùng giá hiệu lực của biến thể; tra hàng đổi theo cả mã con cũ.
+- **Khuyến mãi** (`POST /promotions/evaluate`): `items[]` có thể gửi `color`, `size` để tính theo giá biến thể.
+- **Nhập kho** (`POST /api/v1/imports`, `PUT /api/v1/imports/:id`, `POST /api/v1/imports/:id/complete`):
+  - Mỗi dòng `items[]` (`ImportReceipt.items[]`) nhận thêm tuỳ chọn `brandId`, `versionName`, `versionCode`, `colorCode`.
+  - Khi sản phẩm chưa khớp sẵn theo `productId`/`productCode` và dòng nhập truyền `brandId` + (`versionCode` hoặc `versionName`):
+    - Sinh mã gốc `productCode` và mã con `variantCode` theo scheme mới **chính xác từ các trường đó** (không đoán từ tên sản phẩm).
+    - Kiểm tra `brandId` thuộc danh mục của dòng (`400 BRAND_NOT_IN_CATEGORY`), kiểm tra `INVALID_VERSION_CODE`, `INVALID_COLOR_CODE`, `COLOR_CODE_DUPLICATE` và kiểm tra xung đột mã với sản phẩm khác (`409 CODE_CONFLICT`).
+    - Nếu trùng bộ `(categoryId, brandId, versionCode)` với sản phẩm đã có trên DB thì tự động gắn vào sản phẩm đó (`productId`, `productCode`) và thêm/cập nhật biến thể theo đúng nghiệp vụ nhập kho.
+  - Dòng có màu/size và `costPrice > 0` → cập nhật `variants[].costPrice` của biến thể đó (đồng thời giữ cập nhật `costPrice` gốc = giá nhập gần nhất như cũ). Dòng có `productId`/`productCode` (kể cả mã mới hoặc mã cũ) khớp sản phẩm có sẵn → dùng đúng sản phẩm đó, **không** sinh lại mã theo tên. Sản phẩm chưa có trên hệ thống và không truyền `brandId` → tạo theo quy tắc mới (Brand nhận diện qua tên/aliases, không có → `NN`).
+
+#### K. Mã lỗi mới (tổng hợp)
+`PRODUCT_DUPLICATE` (409), `CODE_CONFLICT` (409), `BRAND_HAS_PRODUCTS` (409), `BRAND_NOT_IN_CATEGORY` (400), `BRAND_NOT_FOUND`, `BRAND_INACTIVE`, `BRAND_CODE_IMMUTABLE`, `BRAND_SYSTEM_LOCKED`, `BRAND_CATEGORY_IN_USE`, `INVALID_BRAND_CODE`, `DUPLICATE_BRAND_CODE`, `DUPLICATE_BRAND_NAME`, `INVALID_VERSION_CODE`, `INVALID_COLOR_CODE`, `COLOR_CODE_DUPLICATE`, `DUPLICATE_VARIANT`, `VARIANT_NOT_FOUND`, `INVALID_SKU_CODE`, `DUPLICATE_SKU_CODE`, `CATEGORY_SKU_CODE_IMMUTABLE`.
+
+#### L. Chuyển đổi dữ liệu cũ (chỉ DB local)
+- Migration `20261117000001-seed-brands-and-category-skucodes` (chạy cả prod, chỉ thêm dữ liệu): đặt `skuCode` cho Category, tạo Brand từ `KNOWN_BRANDS` + brand đang có trong sản phẩm, Brand hệ thống `NN`.
+- Script `npm run recode:products -- --dry-run` / `-- --apply <file.csv>` (`server/src/scripts/recodeProducts.ts`): **từ chối chạy** nếu `MONGODB_URI` không phải `127.0.0.1`/`localhost` hoặc là `mongodb+srv`.

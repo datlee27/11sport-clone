@@ -22,7 +22,6 @@ import {
 } from "lucide-react";
 import {
   apiRequest,
-  generateProductCode,
   ImportItem,
   Product,
   filterAndRankBySearch,
@@ -130,7 +129,7 @@ function mapApiItems(list: any[]): ImportItem[] {
     return {
       stt: idx + 1,
       productName: pName,
-      productCode: it.productCode || generateProductCode(pName),
+      productCode: it.productCode || "", // v5.0: mã do server sinh
       unit: it.unit || "Cái",
       expectedQuantity: qty,
       actualQuantity: qty,
@@ -160,12 +159,12 @@ export function mergeOcrItemsList(
   for (const raw of incoming) {
     const pName = (raw.productName || "").trim();
     if (!pName) continue;
-    const pCode = raw.productCode || generateProductCode(pName);
+    const pCode = raw.productCode || "";
     const qty = Math.max(1, Number(raw.expectedQuantity) || 1);
 
     if (mergeDuplicates && pCode) {
       const foundIdx = base.findIndex(
-        (b) => (b.productCode || generateProductCode(b.productName)) === pCode
+        (b) => (b.productCode || "") === pCode
       );
       if (foundIdx >= 0) {
         const target = base[foundIdx];
@@ -269,7 +268,7 @@ export default function CameraScannerModal({
       next[rowIdx] = {
         ...cur,
         productName: prod.name,
-        productCode: prod.code || generateProductCode(prod.name),
+        productCode: prod.code || "",
         unit: prod.unit || cur.unit || "Cái",
         costPrice: Number(cur.costPrice) > 0 ? Number(cur.costPrice) : Number(prod.costPrice || 0),
         sellingPrice:
@@ -692,7 +691,7 @@ export default function CameraScannerModal({
     setOcrItems((prev) => {
       const next = [...prev];
       const item = { ...next[index], [field]: value };
-      if (field === "productName") item.productCode = generateProductCode(String(value));
+      if (field === "productName") item.productCode = ""; // v5.0: không tự sinh mã ở client
       if (field === "expectedQuantity") item.actualQuantity = Number(value) || 0;
       next[index] = item;
       return next;

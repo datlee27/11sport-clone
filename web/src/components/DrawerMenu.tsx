@@ -12,9 +12,17 @@ import {
   UserCog,
   Rocket,
   KeyRound,
+  Lock,
 } from "lucide-react";
 
-export type TabType = "POS" | "INVENTORY" | "CUSTOMER" | "RETURN" | "INVOICE_HISTORY" | "PUSH_PRODUCTS";
+export type TabType =
+  | "POS"
+  | "SERVICES"
+  | "INVENTORY"
+  | "CUSTOMER"
+  | "RETURN"
+  | "INVOICE_HISTORY"
+  | "PUSH_PRODUCTS";
 export type DrawerPageType = "NONE" | "PROFILE" | "ATTENDANCE";
 
 export interface TabConfig {
@@ -28,7 +36,11 @@ export interface TabConfig {
 interface DrawerMenuProps {
   isOpen: boolean;
   onClose: () => void;
+  side?: "left" | "right";
   currentUser: StaffUser;
+  tabs?: TabConfig[];
+  activeTab?: TabType;
+  onSelectTab?: (tabId: TabType) => void;
   activeDrawerPage: DrawerPageType;
   onOpenProfile: () => void;
   onOpenAttendance: () => void;
@@ -43,7 +55,11 @@ interface DrawerMenuProps {
 export default function DrawerMenu({
   isOpen,
   onClose,
+  side = "right",
   currentUser,
+  tabs = [],
+  activeTab,
+  onSelectTab,
   activeDrawerPage,
   onOpenProfile,
   onOpenAttendance,
@@ -74,12 +90,16 @@ export default function DrawerMenu({
 
   if (!isOpen) return null;
 
+  const isLeft = side === "left";
+
   return (
     <div
       className="fixed inset-0 z-50 print:hidden"
       role="dialog"
       aria-modal="true"
-      aria-label="Menu tài khoản & cá nhân"
+      aria-label={
+        isLeft ? "Menu điều hướng 5 tab" : "Menu tiện ích nhân sự & tài khoản"
+      }
     >
       {/* Lớp nền mờ */}
       <div
@@ -87,8 +107,14 @@ export default function DrawerMenu({
         onClick={onClose}
       />
 
-      {/* Nội dung Drawer trượt từ bên phải */}
-      <aside className="fixed top-0 right-0 bottom-0 w-80 max-w-[85vw] bg-slate-900 text-white shadow-2xl border-l border-slate-800 flex flex-col z-10 animate-in slide-in-from-right duration-200">
+      {/* Nội dung Drawer (trái: 5 tab chức năng, phải: tiện ích nhân sự) */}
+      <aside
+        className={`fixed top-0 bottom-0 w-80 max-w-[85vw] bg-slate-900 text-white shadow-2xl border-slate-800 flex flex-col z-10 duration-200 ${
+          isLeft
+            ? "left-0 border-r animate-in slide-in-from-left"
+            : "right-0 border-l animate-in slide-in-from-right"
+        }`}
+      >
         {/* Header của Drawer */}
         <div className="px-4 py-3.5 bg-slate-950 border-b border-slate-800 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2.5 min-w-0">
@@ -99,7 +125,7 @@ export default function DrawerMenu({
             />
             <div className="min-w-0">
               <div className="font-extrabold text-sm tracking-tight truncate">
-                MENU CÁ NHÂN
+                {isLeft ? "MENU ĐIỀU HƯỚNG" : "TIỆN ÍCH NHÂN SỰ"}
               </div>
               <div className="text-[11px] text-slate-400 truncate">
                 11Sport POS & Kho vận
@@ -117,250 +143,329 @@ export default function DrawerMenu({
           </button>
         </div>
 
-        {/* Thông tin nhân sự đang đăng nhập */}
-        <div className="p-4 border-b border-slate-800 bg-slate-900/60">
-          <div className="bg-slate-800/90 border border-slate-700/80 rounded-xl p-3 flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center shrink-0 mt-0.5">
-              <ShieldCheck className="w-5 h-5 text-emerald-400" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="text-xs text-slate-400">Đang đăng nhập:</div>
-              <div className="font-bold text-sm text-white truncate">
-                {currentUser.fullName}
+        {/* Thông tin nhân sự đang đăng nhập (chỉ hiện ở Drawer phải hoặc khi cần) */}
+        {!isLeft && (
+          <div className="p-4 border-b border-slate-800 bg-slate-900/60">
+            <div className="bg-slate-800/90 border border-slate-700/80 rounded-xl p-3 flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center shrink-0 mt-0.5">
+                <ShieldCheck className="w-5 h-5 text-emerald-400" />
               </div>
-              {currentUser.username && (
-                <div className="text-[11px] text-slate-400 font-mono truncate">
-                  @{currentUser.username}
+              <div className="min-w-0 flex-1">
+                <div className="text-xs text-slate-400">Đang đăng nhập:</div>
+                <div className="font-bold text-sm text-white truncate">
+                  {currentUser.fullName}
                 </div>
-              )}
-              <div className="mt-1.5 inline-block font-mono text-[10px] px-2 py-0.5 rounded bg-emerald-600 text-white font-bold">
-                {getRoleDisplayName(currentUser.role)}
+                {currentUser.username && (
+                  <div className="text-[11px] text-slate-400 font-mono truncate">
+                    @{currentUser.username}
+                  </div>
+                )}
+                <div className="mt-1.5 inline-block font-mono text-[10px] px-2 py-0.5 rounded bg-emerald-600 text-white font-bold">
+                  {getRoleDisplayName(currentUser.role)}
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
 
-        {/* Danh sách tiện ích cá nhân: Chấm công & Thông tin tài khoản */}
+        {/* Nội dung chính của Drawer */}
         <div className="flex-1 overflow-y-auto p-3 space-y-4">
-          <div className="space-y-1.5">
-            <div className="px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
-              Tiện ích nhân sự
-            </div>
+          {isLeft ? (
+            /* DRAWER TRÁI: HIỂN THỊ CÁC TAB CHỨC NĂNG BÁN HÀNG, DỊCH VỤ & KHO */
+            <div className="space-y-1.5">
+              <div className="px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-emerald-400">
+                Phân hệ Bán hàng & Kho ({tabs.length} Tab)
+              </div>
+              {tabs.map((tab) => {
+                const Icon = tab.icon;
+                const isAllowed =
+                  currentUser.role === "CEO" ||
+                  currentUser.role === "ADMIN" ||
+                  tab.allowedRoles.includes(currentUser.role);
+                const isActive =
+                  activeDrawerPage === "NONE" && activeTab === tab.id;
 
-            {(currentUser.role === "MARKETING" ||
-              currentUser.role === "CEO" ||
-              currentUser.role === "ADMIN") &&
-              onOpenPushProducts && (
-              <button
-                type="button"
-                onClick={() => {
-                  onOpenPushProducts();
-                  onClose();
-                }}
-                className={`w-full text-left px-3 py-3 rounded-xl text-xs font-bold flex items-center justify-between gap-2.5 transition ${
-                  activeDrawerPage === "NONE"
-                    ? "bg-amber-500 text-slate-950 shadow-md"
-                    : "text-slate-200 hover:bg-slate-800 hover:text-white"
-                }`}
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-                      activeDrawerPage === "NONE"
-                        ? "bg-slate-950/15 text-slate-950"
-                        : "bg-amber-500/15 text-amber-400"
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    disabled={!isAllowed}
+                    title={
+                      isAllowed
+                        ? tab.label
+                        : `Chức năng này chỉ dành cho: ${tab.roleHint}`
+                    }
+                    onClick={() => {
+                      if (isAllowed && onSelectTab) {
+                        onSelectTab(tab.id);
+                        onClose();
+                      }
+                    }}
+                    className={`w-full text-left px-3 py-3 rounded-xl text-xs font-bold flex items-center justify-between gap-2.5 transition ${
+                      !isAllowed
+                        ? "opacity-40 cursor-not-allowed text-slate-500 bg-slate-900/40"
+                        : isActive
+                          ? "bg-emerald-600 text-white shadow-md"
+                          : "text-slate-200 hover:bg-slate-800 hover:text-white"
                     }`}
                   >
-                    <Rocket className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="truncate">Các SP Đang Cần Đẩy Mạnh</div>
-                    <div
-                      className={`text-[10px] font-normal truncate mt-0.5 ${
-                        activeDrawerPage === "NONE"
-                          ? "text-slate-800"
-                          : "text-slate-400"
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div
+                        className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                          isActive
+                            ? "bg-white/20 text-white"
+                            : "bg-emerald-500/15 text-emerald-400"
+                        }`}
+                      >
+                        {isAllowed ? (
+                          <Icon className="w-4 h-4" />
+                        ) : (
+                          <Lock className="w-4 h-4 text-amber-400" />
+                        )}
+                      </div>
+                      <span className="truncate">{tab.label}</span>
+                    </div>
+                    <ChevronRight
+                      className={`w-4 h-4 shrink-0 ${
+                        isActive ? "text-white" : "text-slate-500"
+                      }`}
+                    />
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            /* DRAWER PHẢI: TIỆN ÍCH NHÂN SỰ & QUẢN TRỊ */
+            <>
+              <div className="space-y-1.5">
+                <div className="px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  Tiện ích nhân sự
+                </div>
+
+                {(currentUser.role === "MARKETING" ||
+                  currentUser.role === "CEO" ||
+                  currentUser.role === "ADMIN") &&
+                  onOpenPushProducts && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onOpenPushProducts();
+                        onClose();
+                      }}
+                      className={`w-full text-left px-3 py-3 rounded-xl text-xs font-bold flex items-center justify-between gap-2.5 transition ${
+                        activeDrawerPage === "NONE" &&
+                        activeTab === "PUSH_PRODUCTS"
+                          ? "bg-amber-500 text-slate-950 shadow-md"
+                          : "text-slate-200 hover:bg-slate-800 hover:text-white"
                       }`}
                     >
-                      Quan sát tồn kho cao, bán chậm & đọng vốn
-                    </div>
-                  </div>
-                </div>
-                <ChevronRight
-                  className={`w-4 h-4 shrink-0 ${
-                    activeDrawerPage === "NONE"
-                      ? "text-slate-950"
-                      : "text-slate-500"
-                  }`}
-                />
-              </button>
-            )}
-
-            {/* 1. Chấm công: Lịch công tháng của tôi */}
-            <button
-              type="button"
-              onClick={() => {
-                onOpenAttendance();
-                onClose();
-              }}
-              className={`w-full text-left px-3 py-3 rounded-xl text-xs font-bold flex items-center justify-between gap-2.5 transition ${
-                activeDrawerPage === "ATTENDANCE"
-                  ? "bg-emerald-600 text-white shadow-md"
-                  : "text-slate-200 hover:bg-slate-800 hover:text-white"
-              }`}
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <div
-                  className={`relative w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-                    activeDrawerPage === "ATTENDANCE"
-                      ? "bg-white/20 text-white"
-                      : "bg-amber-500/15 text-amber-400"
-                  }`}
-                >
-                  <Clock className="w-4 h-4" />
-                  {hasAttendanceNoti && (
-                    <span
-                      title="HR đã hoàn thành xếp ca tuần sau"
-                      className="absolute -top-1 -right-1 flex h-2.5 w-2.5"
-                    >
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
-                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-600" />
-                    </span>
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div
+                          className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                            activeDrawerPage === "NONE" &&
+                            activeTab === "PUSH_PRODUCTS"
+                              ? "bg-slate-950/15 text-slate-950"
+                              : "bg-amber-500/15 text-amber-400"
+                          }`}
+                        >
+                          <Rocket className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="truncate">
+                            Các SP Đang Cần Đẩy Mạnh
+                          </div>
+                          <div
+                            className={`text-[10px] font-normal truncate mt-0.5 ${
+                              activeDrawerPage === "NONE" &&
+                              activeTab === "PUSH_PRODUCTS"
+                                ? "text-slate-800"
+                                : "text-slate-400"
+                            }`}
+                          >
+                            Quan sát tồn kho cao, bán chậm & đọng vốn
+                          </div>
+                        </div>
+                      </div>
+                      <ChevronRight
+                        className={`w-4 h-4 shrink-0 ${
+                          activeDrawerPage === "NONE" &&
+                          activeTab === "PUSH_PRODUCTS"
+                            ? "text-slate-950"
+                            : "text-slate-500"
+                        }`}
+                      />
+                    </button>
                   )}
-                </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <span className="truncate">Chấm công</span>
-                    {hasAttendanceNoti && (
-                      <span className="px-1.5 py-0.5 rounded-full bg-red-600 text-white text-[9px] font-black leading-none">
-                        Lịch ca mới
-                      </span>
-                    )}
-                  </div>
-                  <div
-                    className={`text-[10px] font-normal truncate mt-0.5 ${
-                      activeDrawerPage === "ATTENDANCE"
-                        ? "text-emerald-100"
-                        : "text-slate-400"
-                    }`}
-                  >
-                    Lịch công tháng, đơn từ & tăng ca
-                  </div>
-                </div>
-              </div>
-              <ChevronRight
-                className={`w-4 h-4 shrink-0 ${
-                  activeDrawerPage === "ATTENDANCE"
-                    ? "text-white"
-                    : "text-slate-500"
-                }`}
-              />
-            </button>
 
-            {/* 2. Thông tin tài khoản */}
-            <button
-              type="button"
-              onClick={() => {
-                onOpenProfile();
-                onClose();
-              }}
-              className={`w-full text-left px-3 py-3 rounded-xl text-xs font-bold flex items-center justify-between gap-2.5 transition ${
-                activeDrawerPage === "PROFILE"
-                  ? "bg-emerald-600 text-white shadow-md"
-                  : "text-slate-200 hover:bg-slate-800 hover:text-white"
-              }`}
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <div
-                  className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-                    activeDrawerPage === "PROFILE"
-                      ? "bg-white/20 text-white"
-                      : "bg-emerald-500/15 text-emerald-400"
+                {/* 1. Chấm công: Lịch công tháng của tôi */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    onOpenAttendance();
+                    onClose();
+                  }}
+                  className={`w-full text-left px-3 py-3 rounded-xl text-xs font-bold flex items-center justify-between gap-2.5 transition ${
+                    activeDrawerPage === "ATTENDANCE"
+                      ? "bg-emerald-600 text-white shadow-md"
+                      : "text-slate-200 hover:bg-slate-800 hover:text-white"
                   }`}
                 >
-                  <UserCog className="w-4 h-4" />
-                </div>
-                <div className="min-w-0">
-                  <div className="truncate">Thông tin tài khoản</div>
-                  <div
-                    className={`text-[10px] font-normal truncate mt-0.5 ${
-                      activeDrawerPage === "PROFILE"
-                        ? "text-emerald-100"
-                        : "text-slate-400"
-                    }`}
-                  >
-                    Xem hồ sơ & chỉnh sửa thông tin cá nhân
-                  </div>
-                </div>
-              </div>
-              <ChevronRight
-                className={`w-4 h-4 shrink-0 ${
-                  activeDrawerPage === "PROFILE"
-                    ? "text-white"
-                    : "text-slate-500"
-                }`}
-              />
-            </button>
-
-            {/* 3. Đổi mật khẩu */}
-            {onOpenChangePassword && (
-              <button
-                type="button"
-                onClick={() => {
-                  onClose();
-                  onOpenChangePassword();
-                }}
-                className="w-full text-left px-3 py-3 rounded-xl text-xs font-bold flex items-center justify-between gap-2.5 text-slate-200 hover:bg-slate-800 hover:text-white transition"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-8 h-8 rounded-lg bg-amber-500/15 text-amber-400 flex items-center justify-center shrink-0">
-                    <KeyRound className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="truncate">Đổi mật khẩu</div>
-                    <div className="text-[10px] font-normal truncate mt-0.5 text-slate-400">
-                      Cập nhật mật khẩu đăng nhập hệ thống
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div
+                      className={`relative w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                        activeDrawerPage === "ATTENDANCE"
+                          ? "bg-white/20 text-white"
+                          : "bg-amber-500/15 text-amber-400"
+                      }`}
+                    >
+                      <Clock className="w-4 h-4" />
+                      {hasAttendanceNoti && (
+                        <span
+                          title="HR đã hoàn thành xếp ca tuần sau"
+                          className="absolute -top-1 -right-1 flex h-2.5 w-2.5"
+                        >
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-600" />
+                        </span>
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="truncate">Chấm công</span>
+                        {hasAttendanceNoti && (
+                          <span className="px-1.5 py-0.5 rounded-full bg-red-600 text-white text-[9px] font-black leading-none">
+                            Lịch ca mới
+                          </span>
+                        )}
+                      </div>
+                      <div
+                        className={`text-[10px] font-normal truncate mt-0.5 ${
+                          activeDrawerPage === "ATTENDANCE"
+                            ? "text-emerald-100"
+                            : "text-slate-400"
+                        }`}
+                      >
+                        Lịch công tháng, đơn từ & tăng ca
+                      </div>
                     </div>
                   </div>
-                </div>
-                <ChevronRight className="w-4 h-4 shrink-0 text-slate-500" />
-              </button>
-            )}
-          </div>
+                  <ChevronRight
+                    className={`w-4 h-4 shrink-0 ${
+                      activeDrawerPage === "ATTENDANCE"
+                        ? "text-white"
+                        : "text-slate-500"
+                    }`}
+                  />
+                </button>
 
-          {(currentUser.role === "ADMIN" || currentUser.role === "CEO") && (
-            <div className="space-y-1 pt-2 border-t border-slate-800">
-              <div className="px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                Quản trị hệ thống
+                {/* 2. Thông tin tài khoản */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    onOpenProfile();
+                    onClose();
+                  }}
+                  className={`w-full text-left px-3 py-3 rounded-xl text-xs font-bold flex items-center justify-between gap-2.5 transition ${
+                    activeDrawerPage === "PROFILE"
+                      ? "bg-emerald-600 text-white shadow-md"
+                      : "text-slate-200 hover:bg-slate-800 hover:text-white"
+                  }`}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div
+                      className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                        activeDrawerPage === "PROFILE"
+                          ? "bg-white/20 text-white"
+                          : "bg-emerald-500/15 text-emerald-400"
+                      }`}
+                    >
+                      <UserCog className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="truncate">Thông tin tài khoản</div>
+                      <div
+                        className={`text-[10px] font-normal truncate mt-0.5 ${
+                          activeDrawerPage === "PROFILE"
+                            ? "text-emerald-100"
+                            : "text-slate-400"
+                        }`}
+                      >
+                        Xem hồ sơ & chỉnh sửa thông tin cá nhân
+                      </div>
+                    </div>
+                  </div>
+                  <ChevronRight
+                    className={`w-4 h-4 shrink-0 ${
+                      activeDrawerPage === "PROFILE"
+                        ? "text-white"
+                        : "text-slate-500"
+                    }`}
+                  />
+                </button>
+
+                {/* 3. Đổi mật khẩu */}
+                {onOpenChangePassword && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onOpenChangePassword();
+                    }}
+                    className="w-full text-left px-3 py-3 rounded-xl text-xs font-bold flex items-center justify-between gap-2.5 text-slate-200 hover:bg-slate-800 hover:text-white transition"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-8 h-8 rounded-lg bg-amber-500/15 text-amber-400 flex items-center justify-center shrink-0">
+                        <KeyRound className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="truncate">Đổi mật khẩu</div>
+                        <div className="text-[10px] font-normal truncate mt-0.5 text-slate-400">
+                          Cập nhật mật khẩu đăng nhập hệ thống
+                        </div>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 shrink-0 text-slate-500" />
+                  </button>
+                )}
               </div>
-              <a
-                href={cmsUrl}
-                target="_blank"
-                rel="noreferrer"
-                onClick={onClose}
-                className="w-full px-3 py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 text-xs font-bold text-emerald-400 border border-slate-700/80 flex items-center justify-between gap-2 transition"
-              >
-                <span>Mở trang Quản trị CMS</span>
-                <ExternalLink className="w-4 h-4 shrink-0" />
-              </a>
-            </div>
+
+              {(currentUser.role === "ADMIN" || currentUser.role === "CEO") && (
+                <div className="space-y-1 pt-2 border-t border-slate-800">
+                  <div className="px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                    Quản trị hệ thống
+                  </div>
+                  <a
+                    href={cmsUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={onClose}
+                    className="w-full px-3 py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 text-xs font-bold text-emerald-400 border border-slate-700/80 flex items-center justify-between gap-2 transition"
+                  >
+                    <span>Mở trang Quản trị CMS</span>
+                    <ExternalLink className="w-4 h-4 shrink-0" />
+                  </a>
+                </div>
+              )}
+            </>
           )}
         </div>
 
-        {/* Footer của Drawer: Nút Đăng xuất */}
-        <div className="p-4 border-t border-slate-800 bg-slate-950/80 pb-safe">
-          <button
-            type="button"
-            onClick={() => {
-              onClose();
-              onLogout();
-            }}
-            className="w-full py-3 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-xs font-bold text-white flex items-center justify-center gap-2 shadow-lg transition"
-          >
-            <LogOut className="w-4 h-4" />
-            <span>Đăng xuất tài khoản</span>
-          </button>
-        </div>
+        {/* Footer của Drawer phải: Nút Đăng xuất */}
+        {!isLeft && (
+          <div className="p-4 border-t border-slate-800 bg-slate-950/80 pb-safe">
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                onLogout();
+              }}
+              className="w-full py-3 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-xs font-bold text-white flex items-center justify-center gap-2 shadow-lg transition"
+            >
+              <LogOut className="w-4 h-4" />
+              <span>Đăng xuất tài khoản</span>
+            </button>
+          </div>
+        )}
       </aside>
     </div>
   );

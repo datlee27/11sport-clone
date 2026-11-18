@@ -1,4 +1,5 @@
 import {
+  Brand,
   Category,
   InventoryReportRow,
   Order,
@@ -15,6 +16,9 @@ import {
   DailyRevenueTrend,
   RevenueByCategory,
   formatVariantLabel,
+  ProductVariant,
+  variantEffectiveSellingPrice,
+  variantEffectiveCostPrice,
 } from "./api";
 import { buildSheet, downloadExcel, excelFileName, ExcelColumn, toDate } from "./excel";
 
@@ -69,12 +73,28 @@ const variantsSummaryOf = (p: Product) => {
 
 /* ------------------------------- Sản phẩm ------------------------------- */
 
-export function exportProducts(products: Product[]) {
+/** Giá trị tồn theo giá vốn: cộng theo từng biến thể (giá vốn riêng nếu có) — R8 */
+const stockCostValueOf = (p: Product) => {
+  const vars = Array.isArray(p.variants) ? p.variants : [];
+  if (vars.length === 0) return (Number(p.costPrice) || 0) * (Number(p.stock) || 0);
+  return vars.reduce((s, v) => s + variantEffectiveCostPrice(p, v) * (Number(v.stock) || 0), 0);
+};
+const stockSellValueOf = (p: Product) => {
+  const vars = Array.isArray(p.variants) ? p.variants : [];
+  if (vars.length === 0) return (Number(p.sellingPrice) || 0) * (Number(p.stock) || 0);
+  return vars.reduce((s, v) => s + variantEffectiveSellingPrice(p, v) * (Number(v.stock) || 0), 0);
+};
+
+export function exportProducts(products: Product[], opts: { hideCost?: boolean } = {}) {
   const cols: ExcelColumn<Product>[] = [
     { header: "STT", value: (_, i) => i + 1, format: "int", width: 6 },
     { header: "Mã hàng (Chung)", value: (p) => p.code },
+    { header: "Mã cũ", value: (p) => p.legacyCode || "", width: 16 },
     { header: "Tên sản phẩm", value: (p) => p.name, width: 42 },
-    { header: "Hãng", value: (p) => p.brand || "", width: 14 },
+    { header: "Hãng", value: (p) => p.brandName || p.brand || "", width: 14 },
+    { header: "Mã hãng", value: (p) => p.brandCode || "", width: 9 },
+    { header: "Version", value: (p) => p.versionName || "", width: 20 },
+    { header: "Mã version", value: (p) => p.versionCode || "", width: 10 },
     { header: "Chi tiết Màu - Size & Tồn", value: variantsSummaryOf, width: 45 },
     { header: "Category", value: categoryNameOf },
     { header: "ĐVT", value: (p) => p.unit, width: 8 },
@@ -90,21 +110,50 @@ export function exportProducts(products: Product[]) {
     },
     {
       header: "Giá trị tồn (giá gốc)",
-      value: (p) => (Number(p.costPrice) || 0) * (Number(p.stock) || 0),
+      value: (p) => stockCostValueOf(p),
       format: "money",
       total: true,
     },
     {
       header: "Giá trị tồn (giá bán)",
-      value: (p) => (Number(p.sellingPrice) || 0) * (Number(p.stock) || 0),
+      value: (p) => stockSellValueOf(p),
       format: "money",
       total: true,
     },
     { header: "Trạng thái bán", value: (p) => (p.sellingPrice > 0 ? "Đang bán" : "Chưa có giá bán") },
+    { header: "Ghi chú", value: (p) => p.note || "", width: 32 },
   ];
-  downloadExcel(excelFileName("SanPham_TonKho"), [
-    buildSheet("San pham", cols, products, { title: "DANH MỤC SẢN PHẨM & TỒN KHO (TẦNG 1 & TẦNG 2)" }),
-  ]);
+  type VariantRow = { p: Product; v: ProductVariant };
+  const variantRows: VariantRow[] = products.flatMap((p) =>
+    (Array.isArray(p.variants) ? p.variants : []).filter((v) => v.color || v.size).map((v) => ({ p, v }))
+  );
+  const vCols: ExcelColumn<VariantRow>[] = [
+    { header: "STT", value: (_, i) => i + 1, format: "int", width: 6 },
+    { header: "Mã con (SKU)", value: (r) => r.v.variantCode || r.v.barcode || "", width: 20 },
+    { header: "Mã gốc", value: (r) => r.p.code, width: 14 },
+    { header: "Tên sản phẩm", value: (r) => r.p.name, width: 36 },
+    { header: "Màu", value: (r) => r.v.color || "", width: 14 },
+    { header: "Mã màu", value: (r) => r.v.colorCode || "", width: 8 },
+    { header: "Size", value: (r) => r.v.size || "", width: 8 },
+    { header: "Tồn Tầng 1", value: (r) => Number(r.v.stockFloor1) || 0, format: "int", total: true },
+    { header: "Tồn Tầng 2", value: (r) => Number(r.v.stockFloor2) || 0, format: "int", total: true },
+    { header: "Tổng tồn", value: (r) => Number(r.v.stock) || 0, format: "int", total: true },
+    { header: "Giá bán riêng", value: (r) => (Number(r.v.sellingPrice) > 0 ? Number(r.v.sellingPrice) : null), format: "money" },
+    { header: "Giá bán hiệu lực", value: (r) => variantEffectiveSellingPrice(r.p, r.v), format: "money" },
+    { header: "Giá vốn riêng", value: (r) => (Number(r.v.costPrice) > 0 ? Number(r.v.costPrice) : null), format: "money" },
+    { header: "Giá vốn hiệu lực", value: (r) => variantEffectiveCostPrice(r.p, r.v), format: "money" },
+    { header: "Mã con cũ", value: (r) => r.v.legacyVariantCode || "", width: 22 },
+  ];
+  const costHeaders = new Set(["Giá gốc", "Lãi gộp / SP", "Giá trị tồn (giá gốc)", "Giá vốn riêng", "Giá vốn hiệu lực"]);
+  const finalCols = opts.hideCost ? cols.filter((c) => !costHeaders.has(c.header)) : cols;
+  const finalVCols = opts.hideCost ? vCols.filter((c) => !costHeaders.has(c.header)) : vCols;
+  const sheets = [
+    buildSheet("San pham", finalCols, products, { title: "DANH MỤC SẢN PHẨM & TỒN KHO (TẦNG 1 & TẦNG 2)" }),
+  ];
+  if (variantRows.length > 0) {
+    sheets.push(buildSheet("Bien the", finalVCols, variantRows, { title: "BIẾN THỂ (MÀU/SIZE) — MÃ CON & GIÁ RIÊNG" }));
+  }
+  downloadExcel(excelFileName("SanPham_TonKho"), sheets);
 }
 
 /* --------------------------- Báo cáo tồn theo kỳ --------------------------- */
@@ -417,12 +466,37 @@ export function exportCategories(categories: Category[]) {
   const cols: ExcelColumn<Category>[] = [
     { header: "STT", value: (_, i) => i + 1, format: "int", width: 6 },
     { header: "Mã Category", value: (c) => c.code },
+    { header: "Mã Cate (SKU)", value: (c) => c.skuCode || "", width: 12 },
     { header: "Tên Category", value: (c) => c.name, width: 35 },
     { header: "Số sản phẩm", value: (c) => Number(c.productCount) || 0, format: "int", total: true },
     { header: "Trạng thái", value: (c) => (c.status === "ACTIVE" ? "Đang sử dụng" : "Ngừng sử dụng") },
   ];
   downloadExcel(excelFileName("DanhMuc"), [
     buildSheet("Category", cols, categories, { title: "DANH SÁCH CATEGORY" }),
+  ]);
+}
+
+export function exportBrands(brands: Brand[], categoryMap?: Map<string, Category>) {
+  const cols: ExcelColumn<Brand>[] = [
+    { header: "STT", value: (_, i) => i + 1, format: "int", width: 6 },
+    { header: "Mã Brand", value: (b) => b.code, width: 12 },
+    { header: "Tên Thương hiệu", value: (b) => b.name, width: 28 },
+    { header: "Tên gọi khác (Aliases)", value: (b) => (b.aliases || []).join(", "), width: 28 },
+    {
+      header: "Danh mục áp dụng",
+      value: (b) =>
+        b.isSystem
+          ? "Mọi danh mục (Hệ thống)"
+          : (b.categoryIds || [])
+              .map((id) => categoryMap?.get(String(id))?.name || String(id))
+              .join(", "),
+      width: 40,
+    },
+    { header: "Số sản phẩm", value: (b) => Number(b.productCount) || 0, format: "int", total: true },
+    { header: "Trạng thái", value: (b) => (b.status === "ACTIVE" ? "Đang sử dụng" : "Ngừng sử dụng") },
+  ];
+  downloadExcel(excelFileName("ThuongHieu"), [
+    buildSheet("Brand", cols, brands, { title: "DANH SÁCH THƯƠNG HIỆU (BRAND)" }),
   ]);
 }
 
