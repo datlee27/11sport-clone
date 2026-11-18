@@ -354,6 +354,17 @@ function normalizeImportItems(
       const finalBarcode =
         customBarcode && customBarcode !== productCode ? customBarcode : variantCode || productCode;
 
+      const incomingScanCounts = Array.isArray(item.scanCounts)
+        ? item.scanCounts
+            .filter((s: any) => s && Number(s.quantity) > 0)
+            .map((s: any) => ({
+              userId: String(s.userId || ''),
+              name: String(s.name || ''),
+              role: String(s.role || ''),
+              quantity: Math.max(0, Math.round(Number(s.quantity) || 0)),
+            }))
+        : [];
+
       return {
         stt: Number(item.stt) || idx + 1,
         productId,
@@ -380,6 +391,11 @@ function normalizeImportItems(
         isChecked: Boolean(item.isChecked),
         isConfirmed: Boolean(item.isConfirmed),
         discrepancyNote: item.discrepancyNote ? String(item.discrepancyNote).trim() : '',
+        ...(item.checkedBy ? { checkedBy: String(item.checkedBy) } : {}),
+        ...(item.checkedByName ? { checkedByName: String(item.checkedByName) } : {}),
+        ...(item.checkedByRole ? { checkedByRole: String(item.checkedByRole) } : {}),
+        ...(item.checkedAt ? { checkedAt: new Date(item.checkedAt) } : {}),
+        ...(incomingScanCounts.length > 0 ? { scanCounts: incomingScanCounts } : {}),
       };
     });
 }
@@ -388,25 +404,42 @@ function keepCheckerFields(newItems: IImportReceiptItem[], oldItems: IImportRece
   const used = new Set<number>();
   return newItems.map((item, idx) => {
     const matchSameRow = (o: IImportReceiptItem) =>
-      o.productCode === item.productCode &&
+      ((o.productId && item.productId && String(o.productId) === String(item.productId)) ||
+        o.productCode === item.productCode) &&
       buildVariantKey(o.color, o.size) === buildVariantKey(item.color, item.size);
 
     let oi = oldItems[idx] && matchSameRow(oldItems[idx]) && !used.has(idx) ? idx : -1;
     if (oi < 0) oi = oldItems.findIndex((o, j) => !used.has(j) && matchSameRow(o));
-    if (oi < 0) oi = oldItems.findIndex((o, j) => !used.has(j) && o.productCode === item.productCode);
+    if (oi < 0 && oldItems.length === newItems.length && oldItems[idx] && !used.has(idx)) {
+      oi = idx;
+    }
+    if (oi < 0) {
+      oi = oldItems.findIndex(
+        (o, j) =>
+          !used.has(j) &&
+          ((o.productId && item.productId && String(o.productId) === String(item.productId)) ||
+            o.productCode === item.productCode)
+      );
+    }
     if (oi < 0) {
       return {
         ...item,
-        checkedBy: '',
-        checkedByName: '',
-        checkedByRole: '',
-        checkedAt: undefined,
-        scanCounts: [],
+        checkedBy: item.checkedBy || '',
+        checkedByName: item.checkedByName || '',
+        checkedByRole: item.checkedByRole || '',
+        checkedAt: item.checkedAt,
+        scanCounts: Array.isArray(item.scanCounts) ? item.scanCounts.map((s) => ({ ...s })) : [],
         barcode: item.barcode || item.variantCode || item.productCode || '',
       };
     }
     used.add(oi);
     const old = oldItems[oi];
+    const preservedScanCounts =
+      Array.isArray(old.scanCounts) && old.scanCounts.length > 0
+        ? old.scanCounts.map((s) => ({ ...s }))
+        : Array.isArray(item.scanCounts)
+        ? item.scanCounts.map((s) => ({ ...s }))
+        : [];
     return {
       ...item,
       colorHexes:
@@ -414,11 +447,11 @@ function keepCheckerFields(newItems: IImportReceiptItem[], oldItems: IImportRece
           ? item.colorHexes
           : sanitizeColorHexes(old.colorHexes),
       barcode: item.variantCode || old.barcode || item.barcode || '',
-      checkedBy: old.checkedBy || '',
-      checkedByName: old.checkedByName || '',
-      checkedByRole: old.checkedByRole || '',
-      checkedAt: old.checkedAt,
-      scanCounts: Array.isArray(old.scanCounts) ? old.scanCounts.map((s) => ({ ...s })) : [],
+      checkedBy: old.checkedBy || item.checkedBy || '',
+      checkedByName: old.checkedByName || item.checkedByName || '',
+      checkedByRole: old.checkedByRole || item.checkedByRole || '',
+      checkedAt: old.checkedAt || item.checkedAt,
+      scanCounts: preservedScanCounts,
     };
   });
 }
@@ -527,13 +560,36 @@ async function applyMatchedScan(params: {
     }
   }
 
+  const activeScanCounts = scanCounts.filter((s) => s.quantity > 0);
+  const lastActiveScanner =
+    activeScanCounts.length > 0 ? activeScanCounts[activeScanCounts.length - 1] : null;
+  const nextCheckedBy =
+    delta === 1
+      ? userId
+      : lastActiveScanner
+      ? lastActiveScanner.userId
+      : '';
+  const nextCheckedByName =
+    delta === 1
+      ? userName
+      : lastActiveScanner
+      ? lastActiveScanner.name
+      : '';
+  const nextCheckedByRole =
+    delta === 1
+      ? userRole
+      : lastActiveScanner
+      ? inferRole(lastActiveScanner.role, lastActiveScanner.userId, lastActiveScanner.name)
+      : '';
+
   const matchedItem: IImportReceiptItem = {
     ...current,
     barcode: cleanBarcode || current.barcode || current.variantCode || current.productCode || '',
-    scanCounts: scanCounts.filter((s) => s.quantity > 0),
-    ...(delta === 1
-      ? { checkedBy: userId, checkedByName: userName, checkedByRole: userRole, checkedAt: new Date() }
-      : {}),
+    scanCounts: activeScanCounts,
+    checkedBy: nextCheckedBy,
+    checkedByName: nextCheckedByName,
+    checkedByRole: nextCheckedByRole,
+    checkedAt: scanned > 0 ? (delta === 1 ? new Date() : current.checkedAt || new Date()) : undefined,
     scannedQuantity: scanned,
     actualQuantity: scanned,
     isChecked: scanned > 0,
@@ -998,13 +1054,26 @@ importsRouter.post('/imports', async (req, res, next) => {
     const createdByName = req.user?.fullName || 'Kế toán kho';
     const createdByRole = inferRole(req.user?.role, createdBy, createdByName);
 
+    const itemsWithCreatorCheck = normalizedItems.map((it) => {
+      if (it.isChecked && !it.checkedBy && !it.checkedByName) {
+        return {
+          ...it,
+          checkedBy: createdBy,
+          checkedByName: createdByName,
+          checkedByRole: createdByRole,
+          checkedAt: it.checkedAt || new Date(),
+        };
+      }
+      return it;
+    });
+
     const created = await importReceiptRepo.create({
       code,
       status: initialStatus,
       targetWarehouse: warehouseFloor,
       defaultCategoryId: fallbackCatId,
       note: note ? String(note).trim() : '',
-      items: normalizedItems,
+      items: itemsWithCreatorCheck,
       createdBy,
       createdByName,
       createdByRole,
@@ -1748,9 +1817,18 @@ importsRouter.post('/imports/:id/complete', async (req, res, next) => {
         else schemeCtx.products.push(savedProduct);
       }
 
-      const actorId = req.user?.userId || receipt.createdBy || 'ACCOUNTANT';
-      const actorName = req.user?.fullName || receipt.createdByName || 'Kế toán kho';
-      const actorRole = inferRole(req.user?.role || receipt.createdByRole, actorId, actorName);
+      const hasExplicitUser = Boolean(!req.isFallbackUser && req.user?.userId);
+      const actorId = hasExplicitUser
+        ? req.user!.userId
+        : receipt.createdBy || req.user?.userId || 'ACCOUNTANT';
+      const actorName = hasExplicitUser
+        ? req.user!.fullName
+        : receipt.createdByName || req.user?.fullName || 'Kế toán kho';
+      const actorRole = inferRole(
+        hasExplicitUser ? req.user?.role : receipt.createdByRole || req.user?.role,
+        actorId,
+        actorName
+      );
 
       const movement = await stockMovementRepo.create({
         type: 'IMPORT',
@@ -1787,12 +1865,28 @@ importsRouter.post('/imports/:id/complete', async (req, res, next) => {
         color: itemColor,
         size: itemSize,
         barcode: itemColor || itemSize ? childVariantCode : itemBarcode,
+        checkedBy: item.checkedBy || receipt.createdBy || actorId,
+        checkedByName: item.checkedByName || receipt.createdByName || actorName,
+        checkedByRole:
+          item.checkedByRole ||
+          inferRole(receipt.createdByRole, receipt.createdBy, receipt.createdByName) ||
+          actorRole,
+        checkedAt: item.checkedAt || new Date(),
       });
     }
 
-    const completedBy = req.user?.userId || 'ACCOUNTANT';
-    const completedByName = req.user?.fullName || 'Kế toán kho';
-    const completedByRole = inferRole(req.user?.role, completedBy, completedByName);
+    const hasExplicitCompleter = Boolean(!req.isFallbackUser && req.user?.userId);
+    const completedBy = hasExplicitCompleter
+      ? req.user!.userId
+      : receipt.createdBy || req.user?.userId || 'ACCOUNTANT';
+    const completedByName = hasExplicitCompleter
+      ? req.user!.fullName
+      : receipt.createdByName || req.user?.fullName || 'Kế toán kho';
+    const completedByRole = inferRole(
+      hasExplicitCompleter ? req.user?.role : receipt.createdByRole || req.user?.role,
+      completedBy,
+      completedByName
+    );
 
     const completedReceipt = await importReceiptRepo.updateById(id, {
       status: 'COMPLETED',

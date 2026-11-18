@@ -237,9 +237,15 @@ const checkersOf = (items: any[]) => {
       byName.set(s.name, (byName.get(s.name) || 0) + (Number(s.quantity) || 0))
     )
   );
-  return Array.from(byName.entries())
-    .map(([n, q]) => `${n} (${q})`)
-    .join(", ");
+  if (byName.size > 0) {
+    return Array.from(byName.entries())
+      .map(([n, q]) => `${n} (${q})`)
+      .join(", ");
+  }
+  const fallbackNames = Array.from(
+    new Set(items.map((it) => String(it?.checkedByName || "").trim()).filter(Boolean))
+  );
+  return fallbackNames.join(", ");
 };
 
 const receiptCostTotal = (imp: any) =>

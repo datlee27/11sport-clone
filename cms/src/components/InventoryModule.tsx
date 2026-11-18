@@ -1291,7 +1291,8 @@ export default function InventoryModule() {
       });
 
       if (!adminImportNote.trim()) {
-        setAdminImportNote(`Admin nhập kho từ file ${file.name}`);
+        const actorLabel = getStoredUser()?.fullName || "Nhân sự kho";
+        setAdminImportNote(`${actorLabel} nhập kho từ file ${file.name}`);
       }
     } catch (err: any) {
       alert(err?.message || `Lỗi khi đọc file "${file.name}".`);
@@ -1345,6 +1346,8 @@ export default function InventoryModule() {
     setSubmittingAdminImport(true);
     const floorText = newProdWarehouse === "FLOOR_2" ? "Kho Tầng 2" : "Kho Tầng 1";
     try {
+      const actor = getStoredUser();
+      const actorLabel = actor?.fullName || "Nhân sự kho";
       const payloadItems = validRows.map((r, idx) => {
         const matchedProd =
           (r.productId &&
@@ -1377,13 +1380,16 @@ export default function InventoryModule() {
           isChecked: true,
           isConfirmed: r.isConfirmed,
           discrepancyNote: "Khớp đủ",
+          ...(actor?._id ? { checkedBy: actor._id } : {}),
+          ...(actor?.fullName ? { checkedByName: actor.fullName } : {}),
+          ...(actor?.role ? { checkedByRole: actor.role } : {}),
         };
       });
 
       const createdRes = await apiRequest<any>("/imports", {
         method: "POST",
         body: JSON.stringify({
-          note: adminImportNote.trim() || `Admin nhập kho (${confirmedRows.length} dòng)`,
+          note: adminImportNote.trim() || `${actorLabel} nhập kho (${confirmedRows.length} dòng)`,
           defaultCategoryId: newProdCatId || categories[0]?._id || undefined,
           targetWarehouse: newProdWarehouse,
           items: payloadItems,
@@ -5474,7 +5480,18 @@ export default function InventoryModule() {
                                           {formatVND(qty * cost)}
                                         </td>
                                         <td className="py-1.5 px-2.5 whitespace-nowrap">
-                                          {it.checkedByName ? (
+                                          {Array.isArray(it.scanCounts) && it.scanCounts.length > 0 ? (
+                                            <div className="flex flex-wrap gap-1">
+                                              {it.scanCounts.map((sc: any, sIdx: number) => (
+                                                <span key={sIdx} className="inline-flex items-center gap-1">
+                                                  <span>
+                                                    {sc.name} ({sc.quantity})
+                                                  </span>
+                                                  <CmsRoleBadge role={sc.role} compact />
+                                                </span>
+                                              ))}
+                                            </div>
+                                          ) : it.checkedByName ? (
                                             <span className="inline-flex items-center gap-1">
                                               <span>{it.checkedByName}</span>
                                               <CmsRoleBadge role={it.checkedByRole} compact />
@@ -6964,7 +6981,18 @@ export default function InventoryModule() {
                             {formatVND(actQty * cost)}
                           </td>
                           <td className="py-2 px-3 whitespace-nowrap">
-                            {it.checkedByName ? (
+                            {Array.isArray(it.scanCounts) && it.scanCounts.length > 0 ? (
+                              <div className="flex flex-wrap gap-1">
+                                {it.scanCounts.map((sc: any, sIdx: number) => (
+                                  <div key={sIdx} className="inline-flex items-center gap-1">
+                                    <span className="font-semibold text-slate-800">
+                                      {sc.name} ({sc.quantity})
+                                    </span>
+                                    <CmsRoleBadge role={sc.role} compact />
+                                  </div>
+                                ))}
+                              </div>
+                            ) : it.checkedByName ? (
                               <div className="inline-flex items-center gap-1">
                                 <span className="font-semibold text-slate-800">
                                   {it.checkedByName}

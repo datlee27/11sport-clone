@@ -24,7 +24,21 @@ export async function attachUserContext(
       const token = authHeader.slice(7).trim();
       const payload = verifyToken(token);
       if (payload) {
-        req.user = payload;
+        const freshStaff =
+          (payload.userId && (await staffRepo.findById(payload.userId))) ||
+          (payload.username && (await staffRepo.findOne({ username: payload.username.toLowerCase() })));
+        if (freshStaff && freshStaff.status === 'ACTIVE') {
+          req.user = {
+            userId: freshStaff._id,
+            username: freshStaff.username,
+            fullName: freshStaff.fullName,
+            role: freshStaff.role,
+            department: freshStaff.department,
+            code: freshStaff.code,
+          };
+        } else {
+          req.user = payload;
+        }
         return next();
       }
     }
