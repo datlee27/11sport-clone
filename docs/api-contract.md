@@ -57,11 +57,12 @@
     - Nếu không truyền (VD `ADMIN` tạo nhanh), server mặc định **`PROBATION` (Thử việc)** — không còn mặc định Chính thức.
     - **Thử việc tối đa 2 tháng (`probationMonths`: `0 | 1 | 2`, mặc định `2` tháng cho `PROBATION`, có thể ký chính thức sau `1` tháng)**: Mỗi tháng thử việc tích lũy **1 ngày phép có lương**. Khi chuyển từ `PROBATION` lên `FULLTIME` (`PATCH /api/v1/staff/:id`), nhân viên được cộng số ngày phép tương đương với số tháng thử việc (`1` hoặc `2` ngày) vào quỹ phép chính thức, và mỗi tháng chính thức có thêm **1 ngày phép** (được để dành & cộng dồn). Riêng trường `recordedLeaveDays` (`Số ngày nghỉ` từ file Excel HR) chỉ lưu theo dõi trên hồ sơ nhân sự, không thay đổi công thức tự tính phép chấm công.
 - `PATCH /api/v1/staff/:id` — Cập nhật thông tin nhân sự & phân quyền:
-  - `HR` được chỉnh sửa toàn bộ thông tin hồ sơ nhân sự (bao gồm các trường cá nhân, học vấn, STK, vị trí `positionTitle`, số hợp đồng `internContractNumber` / `probationContractNumber` / `officialContractNumber`, thời gian đóng BHXH `bhxhStartDate` / `bhxhEndDate`, `recordedLeaveDays`, tải lên/thay thế/xóa file hợp đồng, `password`, `baseSalary`, `allowance`, `bonus`, `insurance`) và đổi `role` giữa `SALES | HR | ACCOUNTANT | MARKETING`, nhưng **không được phép** nâng quyền user thành `ADMIN` hoặc chỉnh sửa tài khoản `ADMIN` (`403 FORBIDDEN`), và **không được phép** khóa/mở khóa tài khoản (`status`).
+  - `CEO` (quyền cao nhất): Được toàn quyền cập nhật hồ sơ nhân sự, lương/phụ cấp/thưởng/bảo hiểm, cấp/đổi mọi `role` (kể cả `CEO` và `ADMIN`), đổi mật khẩu (`password`) và khóa/mở khóa (`status: "ACTIVE" | "LOCKED"`) cho mọi tài khoản.
+  - `HR`: Được chỉnh sửa toàn bộ thông tin hồ sơ nhân sự & lương/đãi ngộ cho **mọi tài khoản (kể cả `ADMIN` và `CEO`)**; được đổi `role` giữa `SALES | HR | ACCOUNTANT | MARKETING`, đổi mật khẩu và khóa/mở khóa đối với nhân sự thường, nhưng **không được phép** khóa/mở khóa tài khoản `ADMIN` và `CEO`, **không được phép** đổi mật khẩu của `ADMIN` và `CEO`, và **không được phép** thay đổi `role` của `ADMIN` / `CEO` hoặc nâng quyền lên `ADMIN` / `CEO` (`403 FORBIDDEN`).
+  - `ADMIN`: Được phép đổi mật khẩu, khóa/mở khóa tài khoản (`status: "ACTIVE" | "LOCKED"`) và cấp `role` (tới `ADMIN`) cho các tài khoản không phải `CEO`, nhưng **không được phép** đổi mật khẩu, khóa/mở khóa hoặc sửa `role` của tài khoản `CEO` (`403 FORBIDDEN`).
   - **Phân quyền tự cập nhật Hồ sơ cá nhân của Nhân viên**:
     - Nhân viên được phép **xem đầy đủ** toàn bộ hồ sơ của chính mình và **tự chỉnh sửa** nhóm thông tin cá nhân & ngân hàng: `fullName`, `phone`, `email`, `companyEmail`, `dateOfBirth`, `gender`, `nationality`, `citizenId`, `citizenIssueDate`, `citizenIssuePlace`, `permanentAddress`, `currentAddress` (`address`), `school`, `major`, `bankAccount`.
-    - Các trường quản trị nhân sự & chế độ đãi ngộ (`positionTitle`, `contractType`, `contractStartDate`, `contractEndDate`, `internContractNumber`, `probationContractNumber`, `officialContractNumber`, `bhxhStartDate`, `bhxhEndDate`, `recordedLeaveDays`, `baseSalary`, `allowance`, `bonus`, `insurance`, `contractFileUrl`, `contractFileName`) **chỉ `HR` được sửa** (`403 FORBIDDEN` nếu nhân viên tự gửi yêu cầu sửa; trong đó 4 trường lương/bảo hiểm `baseSalary`, `allowance`, `bonus`, `insurance` chỉ duy nhất `role === "HR"` được sửa).
-  - `ADMIN` được phép cấp mọi `role` (bao gồm `ADMIN`) và khóa/mở khóa tài khoản (`status: "ACTIVE" | "LOCKED"`).
+    - Các trường quản trị nhân sự & chế độ đãi ngộ (`positionTitle`, `contractType`, `contractStartDate`, `contractEndDate`, `internContractNumber`, `probationContractNumber`, `officialContractNumber`, `bhxhStartDate`, `bhxhEndDate`, `recordedLeaveDays`, `baseSalary`, `allowance`, `bonus`, `insurance`, `contractFileUrl`, `contractFileName`) **chỉ `HR` và `CEO` được sửa** (`403 FORBIDDEN` nếu nhân viên tự gửi yêu cầu sửa).
 
 ### 2.2 Danh mục - Category (`/categories`)
 - `GET /api/v1/categories`
@@ -245,23 +246,29 @@
 ### 2.5 Bán hàng POS & Khách hàng (`/orders`, `/customers`)
 - `GET /api/v1/customers/lookup?phone=...`
   - Tra cứu khách hàng theo SĐT (tự động chuẩn hóa khoảng trắng, dấu chấm/gạch và đầu số `+84`/`84` về `0`), trả về thông tin khách hàng (`customer`, `debtSummary`) và lịch sử đơn hàng + phiếu trả/đổi.
-  - *(v4.2)* **Giới hạn theo ca & ngày đối với nhân viên `SALES`**: Khi người gọi là `SALES` (không phải `CEO`/`ADMIN`/`ACCOUNTANT`/`HR`), danh sách `orders` và `returns` trả về trong `/customers/lookup` chỉ bao gồm các đơn hàng thuộc **đúng ca làm việc hiện tại trong ngày hôm nay** (`shiftDate === today` và khớp `shiftCode` của nhân viên). Đơn của ca khác hoặc từ ngày hôm trước trở về trước bị ẩn hoàn toàn.
+  - *(Cập nhật v4.3)* **Phân quyền kiểm tra bill trong ngày (bỏ ràng buộc theo ca, tối đa 3 ngày) đối với nhân viên `SALES`**: Khi người gọi là `SALES` (không phải `CEO`/`ADMIN`/`ACCOUNTANT`/`HR`), danh sách `orders` và `returns` trả về trong `/customers/lookup` bao gồm toàn bộ các đơn hàng trong ngày của **mọi ca (`SHIFT_1`, `SHIFT_2`, `BOTH`)** trong phạm vi **tối đa 3 ngày gần nhất** (`today`, `today - 1`, `today - 2`). Đơn cũ hơn 3 ngày bị ẩn.
 - `GET /api/v1/customers` — Danh sách khách hàng (hỗ trợ `?search=...` tìm thông minh theo SĐT chuẩn hóa hoặc tên tiếng Việt không dấu/đa từ khóa, sắp xếp theo độ liên quan).
-- `GET /api/v1/orders/current-shift` *(v4.2 — Xem Bill bán hàng trong ca hiện tại)*
-  - Query: `?search=...&status=PAID|DRAFT|PARTIALLY_RETURNED|FULLY_RETURNED&paymentMethod=CASH|BANKING|CARD|OTHER`
+- `GET /api/v1/orders/current-shift` *(Cập nhật v4.3 — Kiểm tra Bill bán hàng trong ngày, bỏ ràng buộc theo ca, tối đa 3 ngày cho Sales)*
+  - Query: `?date=YYYY-MM-DD|ALL&shiftCode=ALL|SHIFT_1|SHIFT_2&search=...&status=PAID|DRAFT|PARTIALLY_RETURNED|FULLY_RETURNED&paymentMethod=CASH|BANKING|CARD|OTHER`
   - Nghiệp vụ & Phân quyền:
-    - Xác định ngày hiện tại `todayStr` (`YYYY-MM-DD` theo giờ local của server) và ca làm việc hiện tại của nhân viên (`staffShift`: ưu tiên lấy từ bản ghi chấm công `Attendance` hôm nay -> lịch phân ca `ShiftAssignment` hôm nay -> khung giờ thực tế `SHIFT_1` trước `17:30`, `SHIFT_2` từ `17:30` trở đi).
-    - **Với nhân viên `SALES`**: Chỉ trả về các đơn hàng có `shiftDate === todayStr` VÀ thuộc đúng ca làm việc của nhân viên đó (`SHIFT_1` chỉ thấy đơn `SHIFT_1`, `SHIFT_2` chỉ thấy đơn `SHIFT_2`, `BOTH` thấy đơn trong ngày hôm nay, `OFF` trả về danh sách rỗng `[]`). Tuyệt đối không trả về đơn của ca khác hoặc đơn của ngày cũ (`shiftDate < todayStr`).
-    - **Với `CEO` / `ADMIN` / `ACCOUNTANT` / `HR`**: Xem được toàn bộ đơn bán trong ngày hôm nay (có thể truyền thêm `?shiftCode=SHIFT_1|SHIFT_2` để lọc theo ca).
+    - Xác định ngày hiện tại `todayStr` (`YYYY-MM-DD` theo giờ local của server) và danh sách 3 ngày cho phép `allowedDates = [todayStr, yesterdayStr, twoDaysAgoStr]` (`maxDays = 3`).
+    - **Với nhân viên `SALES`**:
+      - **Bỏ ràng buộc theo ca**: Xem được toàn bộ đơn hàng trong ngày của cả Ca 1 (`SHIFT_1`), Ca 2 (`SHIFT_2`) và Cả ngày (`BOTH`), kể cả khi nhân viên đang ở ca khác hoặc lịch nghỉ (`OFF`). Có thể chủ động lọc theo `?shiftCode=SHIFT_1|SHIFT_2` nếu cần.
+      - **Giới hạn tối đa 3 ngày gần nhất**: Chỉ được phép kiểm tra bill thuộc `allowedDates` (tối đa 3 ngày tính đến hiện tại). Nếu truyền `?date=YYYY-MM-DD` nằm ngoài 3 ngày gần nhất sẽ trả lỗi `403 ORDER_SHIFT_RESTRICTED`. Khi truyền `?date=YYYY-MM-DD` hợp lệ sẽ lọc bill của đúng ngày đó; khi truyền `?date=ALL` hoặc không truyền `date` sẽ trả về bill trong phạm vi cho phép (mặc định lọc theo ngày được chọn hoặc phạm vi 3 ngày).
+    - **Với `CEO` / `ADMIN` / `ACCOUNTANT` / `HR`**: Xem được đơn bán của ngày bất kỳ (mặc định hôm nay hoặc theo `?date=...`) và lọc theo `?shiftCode=SHIFT_1|SHIFT_2`.
   - Response:
     ```json
     {
       "data": [Order],
       "meta": {
         "total": 5,
-        "date": "2026-11-16",
-        "shiftCode": "SHIFT_1",
-        "shiftLabel": "Ca 1 (08:30 - 17:30)",
+        "date": "2026-11-18",
+        "allowedDates": ["2026-11-18", "2026-11-17", "2026-11-16"],
+        "minDate": "2026-11-16",
+        "maxDate": "2026-11-18",
+        "maxDays": 3,
+        "shiftCode": "BOTH",
+        "shiftLabel": "Cả ngày (Mọi ca)",
         "summary": {
           "paidOrdersCount": 4,
           "draftOrdersCount": 1,
@@ -275,10 +282,10 @@
     }
     ```
 - `GET /api/v1/orders` — Danh sách đơn hàng (lọc theo `search`, `phone`, `status`, `paymentMethod`, `shiftCode`, `date`, `forReturn`; `search` hỗ trợ tìm không dấu/đa từ khóa trên mã đơn, tên/SĐT khách, mã/tên sản phẩm trong đơn, nhân viên bán, ghi chú).
-  - *(v4.2)* **Phân quyền xem đơn theo ca & ngày đối với `SALES`**:
-    - Mặc định (khi không truyền `forReturn=true`), tài khoản `SALES` gọi `GET /api/v1/orders` chỉ nhận được các đơn hàng thuộc **đúng ca làm việc hiện tại của ngày hôm nay** (`shiftDate === todayStr` và khớp `shiftCode`). Qua 00:00 sang ngày mới, toàn bộ đơn hàng của ngày cũ (kể cả đơn nháp hay đơn đã thanh toán) đều không hiển thị cho `SALES`.
-    - Khi truyền `forReturn=true` kèm từ khóa tra cứu (`search` hoặc `phone` từ 2 ký tự trở lên, dùng riêng tại tab **4. Trả / Đổi hàng**), hệ thống cho phép `SALES` tìm đơn gốc để phục vụ đổi/trả hàng cho khách.
-- `GET /api/v1/orders/:id` — Chi tiết đơn hàng (với `SALES`, chỉ cho phép xem đơn trong ca hiện tại của ngày hôm nay trừ khi truyền `?forReturn=true`; vi phạm trả `403 ORDER_SHIFT_RESTRICTED`). Tra cứu theo mã đơn cho nghiệp vụ đổi/trả qua `GET /api/v1/orders/by-code/:code`.
+  - *(Cập nhật v4.3)* **Phân quyền xem đơn trong ngày (tối đa 3 ngày, bỏ ràng buộc ca) đối với `SALES`**:
+    - Mặc định (khi không truyền `forReturn=true`), tài khoản `SALES` gọi `GET /api/v1/orders` nhận được toàn bộ đơn hàng trong ngày (mọi ca `SHIFT_1`, `SHIFT_2`, `BOTH`) trong phạm vi **tối đa 3 ngày gần nhất** (`allowedDates`). Có thể lọc theo `?date=YYYY-MM-DD` (nằm trong 3 ngày gần nhất; nếu truyền ngày cũ hơn 3 ngày sẽ trả `403 ORDER_SHIFT_RESTRICTED`) và `?shiftCode=SHIFT_1|SHIFT_2`.
+    - Khi truyền `forReturn=true` kèm từ khóa tra cứu (`search` hoặc `phone` từ 2 ký tự trở lên, dùng riêng tại tab **Trả / Đổi hàng**), hệ thống cho phép `SALES` tìm đơn gốc (kể cả đơn cũ hơn 3 ngày) để phục vụ đổi/trả hàng cho khách.
+- `GET /api/v1/orders/:id` — Chi tiết đơn hàng (với `SALES`, cho phép xem mọi đơn hàng trong ngày của mọi ca trong phạm vi tối đa **3 ngày gần nhất** trừ khi truyền `?forReturn=true`; đơn cũ hơn 3 ngày trả `403 ORDER_SHIFT_RESTRICTED`). Tra cứu theo mã đơn cho nghiệp vụ đổi/trả qua `GET /api/v1/orders/by-code/:code`.
 - `POST /api/v1/orders` *(Cập nhật v2.2 — Chỉ bán tồn Kho Tầng 1 + Giảm giá Sản phẩm, Tặng hàng 0đ & Giảm giá Bill)*
   - Body:
     ```json

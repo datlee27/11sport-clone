@@ -26,6 +26,8 @@ export default function CustomerTab({ onOpenInvoice }: CustomerTabProps) {
   const [lookupMeta, setLookupMeta] = useState<{
     shiftRestricted?: boolean;
     shiftDate?: string;
+    minDate?: string;
+    maxDays?: number;
     shiftCode?: string;
     shiftLabel?: string;
   } | null>(null);
@@ -227,12 +229,12 @@ export default function CustomerTab({ onOpenInvoice }: CustomerTabProps) {
               <h3 className="font-bold text-slate-900 text-base flex items-center gap-2">
                 <ShoppingBag className="w-5 h-5 text-emerald-600" />
                 {lookupMeta?.shiftRestricted
-                  ? `Đơn hàng trong ca hiện tại (${orders.length})`
+                  ? `Đơn hàng trong 3 ngày gần nhất (${orders.length})`
                   : `Lịch sử Đơn hàng (${orders.length})`}
               </h3>
               {lookupMeta?.shiftRestricted && (
-                <span className="text-xs font-semibold px-3 py-1 rounded-full bg-amber-50 text-amber-900 border border-amber-200">
-                  🔒 Chỉ hiển thị bill trong {lookupMeta.shiftLabel || "ca hiện tại"} ({lookupMeta.shiftDate}) · Không xem đơn ca khác / ngày cũ
+                <span className="text-xs font-semibold px-3 py-1 rounded-full bg-emerald-50 text-emerald-900 border border-emerald-200">
+                  🔓 Hiển thị bill trong ngày (mọi ca) · Tối đa {lookupMeta.maxDays || 3} ngày gần nhất ({lookupMeta.minDate || lookupMeta.shiftDate} → {lookupMeta.shiftDate})
                 </span>
               )}
             </div>
@@ -240,7 +242,7 @@ export default function CustomerTab({ onOpenInvoice }: CustomerTabProps) {
             {orders.length === 0 ? (
               <div className="text-center py-8 text-sm text-slate-500">
                 {lookupMeta?.shiftRestricted
-                  ? `Khách hàng chưa có đơn hàng nào trong ${lookupMeta.shiftLabel || "ca làm việc hiện tại"} hôm nay (${lookupMeta.shiftDate}). Đơn của ca khác hoặc ngày cũ không được phép xem.`
+                  ? `Khách hàng chưa có đơn hàng nào trong ${lookupMeta.maxDays || 3} ngày gần nhất (${lookupMeta.minDate || lookupMeta.shiftDate} → ${lookupMeta.shiftDate}).`
                   : "Khách hàng chưa có đơn hàng nào."}
               </div>
             ) : (

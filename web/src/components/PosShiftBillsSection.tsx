@@ -42,6 +42,24 @@ function getLocalDateStr(d = new Date()): string {
   return `${y}-${m}-${day}`;
 }
 
+function getRecentAllowedDates(maxDays = 3): string[] {
+  const now = new Date();
+  const base = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0, 0);
+  const dates: string[] = [];
+  for (let i = 0; i < maxDays; i++) {
+    const dt = new Date(base);
+    dt.setDate(base.getDate() - i);
+    dates.push(getLocalDateStr(dt));
+  }
+  return dates;
+}
+
+function formatShortVnDate(dateStr?: string): string {
+  if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr || "";
+  const [y, m, d] = dateStr.split("-");
+  return `${d}/${m}/${y}`;
+}
+
 function formatPaymentMethodLabel(ord: Order): string {
   if (ord.paymentMethod === "CASH") return "Tiền mặt";
   if (ord.paymentMethod === "BANKING") return "Chuyển khoản";
@@ -56,7 +74,7 @@ function formatShiftBadge(shiftCode?: string): string {
   if (shiftCode === "SHIFT_2") return "Ca 2 (12:00 - 21:00)";
   if (shiftCode === "BOTH") return "Ca 1 + Ca 2";
   if (shiftCode === "OFF") return "Nghỉ (OFF)";
-  return "Trong ca";
+  return "Trong ngày";
 }
 
 export default function PosShiftBillsSection({
@@ -69,12 +87,20 @@ export default function PosShiftBillsSection({
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [search, setSearch] = useState("");
+  const [dateFilter, setDateFilter] = useState<string>(() => getLocalDateStr());
+  const [shiftFilter, setShiftFilter] = useState<string>("ALL");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [paymentFilter, setPaymentFilter] = useState<string>("ALL");
   const [detailOrder, setDetailOrder] = useState<Order | null>(null);
 
   const debouncedSearch = useDebounce(search, 300);
   const currentDayRef = useRef<string>(getLocalDateStr());
+  const allowedDates =
+    meta?.allowedDates && meta.allowedDates.length > 0
+      ? meta.allowedDates
+      : getRecentAllowedDates(3);
+  const minAllowedDate = meta?.minDate || allowedDates[allowedDates.length - 1] || getLocalDateStr();
+  const maxAllowedDate = meta?.maxDate || allowedDates[0] || getLocalDateStr();
 
   const loadShiftBills = useCallback(async () => {
     setLoading(true);
@@ -84,6 +110,8 @@ export default function PosShiftBillsSection({
         search: debouncedSearch,
         status: statusFilter,
         paymentMethod: paymentFilter,
+        date: dateFilter,
+        shiftCode: shiftFilter,
       });
       setOrders(res.orders);
       setMeta(res.meta);
@@ -91,29 +119,33 @@ export default function PosShiftBillsSection({
         onMetaChange(res.meta);
       }
     } catch (err: any) {
-      setErrorMsg(err?.message || "Không thể tải danh sách bill trong ca");
+      setErrorMsg(err?.message || "Không thể tải danh sách bill trong ngày");
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, statusFilter, paymentFilter, onMetaChange]);
+  }, [debouncedSearch, statusFilter, paymentFilter, dateFilter, shiftFilter, onMetaChange]);
 
   useEffect(() => {
     loadShiftBills();
   }, [loadShiftBills, refreshTrigger]);
 
-  // Tự động kiểm tra khi qua 00:00 sang ngày mới -> xóa danh sách đơn cũ và tải lại ca ngày mới
+  // Tự động kiểm tra khi qua 00:00 sang ngày mới -> cập nhật lại mốc ngày hiện tại
   useEffect(() => {
     const timer = setInterval(() => {
       const today = getLocalDateStr();
       if (today !== currentDayRef.current) {
+        const prevToday = currentDayRef.current;
         currentDayRef.current = today;
         setDetailOrder(null);
-        setOrders([]);
-        loadShiftBills();
+        if (dateFilter === prevToday) {
+          setDateFilter(today);
+        } else {
+          loadShiftBills();
+        }
       }
     }, 15000);
     return () => clearInterval(timer);
-  }, [loadShiftBills]);
+  }, [loadShiftBills, dateFilter]);
 
   const summary = meta?.summary || {
     paidOrdersCount: 0,
@@ -127,30 +159,66 @@ export default function PosShiftBillsSection({
 
   return (
     <div className="space-y-4">
-      {/* Banner thông tin Ca hiện tại & Quy tắc bảo mật theo ca */}
+      {/* Banner thông tin Kiểm tra Bill trong ngày (tối đa 3 ngày gần nhất, không giới hạn ca) */}
       <div className="bg-slate-900 text-white rounded-xl p-4 sm:p-5 shadow-sm border border-slate-800 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div className="space-y-1.5">
           <div className="flex flex-wrap items-center gap-2">
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-xs font-extrabold">
               <Clock className="w-3.5 h-3.5" />
-              {meta?.shiftLabel || "Ca làm việc hiện tại"}
+              {meta?.shiftLabel || "Cả ngày (Mọi ca)"}
             </span>
             <span className="text-xs font-mono text-slate-300 bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-700">
-              Ngày: {meta?.date || getLocalDateStr()}
+              {dateFilter === "ALL"
+                ? `3 ngày gần nhất (${formatShortVnDate(minAllowedDate)} → ${formatShortVnDate(maxAllowedDate)})`
+                : `Ngày: ${formatShortVnDate(dateFilter || meta?.date || getLocalDateStr())}`}
             </span>
           </div>
           <h2 className="text-base sm:text-lg font-extrabold tracking-tight">
-            Lịch sử Hoá đơn (Đơn bán hàng trong ca)
+            Lịch sử Hoá đơn (Kiểm tra Bill trong ngày · Tối đa 3 ngày)
           </h2>
           <p className="text-xs text-slate-300 flex items-center gap-1.5">
-            <ShieldAlert className="w-4 h-4 text-amber-400 shrink-0" />
+            <ShieldAlert className="w-4 h-4 text-emerald-400 shrink-0" />
             <span>
-              Chỉ hiển thị các đơn hàng phát sinh trong <strong>đúng ca làm việc hiện tại của bạn hôm nay</strong>. Không hiển thị đơn của ca khác và tự động ẩn đơn cũ khi qua ngày mới (00:00).
+              Mở quyền cho Sales kiểm tra toàn bộ đơn hàng <strong>trong ngày (không giới hạn ca Ca 1 / Ca 2)</strong>, phạm vi tra cứu tối đa <strong>3 ngày gần nhất</strong> ({formatShortVnDate(minAllowedDate)} → {formatShortVnDate(maxAllowedDate)}).
             </span>
           </p>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          {allowedDates.map((dStr, idx) => {
+            const label =
+              idx === 0
+                ? `Hôm nay (${dStr.slice(8, 10)}/${dStr.slice(5, 7)})`
+                : idx === 1
+                  ? `Hôm qua (${dStr.slice(8, 10)}/${dStr.slice(5, 7)})`
+                  : `2 ngày trước (${dStr.slice(8, 10)}/${dStr.slice(5, 7)})`;
+            const active = dateFilter === dStr;
+            return (
+              <button
+                key={dStr}
+                type="button"
+                onClick={() => setDateFilter(dStr)}
+                className={`px-3 py-2 rounded-xl text-xs font-extrabold border transition cursor-pointer ${
+                  active
+                    ? "bg-emerald-600 text-white border-emerald-500 shadow-xs"
+                    : "bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700"
+                }`}
+              >
+                {label}
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            onClick={() => setDateFilter("ALL")}
+            className={`px-3 py-2 rounded-xl text-xs font-extrabold border transition cursor-pointer ${
+              dateFilter === "ALL"
+                ? "bg-emerald-600 text-white border-emerald-500 shadow-xs"
+                : "bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700"
+            }`}
+          >
+            Tất cả 3 ngày
+          </button>
           <button
             type="button"
             onClick={loadShiftBills}
@@ -163,7 +231,7 @@ export default function PosShiftBillsSection({
         </div>
       </div>
 
-      {/* Thẻ tổng hợp nhanh Bill trong ca */}
+      {/* Thẻ tổng hợp nhanh Bill trong ngày */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-2xs">
           <div className="flex items-center justify-between text-xs text-slate-500 font-semibold">
@@ -185,7 +253,7 @@ export default function PosShiftBillsSection({
 
         <div className="bg-white rounded-xl border border-emerald-200 p-3.5 shadow-2xs">
           <div className="flex items-center justify-between text-xs text-emerald-800 font-semibold">
-            <span>Tổng tiền Bill trong ca</span>
+            <span>{dateFilter === "ALL" ? "Tổng tiền Bill (3 ngày)" : "Tổng tiền Bill trong ngày"}</span>
             <FileText className="w-4 h-4 text-emerald-600" />
           </div>
           <div className="mt-1.5 text-lg sm:text-xl font-mono font-black text-emerald-700 break-all">
@@ -195,7 +263,7 @@ export default function PosShiftBillsSection({
 
         <div className="bg-white rounded-xl border border-amber-200 p-3.5 shadow-2xs">
           <div className="flex items-center justify-between text-xs text-amber-900 font-semibold">
-            <span>Thực thu Tiền mặt trong ca</span>
+            <span>{dateFilter === "ALL" ? "Thực thu Tiền mặt (3 ngày)" : "Thực thu Tiền mặt trong ngày"}</span>
             <Banknote className="w-4 h-4 text-amber-600" />
           </div>
           <div className="mt-1.5 text-lg sm:text-xl font-mono font-black text-amber-700 break-all">
@@ -218,7 +286,7 @@ export default function PosShiftBillsSection({
         </div>
       </div>
 
-      {/* Bộ lọc & Tìm kiếm Bill trong ca */}
+      {/* Bộ lọc & Tìm kiếm Bill trong ngày */}
       <div className="bg-white rounded-xl border border-slate-200 p-3.5 sm:p-4 shadow-2xs space-y-3">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div className="relative flex-1">
@@ -242,6 +310,29 @@ export default function PosShiftBillsSection({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="date"
+              value={dateFilter === "ALL" ? "" : dateFilter}
+              min={minAllowedDate}
+              max={maxAllowedDate}
+              onChange={(e) => {
+                const v = e.target.value;
+                setDateFilter(v ? v : "ALL");
+              }}
+              title="Chọn ngày kiểm tra bill (tối đa 3 ngày gần nhất)"
+              className="min-h-[40px] px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono font-bold text-slate-700 bg-white focus:border-emerald-600 focus:outline-none"
+            />
+
+            <select
+              value={shiftFilter}
+              onChange={(e) => setShiftFilter(e.target.value)}
+              className="min-h-[40px] px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-700 bg-white focus:border-emerald-600 focus:outline-none"
+            >
+              <option value="ALL">🕐 Cả ngày (Mọi ca)</option>
+              <option value="SHIFT_1">🌅 Ca 1 (08:30 - 17:30)</option>
+              <option value="SHIFT_2">🌆 Ca 2 (12:00 - 21:00)</option>
+            </select>
+
             <select
               value={paymentFilter}
               onChange={(e) => setPaymentFilter(e.target.value)}
@@ -277,26 +368,18 @@ export default function PosShiftBillsSection({
         {/* Danh sách Bill */}
         {loading ? (
           <div className="py-12 text-center text-sm text-slate-500">
-            Đang tải danh sách bill trong ca...
-          </div>
-        ) : meta?.shiftCode === "OFF" ? (
-          <div className="py-12 text-center space-y-2 border border-dashed border-amber-300 bg-amber-50/50 rounded-xl p-6">
-            <ShieldAlert className="w-8 h-8 text-amber-600 mx-auto" />
-            <div className="text-sm font-extrabold text-slate-900">
-              Hôm nay bạn đang trong lịch Nghỉ (OFF)
-            </div>
-            <p className="text-xs text-slate-600 max-w-md mx-auto">
-              Nhân viên Sales chỉ được phép xem các đơn bán hàng phát sinh trong ca làm việc của mình.
-            </p>
+            Đang tải danh sách bill trong ngày...
           </div>
         ) : orders.length === 0 ? (
           <div className="py-12 text-center space-y-1.5 border border-dashed border-slate-200 rounded-xl">
             <FileText className="w-8 h-8 text-slate-300 mx-auto" />
             <div className="text-sm font-bold text-slate-700">
-              Chưa có bill nào trong {meta?.shiftLabel || "ca làm việc hiện tại"} hôm nay
+              {dateFilter === "ALL"
+                ? "Chưa có bill nào trong 3 ngày gần nhất"
+                : `Chưa có bill nào trong ngày ${formatShortVnDate(dateFilter)}`}
             </div>
             <p className="text-xs text-slate-400">
-              Các đơn hàng vừa tạo hoặc thanh toán trong ca sẽ xuất hiện ngay tại đây.
+              Các đơn hàng phát sinh trong ngày (cả Ca 1 và Ca 2) sẽ xuất hiện tại đây.
             </p>
           </div>
         ) : (

@@ -1958,6 +1958,12 @@ export interface CurrentShiftOrdersSummary {
 export interface CurrentShiftOrdersMeta {
   total: number;
   date: string;
+  dateFilter?: string;
+  allowedDates?: string[];
+  minDate?: string;
+  maxDate?: string;
+  maxDays?: number;
+  staffShift?: "SHIFT_1" | "SHIFT_2" | "BOTH" | "OFF";
   shiftCode: "SHIFT_1" | "SHIFT_2" | "BOTH" | "OFF";
   shiftLabel: string;
   summary: CurrentShiftOrdersSummary;
@@ -1967,12 +1973,20 @@ export async function fetchCurrentShiftOrdersApi(params?: {
   search?: string;
   status?: string;
   paymentMethod?: string;
+  date?: string;
+  shiftCode?: string;
 }): Promise<{ orders: Order[]; meta: CurrentShiftOrdersMeta }> {
   const q = new URLSearchParams();
   if (params?.search?.trim()) q.set("search", params.search.trim());
   if (params?.status && params.status !== "ALL") q.set("status", params.status);
   if (params?.paymentMethod && params.paymentMethod !== "ALL") {
     q.set("paymentMethod", params.paymentMethod);
+  }
+  if (params?.date?.trim()) {
+    q.set("date", params.date.trim());
+  }
+  if (params?.shiftCode && params.shiftCode !== "ALL") {
+    q.set("shiftCode", params.shiftCode);
   }
   const qs = q.toString();
   const res = await apiRequest<Order[]>(`/orders/current-shift${qs ? `?${qs}` : ""}`);
@@ -1981,8 +1995,8 @@ export async function fetchCurrentShiftOrdersApi(params?: {
     meta: (res.meta as unknown as CurrentShiftOrdersMeta) || {
       total: 0,
       date: "",
-      shiftCode: "SHIFT_1",
-      shiftLabel: "Ca 1 (08:30 - 17:30)",
+      shiftCode: "BOTH",
+      shiftLabel: "Cả ngày (Mọi ca)",
       summary: {
         paidOrdersCount: 0,
         draftOrdersCount: 0,

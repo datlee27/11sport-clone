@@ -75,7 +75,7 @@ export default function StaffModule({
   currentUser?: StaffUser | null;
 }) {
   const isCeo = currentUser?.role === "CEO";
-  const isAdminView = mode === "ADMIN_LOCK_ONLY" && !isCeo;
+  const isAdminView = (mode === "ADMIN_LOCK_ONLY" || currentUser?.role === "ADMIN") && !isCeo;
   const [staffList, setStaffList] = useState<StaffUser[]>([]);
 
   // --- Form Tạo Tài Khoản Nhân Viên Mới ---
@@ -1819,98 +1819,75 @@ export default function StaffModule({
                       </td>
                       <td className="py-3 px-3.5 text-right whitespace-nowrap">
                         <div className="inline-flex items-center gap-2">
-                          {isCeo ? (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() => handleOpenProfileModal(st)}
-                                className="py-1.5 px-3 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold text-xs transition cursor-pointer"
-                              >
-                                Sửa hồ sơ
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleOpenResetPassword(st)}
-                                className="px-3 py-1.5 rounded-lg font-bold inline-flex items-center gap-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 cursor-pointer"
-                              >
-                                <KeyRound className="w-3.5 h-3.5" /> Đổi mật khẩu
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  handleUpdateStaff(st, {
-                                    status: st.status === "ACTIVE" ? "LOCKED" : "ACTIVE",
-                                  })
-                                }
-                                className={`px-3 py-1.5 rounded-lg font-bold inline-flex items-center gap-1 cursor-pointer ${
-                                  st.status === "ACTIVE"
-                                    ? "bg-red-50 hover:bg-red-100 text-red-600"
-                                    : "bg-emerald-50 hover:bg-emerald-100 text-emerald-700"
-                                }`}
-                              >
-                                {st.status === "ACTIVE" ? (
-                                  <>
-                                    <Lock className="w-3.5 h-3.5" /> Khóa TK
-                                  </>
-                                ) : (
-                                  <>
-                                    <Unlock className="w-3.5 h-3.5" /> Mở khóa
-                                  </>
-                                )}
-                              </button>
-                            </>
-                          ) : !isAdminView ? (
-                            !isTargetHighPriv ? (
+                          {(() => {
+                            const canEditProfile = isCeo || !isAdminView;
+                            const canResetPwd = isCeo
+                              ? true
+                              : isAdminView
+                                ? !isTargetCeo
+                                : !isTargetHighPriv;
+                            const canToggleLock = isCeo
+                              ? true
+                              : isAdminView
+                                ? !isTargetCeo
+                                : !isTargetHighPriv;
+
+                            if (!canEditProfile && !canResetPwd && !canToggleLock) {
+                              return (
+                                <span className="text-[11px] text-slate-400 italic">
+                                  {isTargetCeo ? "Tài khoản Giám đốc" : "Tài khoản Quản lý"}
+                                </span>
+                              );
+                            }
+
+                            return (
                               <>
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenProfileModal(st)}
-                                  className="py-1.5 px-3 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold text-xs transition cursor-pointer"
-                                >
-                                  Sửa hồ sơ
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenResetPassword(st)}
-                                  className="px-3 py-1.5 rounded-lg font-bold inline-flex items-center gap-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 cursor-pointer"
-                                >
-                                  <KeyRound className="w-3.5 h-3.5" /> Đổi mật khẩu
-                                </button>
+                                {canEditProfile && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenProfileModal(st)}
+                                    className="py-1.5 px-3 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold text-xs transition cursor-pointer"
+                                  >
+                                    Sửa hồ sơ
+                                  </button>
+                                )}
+                                {canResetPwd && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenResetPassword(st)}
+                                    className="px-3 py-1.5 rounded-lg font-bold inline-flex items-center gap-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 cursor-pointer"
+                                  >
+                                    <KeyRound className="w-3.5 h-3.5" /> Đổi mật khẩu
+                                  </button>
+                                )}
+                                {canToggleLock && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      handleUpdateStaff(st, {
+                                        status: st.status === "ACTIVE" ? "LOCKED" : "ACTIVE",
+                                      })
+                                    }
+                                    className={`px-3 py-1.5 rounded-lg font-bold inline-flex items-center gap-1 cursor-pointer ${
+                                      st.status === "ACTIVE"
+                                        ? "bg-red-50 hover:bg-red-100 text-red-600"
+                                        : "bg-emerald-50 hover:bg-emerald-100 text-emerald-700"
+                                    }`}
+                                  >
+                                    {st.status === "ACTIVE" ? (
+                                      <>
+                                        <Lock className="w-3.5 h-3.5" /> Khóa TK
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Unlock className="w-3.5 h-3.5" /> Mở khóa
+                                      </>
+                                    )}
+                                  </button>
+                                )}
                               </>
-                            ) : (
-                              <span className="text-[11px] text-slate-400 italic">
-                                {isTargetCeo ? "Tài khoản Giám đốc" : "Tài khoản Quản lý"}
-                              </span>
-                            )
-                          ) : isTargetCeo ? (
-                            <span className="text-[11px] text-slate-400 italic">
-                              Tài khoản Giám đốc
-                            </span>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() =>
-                                handleUpdateStaff(st, {
-                                  status: st.status === "ACTIVE" ? "LOCKED" : "ACTIVE",
-                                })
-                              }
-                              className={`px-3 py-1.5 rounded-lg font-bold inline-flex items-center gap-1 cursor-pointer ${
-                                st.status === "ACTIVE"
-                                  ? "bg-red-50 hover:bg-red-100 text-red-600"
-                                  : "bg-emerald-50 hover:bg-emerald-100 text-emerald-700"
-                              }`}
-                            >
-                              {st.status === "ACTIVE" ? (
-                                <>
-                                  <Lock className="w-3.5 h-3.5" /> Khóa TK
-                                </>
-                              ) : (
-                                <>
-                                  <Unlock className="w-3.5 h-3.5" /> Mở khóa
-                                </>
-                              )}
-                            </button>
-                          )}
+                            );
+                          })()}
                         </div>
                       </td>
                     </tr>
