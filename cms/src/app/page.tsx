@@ -92,8 +92,8 @@ const CMS_MENU_ITEMS: {
     },
     {
       id: "INVENTORY",
-      label: "Quản lý Kho, Giá bán & Sổ kho",
-      desc: "Tồn kho Tầng 1 & Tầng 2, phiếu nhập/xuất, điều chỉnh giá",
+      label: "Quản lý Kho, Giá niêm yết & Sổ kho",
+      desc: "Tồn kho Tầng 1 & Tầng 2, phiếu nhập/xuất, điều chỉnh giá niêm yết",
       icon: Boxes,
     },
     {

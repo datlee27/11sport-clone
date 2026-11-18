@@ -999,7 +999,7 @@ export default function ReturnExchangeTab() {
                 <thead className="bg-slate-900 text-white uppercase">
                   <tr>
                     <th className="py-2.5 px-3">Sản phẩm trong đơn</th>
-                    <th className="py-2.5 px-3 text-right">Đơn giá gốc</th>
+                    <th className="py-2.5 px-3 text-right">Đơn giá niêm yết</th>
                     <th className="py-2.5 px-3 text-center">Còn có thể trả</th>
                     <th className="py-2.5 px-3 text-center w-40">Số lượng trả</th>
                     <th className="py-2.5 px-3 w-64">Tình trạng hàng trả về (BR-15)</th>
@@ -1609,7 +1609,7 @@ export default function ReturnExchangeTab() {
                   {exchangeDiscountTotal > 0 && (
                     <div className="flex justify-between gap-2 text-xs text-rose-300">
                       <span>
-                        Giảm giá hàng đổi mới (Giá gốc: {formatVND(exchangeRawSubtotal)}):
+                        Giảm giá hàng đổi mới (Giá niêm yết: {formatVND(exchangeRawSubtotal)}):
                       </span>
                       <span className="font-mono font-bold">
                         −{formatVND(exchangeDiscountTotal)}

@@ -183,8 +183,8 @@ function buildFallbackPushProducts(
     let pushScore = 0;
 
     if (sellingPrice <= 0) {
-      pushReasons.push("Chưa đặt giá bán (0 VND)");
-      suggestedAction = "Cập nhật giá bán lẻ trong Quản lý Kho để POS có thể bán";
+      pushReasons.push("Chưa đặt giá niêm yết (0 VND)");
+      suggestedAction = "Cập nhật giá niêm yết trong Quản lý Kho để POS có thể bán";
       pushScore += 100;
     }
     if (stockFloor1 === 0 && stockFloor2 > 0) {
@@ -660,7 +660,7 @@ export default function MarketingPushProductsModule() {
               Các Sản Phẩm Đang Cần Đẩy Mạnh ({filteredPushProducts.length} mặt hàng)
             </h3>
             <p className="text-xs text-slate-500">
-              Hệ thống tự động phát hiện các mặt hàng tồn kho cao nhưng bán chậm/chưa phát sinh đơn, đọng vốn lớn, đang nằm ở Kho Tầng 2 mà Tầng 1 = 0, hoặc chưa đặt giá bán.
+              Hệ thống tự động phát hiện các mặt hàng tồn kho cao nhưng bán chậm/chưa phát sinh đơn, đọng vốn lớn, đang nằm ở Kho Tầng 2 mà Tầng 1 = 0, hoặc chưa đặt giá niêm yết.
             </p>
           </div>
 
@@ -685,7 +685,7 @@ export default function MarketingPushProductsModule() {
               <option value="ZERO_SALES">Chưa bán được chiếc nào ({counts.zeroSales})</option>
               <option value="HIGH_CAPITAL">Đọng vốn cao ≥ 2tr ({counts.highCapital})</option>
               <option value="FLOOR2_ONLY">Tầng 1 = 0, nằm ở Tầng 2 ({counts.floor2Only})</option>
-              <option value="NO_PRICE">Chưa đặt giá bán ({counts.noPrice})</option>
+              <option value="NO_PRICE">Chưa đặt giá niêm yết ({counts.noPrice})</option>
             </select>
 
             <select
@@ -710,7 +710,7 @@ export default function MarketingPushProductsModule() {
                 <th className="py-3 px-3">Category</th>
                 <th className="py-3 px-3 text-right">Tồn kho hiện tại</th>
                 <th className="py-3 px-3 text-right">Đã bán trong kỳ</th>
-                <th className="py-3 px-3 text-right">Giá gốc / Giá bán</th>
+                <th className="py-3 px-3 text-right">Giá vốn / Giá niêm yết</th>
                 <th className="py-3 px-3 text-right bg-amber-950 text-amber-300">
                   Vốn đang đọng
                 </th>

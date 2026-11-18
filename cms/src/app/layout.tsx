@@ -3,9 +3,9 @@ import "./globals.css";
 import VersionChecker from "@/components/VersionChecker";
 
 export const metadata: Metadata = {
-  title: "11Sport CMS — Hệ thống Quản trị Kho, Danh mục, Đơn hàng & Nhân sự",
+  title: "11Sport CMS — Hệ thống Quản trị",
   description:
-    "Trang quản trị CMS 11Sport: Quản lý tồn kho kế toán đầu kỳ/cuối kỳ, cập nhật giá bán, quản lý Category, Đơn hàng & Nhân viên.",
+    "Trang quản trị CMS 11Sport",
   icons: {
     icon: [
       { url: "/logo-11sport-icon.svg", type: "image/svg+xml" },

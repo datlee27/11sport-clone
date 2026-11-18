@@ -253,9 +253,9 @@ export default function InventoryTab() {
         changedPriceProducts.forEach((p) => delete copy[p._id]);
         return copy;
       });
-      setPriceStatusMsg(`Đã lưu thành công giá bán của ${changedPriceProducts.length} mặt hàng.`);
+      setPriceStatusMsg(`Đã lưu thành công giá niêm yết của ${changedPriceProducts.length} mặt hàng.`);
     } catch (err: any) {
-      alert(err?.message || "Không thể cập nhật giá bán");
+      alert(err?.message || "Không thể cập nhật giá niêm yết");
     } finally {
       setSavingBatch(false);
     }
@@ -1058,9 +1058,9 @@ export default function InventoryTab() {
                   <th className="py-3 px-3 text-right">Tổng 2 Kho</th>
                 )}
                 {canSeeCostPrice && (
-                  <th className="py-3 px-3 text-right">Giá gốc</th>
+                  <th className="py-3 px-3 text-right">Giá vốn</th>
                 )}
-                <th className="py-3 px-3 text-right">Giá bán niêm yết</th>
+                <th className="py-3 px-3 text-right">Giá niêm yết</th>
                 <th className="py-3 px-3 text-center">Tem Label</th>
               </tr>
             </thead>
@@ -1368,7 +1368,7 @@ export default function InventoryTab() {
                                       handleSaveAllPriceChanges();
                                     }
                                   }}
-                                  placeholder="Nhập giá bán..."
+                                  placeholder="Nhập giá niêm yết..."
                                   className={`w-full pl-2 pr-9 py-1.5 rounded-lg border text-right text-xs font-mono font-bold focus:border-emerald-600 focus:outline-none ${priceEdits[p._id] !== undefined &&
                                     priceEdits[p._id] !== Number(p.sellingPrice || 0)
                                     ? "border-emerald-500 bg-emerald-50/70 text-emerald-950 ring-1 ring-emerald-400"
@@ -1416,7 +1416,7 @@ export default function InventoryTab() {
                                   <span className="font-mono text-blue-700">{p.code}</span> ({p.name})
                                 </div>
                                 <span className="text-[11px] text-slate-500">
-                                  Mỗi thuộc tính (Màu + Size) có <b className="font-mono text-indigo-700">Mã con riêng</b> để in tem &amp; quét kiểm kho • Đơn giá bán:{" "}
+                                  Mỗi thuộc tính (Màu + Size) có <b className="font-mono text-indigo-700">Mã con riêng</b> để in tem &amp; quét kiểm kho • Giá niêm yết:{" "}
                                   <b className="font-mono text-emerald-700">
                                     {formatVND(Number(priceEdits[p._id] ?? p.sellingPrice ?? 0))}
                                   </b>
@@ -1431,7 +1431,7 @@ export default function InventoryTab() {
                                       <th className="py-2 px-3 text-left">Mã con</th>
                                       <th className="py-2 px-3 text-left">Màu sắc</th>
                                       <th className="py-2 px-3 text-left">Size</th>
-                                      <th className="py-2 px-3 text-right">Giá bán</th>
+                                      <th className="py-2 px-3 text-right">Giá niêm yết</th>
                                       <th className="py-2 px-3 text-right text-emerald-700">
                                         🏢 Tồn Kho Tầng 1
                                       </th>

@@ -1407,7 +1407,7 @@ export default function PromotionModule() {
                                 {prod?.name || g.productId}
                               </div>
                               <div className="text-[11px] text-slate-500 font-mono">
-                                Giá gốc bán lẻ: {formatVND(prod?.sellingPrice || 0)} → Tặng 0 VND · Tồn T1:{" "}
+                                Giá niêm yết: {formatVND(prod?.sellingPrice || 0)} → Tặng 0 VND · Tồn T1:{" "}
                                 {prod ? getFloor1Stock(prod) : 0} {prod?.unit || "Cái"}
                               </div>
                             </div>

@@ -1279,7 +1279,7 @@ export default function PosTab({ onOpenInvoice }: PosTabProps) {
 
     if (cartUnitPrice({ product, color, size }) <= 0) {
       setErrorMsg(
-        `Sản phẩm "${product.name}" chưa có giá bán lẻ (> 0). Vui lòng cập nhật giá trên CMS trước khi bán.`
+        `Sản phẩm "${product.name}" chưa có giá niêm yết (> 0). Vui lòng cập nhật giá trên CMS trước khi bán.`
       );
       return false;
     }
@@ -1410,7 +1410,7 @@ export default function PosTab({ onOpenInvoice }: PosTabProps) {
 
     if (productDisplayPrice(matchedProduct).price <= 0) {
       playScannerBeep("error");
-      const msg = `Mã ${matchedProduct.code} ("${matchedProduct.name}") chưa có giá bán lẻ (> 0đ). Vui lòng cập nhật giá trên CMS.`;
+      const msg = `Mã ${matchedProduct.code} ("${matchedProduct.name}") chưa có giá niêm yết (> 0đ). Vui lòng cập nhật giá trên CMS.`;
       setErrorMsg(msg);
       setLastScanBanner({
         type: "error",
@@ -2605,7 +2605,7 @@ export default function PosTab({ onOpenInvoice }: PosTabProps) {
             </span>
           ) : (
             <span className="text-xs font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded">
-              Chưa có giá bán (0 VND)
+              Chưa có giá niêm yết (0 VND)
             </span>
           )}
 

@@ -300,7 +300,7 @@ export default function ProductCatalogModule() {
       });
       setStatusMsg({
         type: "success",
-        text: `Đã lưu ${field === "sellingPrice" ? "giá bán" : "giá gốc"} riêng cho biến thể ${v.variantCode || `${v.color} ${v.size}`}${next === 0 ? " (dùng giá mặc định)" : ""}.`,
+        text: `Đã lưu ${field === "sellingPrice" ? "giá niêm yết" : "giá vốn"} riêng cho biến thể ${v.variantCode || `${v.color} ${v.size}`}${next === 0 ? " (dùng giá mặc định)" : ""}.`,
       });
       await loadAll();
     } catch (err: any) {
@@ -450,7 +450,7 @@ export default function ProductCatalogModule() {
               Danh mục Sản phẩm Chuẩn Mã (CATEGORY + BRAND + VERSION + MÀU + SIZE)
             </div>
             <p className="text-slate-300">
-              Khai báo trước Mã gốc, các biến thể (Màu • Size), Giá gốc &amp; Giá bán tại đây. Khi hàng về kho, chỉ cần vào{" "}
+              Khai báo trước Mã gốc, các biến thể (Màu • Size), Giá vốn &amp; Giá niêm yết tại đây. Khi hàng về kho, chỉ cần vào{" "}
               <strong className="text-emerald-300">Quản lý Kho → + Nhập kho</strong> để chọn sẵn sản phẩm và nhập số lượng.
             </p>
           </div>
@@ -577,8 +577,8 @@ export default function ProductCatalogModule() {
                 <th className="py-3 px-3 min-w-[260px]">Tên sản phẩm, Ghi chú &amp; Biến thể</th>
                 <th className="py-3 px-3">Category • Brand • Version</th>
                 <th className="py-3 px-2.5 text-center w-20">ĐVT</th>
-                {canSeeCost && <th className="py-3 px-3 text-right w-36">Giá gốc mặc định</th>}
-                <th className="py-3 px-3 text-right w-36">Giá bán mặc định</th>
+                {canSeeCost && <th className="py-3 px-3 text-right w-36">Giá vốn</th>}
+                <th className="py-3 px-3 text-right w-36">Giá niêm yết</th>
                 <th className="py-3 px-3 text-center w-24">Tồn hiện tại</th>
                 <th className="py-3 px-3 text-right">Thao tác</th>
               </tr>
@@ -873,8 +873,8 @@ export default function ProductCatalogModule() {
                                   <span className="font-mono text-indigo-700">{p.code}</span> — {p.name}
                                 </h4>
                                 <p className="text-[11px] text-slate-500">
-                                  Giá riêng của biến thể nếu để trống (hoặc 0) sẽ tự động dùng Giá gốc (
-                                  {formatVND(baseEdit.costPrice)}) và Giá bán ({formatVND(baseEdit.sellingPrice)}) mặc định của sản phẩm gốc.
+                                  Giá riêng của biến thể nếu để trống (hoặc 0) sẽ tự động dùng Giá vốn (
+                                  {formatVND(baseEdit.costPrice)}) và Giá niêm yết ({formatVND(baseEdit.sellingPrice)}) mặc định của sản phẩm gốc.
                                 </p>
                               </div>
                               <button
@@ -894,8 +894,8 @@ export default function ProductCatalogModule() {
                                     <th className="py-2 px-3">Mã con (variantCode)</th>
                                     <th className="py-2 px-3">Màu sắc &amp; Mã màu</th>
                                     <th className="py-2 px-3">Size</th>
-                                    {canSeeCost && <th className="py-2 px-3 text-right">Giá gốc riêng</th>}
-                                    <th className="py-2 px-3 text-right">Giá bán riêng</th>
+                                    {canSeeCost && <th className="py-2 px-3 text-right">Giá vốn riêng</th>}
+                                    <th className="py-2 px-3 text-right">Giá niêm yết riêng</th>
                                     <th className="py-2 px-3 text-center">Tồn hiện tại</th>
                                     <th className="py-2 px-3 text-right">In tem lẻ</th>
                                   </tr>
@@ -1078,7 +1078,7 @@ export default function ProductCatalogModule() {
                               {canSeeCost && (
                                 <div>
                                   <label className="block text-[10px] font-bold uppercase text-slate-600 mb-1">
-                                    Giá gốc riêng (tuỳ chọn)
+                                    Giá vốn riêng (tuỳ chọn)
                                   </label>
                                   <input
                                     type="text"
@@ -1093,14 +1093,14 @@ export default function ProductCatalogModule() {
                                         },
                                       }))
                                     }
-                                    placeholder="= giá gốc"
+                                    placeholder="= giá vốn"
                                     className="w-28 px-2.5 py-1.5 rounded border border-slate-300 font-mono text-right text-xs bg-white"
                                   />
                                 </div>
                               )}
                               <div>
                                 <label className="block text-[10px] font-bold uppercase text-slate-600 mb-1">
-                                  Giá bán riêng (tuỳ chọn)
+                                  Giá niêm yết riêng (tuỳ chọn)
                                 </label>
                                 <input
                                   type="text"
@@ -1117,7 +1117,7 @@ export default function ProductCatalogModule() {
                                       },
                                     }))
                                   }
-                                  placeholder="= giá bán"
+                                  placeholder="= giá niêm yết"
                                   className="w-28 px-2.5 py-1.5 rounded border border-slate-300 font-mono text-right text-xs bg-white"
                                 />
                               </div>

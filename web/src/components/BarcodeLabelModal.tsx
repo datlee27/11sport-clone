@@ -966,7 +966,7 @@ export default function BarcodeLabelModal({
             </div>
           ) : (
             <div style={{ width: "100%", flexShrink: 0, fontSize: 10.5, fontWeight: 700, color: "#dc2626", lineHeight: 1.05 }}>
-              Chưa nhập giá bán
+              Chưa nhập giá niêm yết
             </div>
           )
         )}
@@ -1271,7 +1271,7 @@ export default function BarcodeLabelModal({
                       onChange={(e) => setShowPrice(e.target.checked)}
                       style={{ width: 15, height: 15, accentColor: "#0284c7" }}
                     />
-                    In giá bán lẻ
+                    In giá niêm yết
                   </label>
                 </div>
 
@@ -1545,7 +1545,7 @@ export default function BarcodeLabelModal({
                               type="text"
                               inputMode="numeric"
                               value={effPrice > 0 ? formatNumberDots(effPrice) : ""}
-                              placeholder="Nhập giá bán..."
+                              placeholder="Nhập giá niêm yết..."
                               onChange={(e) => {
                                 const nextVal = parseNumberDots(e.target.value);
                                 setCustomPrices((prev) => ({

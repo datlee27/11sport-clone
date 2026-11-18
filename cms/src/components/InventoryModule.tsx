@@ -731,7 +731,7 @@ export default function InventoryModule() {
       if (newF1 < 0 || newF2 < 0 || newCost < 0 || newPrice < 0) {
         setStatusMsg({
           type: "error",
-          text: `Số lượng, giá gốc và giá bán của "${newName}" không được âm.`,
+          text: `Số lượng, giá vốn và giá niêm yết của "${newName}" không được âm.`,
         });
         return;
       }
@@ -778,7 +778,7 @@ export default function InventoryModule() {
       }
       setStatusMsg({
         type: "success",
-        text: `Đã lưu thành công ${changedProducts.length} mặt hàng có thay đổi (Số lượng tồn Kho Tầng 1 / Tầng 2, Giá gốc, Giá bán)!`,
+        text: `Đã lưu thành công ${changedProducts.length} mặt hàng có thay đổi (Số lượng tồn Kho Tầng 1 / Tầng 2, Giá vốn, Giá niêm yết)!`,
       });
       await loadProductsAndCats();
       loadCategoriesAndImports();
@@ -1195,7 +1195,7 @@ export default function InventoryModule() {
 
   const handleDownloadAdminSampleCsv = () => {
     const sampleRows = [
-      ["Mã SP", "Tên sản phẩm", "Hãng", "Màu sắc", "Size", "ĐVT", "Số lượng", "Giá gốc", "Giá bán", "Ghi chú"],
+      ["Mã SP", "Tên sản phẩm", "Hãng", "Màu sắc", "Size", "ĐVT", "Số lượng", "Giá vốn", "Giá niêm yết", "Ghi chú"],
       ["GASIA221401", "Giày Asia 221401", "Asia", "Trắng Xanh", "41", "Đôi", "10", "180000", "290000", "Lô mới"],
       ["GASIA221401", "Giày Asia 221401", "Asia", "Trắng Xanh", "42", "Đôi", "8", "180000", "290000", "Lô mới"],
       ["AKAMITO150824", "Áo đấu Kamito Pro", "Kamito", "Đỏ", "L", "Cái", "12", "150000", "290000", ""],
@@ -1509,7 +1509,7 @@ export default function InventoryModule() {
       }));
       setStatusMsg({
         type: "success",
-        text: `Đã cập nhật ${field === "sellingPrice" ? "giá bán" : "giá vốn"} riêng cho ${v.variantCode || `${v.color} ${v.size}`}${next === 0 ? " (dùng giá gốc)" : ""}.`,
+        text: `Đã cập nhật ${field === "sellingPrice" ? "giá niêm yết" : "giá vốn"} riêng cho ${v.variantCode || `${v.color} ${v.size}`}${next === 0 ? " (dùng giá mặc định)" : ""}.`,
       });
       loadProductsAndCats();
     } catch (err: any) {
@@ -2824,14 +2824,14 @@ export default function InventoryModule() {
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-base sm:text-lg font-extrabold text-slate-900 tracking-tight">
-                Trung tâm Quản lý Kho, Giá bán &amp; Sổ kho
+                Trung tâm Quản lý Kho, Giá niêm yết &amp; Sổ kho
               </h2>
               <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-bold">
                 {activeWarehouseLabel}
               </span>
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
-              Quản lý tồn kho tách biệt 2 tầng, điều chỉnh Giá gốc / Giá bán, nhập kho, kiểm kê mã vạch và luân chuyển hàng hoá.
+              Quản lý tồn kho tách biệt 2 tầng, điều chỉnh Giá vốn / Giá niêm yết, nhập kho, kiểm kê mã vạch và luân chuyển hàng hoá.
             </p>
           </div>
 
@@ -2955,7 +2955,7 @@ export default function InventoryModule() {
             }`}
           >
             <Package className="w-4 h-4" />
-            <span>1. Tồn kho &amp; Giá bán</span>
+            <span>1. Tồn kho &amp; Giá niêm yết</span>
             <span
               className={`px-1.5 py-0.2 rounded-full font-mono text-[10px] ${
                 subTab === "PRODUCTS" ? "bg-white/20 text-white" : "bg-white text-slate-600"
@@ -3099,7 +3099,7 @@ export default function InventoryModule() {
 
             <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
               <div className="text-[11px] font-bold uppercase text-slate-500">
-                Giá trị {activeWarehouseLabel} (Theo Giá gốc)
+                Giá trị {activeWarehouseLabel} (Theo Giá vốn)
               </div>
               <div className="text-2xl font-extrabold font-mono text-amber-700 mt-1">
                 {formatVND(totalCostInventoryValue)}
@@ -3111,7 +3111,7 @@ export default function InventoryModule() {
 
             <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
               <div className="text-[11px] font-bold uppercase text-slate-500">
-                Giá trị {activeWarehouseLabel} (Theo Giá bán)
+                Giá trị {activeWarehouseLabel} (Theo Giá niêm yết)
               </div>
               <div className="text-2xl font-extrabold font-mono text-emerald-700 mt-1">
                 {formatVND(totalSellInventoryValue)}
@@ -3132,7 +3132,7 @@ export default function InventoryModule() {
                 {formatVND(totalExpectedMargin)}
               </div>
               <div className="text-[11px] text-slate-300 mt-0.5">
-                = Tổng giá bán − Tổng giá gốc
+                = Tổng giá niêm yết − Tổng giá vốn
               </div>
             </div>
           </div>
@@ -3154,7 +3154,7 @@ export default function InventoryModule() {
                   </h3>
                   <p className="text-[11px] text-slate-500">
                     Lưu vết đầy đủ thông tin Người nhập (<strong className="text-purple-700">ADMIN</strong> hoặc{" "}
-                    <strong className="text-teal-700">ACCOUNTANT</strong>), kho nhận, số lượng, giá gốc và giá bán.
+                    <strong className="text-teal-700">ACCOUNTANT</strong>), kho nhận, số lượng, giá vốn và giá niêm yết.
                   </p>
                 </div>
               </div>
@@ -3218,7 +3218,7 @@ export default function InventoryModule() {
                         <th className="py-2.5 px-3">Người kiểm / Hoàn thành</th>
                         <th className="py-2.5 px-3 text-right">Số SP</th>
                         <th className="py-2.5 px-3 text-right">Tổng SL nhập</th>
-                        <th className="py-2.5 px-3 text-right">Tổng giá gốc</th>
+                        <th className="py-2.5 px-3 text-right">Tổng giá vốn</th>
                         <th className="py-2.5 px-3 text-center">Xem chi tiết</th>
                       </tr>
                     </thead>
@@ -3770,8 +3770,8 @@ export default function InventoryModule() {
                         Tổng 2 Kho
                       </th>
                     )}
-                    <th className="py-3 px-2.5 text-right w-36 whitespace-nowrap">Giá gốc (VND)</th>
-                    <th className="py-3 px-2.5 text-right w-36 whitespace-nowrap">Giá bán lẻ (VND)</th>
+                    <th className="py-3 px-2.5 text-right w-36 whitespace-nowrap">Giá vốn (VND)</th>
+                    <th className="py-3 px-2.5 text-right w-36 whitespace-nowrap">Giá niêm yết (VND)</th>
                     <th className="py-3 px-2.5 text-right w-36 whitespace-nowrap">Thao tác</th>
                   </tr>
                 </thead>
@@ -4350,7 +4350,7 @@ export default function InventoryModule() {
                                       <span className="font-mono text-indigo-700">{p.code}</span>
                                     </div>
                                     <div className="text-[11px] text-slate-500">
-                                      Mỗi thuộc tính (Màu + Size) có <b>Mã con riêng</b> để in tem &amp; quét kiểm kho chính xác, dùng chung Giá gốc ({formatVND(costVal)}) và Giá bán ({formatVND(sellVal)}).
+                                      Mỗi thuộc tính (Màu + Size) có <b>Mã con riêng</b> để in tem &amp; quét kiểm kho chính xác, dùng chung Giá vốn ({formatVND(costVal)}) và Giá niêm yết ({formatVND(sellVal)}).
                                     </div>
                                   </div>
                                   <button
@@ -4454,7 +4454,7 @@ export default function InventoryModule() {
                                         <th className="py-2 px-2.5 text-right">🏢 Tồn Kho Tầng 1</th>
                                         <th className="py-2 px-2.5 text-right">🏬 Tồn Kho Tầng 2</th>
                                         <th className="py-2 px-2.5 text-right">Tổng SL</th>
-                                        <th className="py-2 px-2.5 text-right" title="Trống/0 = dùng giá bán gốc">Giá bán</th>
+                                        <th className="py-2 px-2.5 text-right" title="Trống/0 = dùng giá niêm yết gốc">Giá niêm yết</th>
                                         {canSeeCost && (
                                           <th className="py-2 px-2.5 text-right" title="Trống/0 = dùng giá vốn gốc">Giá vốn</th>
                                         )}
@@ -4630,14 +4630,14 @@ export default function InventoryModule() {
                                                   <input
                                                     type="text"
                                                     inputMode="numeric"
-                                                    aria-label={`Giá bán riêng ${childCode}`}
+                                                    aria-label={`Giá niêm yết riêng ${childCode}`}
                                                     disabled={!v.variantKey && !v.variantCode}
                                                     defaultValue={Number(v.sellingPrice || 0) > 0 ? formatNumberDots(Number(v.sellingPrice)) : ""}
                                                     key={`sp_${p._id}_${vIdx}_${v.sellingPrice || 0}`}
                                                     placeholder={formatNumberDots(sellVal)}
                                                     onBlur={(e) => handleSaveVariantPrice(p, v, "sellingPrice", parseNumberDots(e.target.value))}
                                                     className="w-28 px-2 py-1 rounded border border-slate-300 font-mono text-right disabled:bg-slate-100"
-                                                    title="Giá bán riêng của biến thể — để trống = dùng giá bán gốc (R8). Rời ô để lưu."
+                                                    title="Giá niêm yết riêng của biến thể — để trống = dùng giá niêm yết gốc (R8). Rời ô để lưu."
                                                   />
                                                 </td>
                                                 {canSeeCost && (
@@ -4884,7 +4884,7 @@ export default function InventoryModule() {
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <h3 className="font-bold text-slate-900 text-base">
-                Báo cáo Kế toán Tồn kho theo kỳ — Số lượng, Giá gốc & Giá bán (BR-06)
+                Báo cáo Kế toán Tồn kho theo kỳ — Số lượng, Giá vốn & Giá niêm yết (BR-06)
               </h3>
               <p className="text-xs text-slate-500">
                 Công thức chuẩn:{" "}
@@ -4942,13 +4942,13 @@ export default function InventoryModule() {
                   <th className="py-3 px-3 text-right font-extrabold bg-slate-800 whitespace-nowrap">
                     = Tổng 2 Kho
                   </th>
-                  <th className="py-3 px-3 text-right whitespace-nowrap">Giá gốc (VND)</th>
-                  <th className="py-3 px-3 text-right whitespace-nowrap">Giá bán (VND)</th>
+                  <th className="py-3 px-3 text-right whitespace-nowrap">Giá vốn (VND)</th>
+                  <th className="py-3 px-3 text-right whitespace-nowrap">Giá niêm yết (VND)</th>
                   <th className="py-3 px-3 text-right whitespace-nowrap bg-slate-800 text-amber-300">
                     Tổng vốn tồn
                   </th>
                   <th className="py-3 px-3 text-right whitespace-nowrap bg-slate-800 text-emerald-300">
-                    Tổng giá bán tồn
+                    Tổng giá niêm yết tồn
                   </th>
                 </tr>
               </thead>
@@ -5081,7 +5081,7 @@ export default function InventoryModule() {
                 (Stock Movements — BR-07)
               </h3>
               <p className="text-xs text-slate-500">
-                Lưu vết toàn bộ lịch sử biến động tồn kho kèm Kho tầng, Số lượng, Giá gốc, Giá bán, mã chứng từ tham chiếu và nhân viên thực hiện.
+                Lưu vết toàn bộ lịch sử biến động tồn kho kèm Kho tầng, Số lượng, Giá vốn, Giá niêm yết, mã chứng từ tham chiếu và nhân viên thực hiện.
               </p>
             </div>
 
@@ -5117,8 +5117,8 @@ export default function InventoryModule() {
                   <th className="py-3 px-3">Sản phẩm</th>
                   <th className="py-3 px-3 text-right whitespace-nowrap">SL Biến động</th>
                   <th className="py-3 px-3 text-right whitespace-nowrap">SL Tồn sau GD</th>
-                  <th className="py-3 px-3 text-right whitespace-nowrap">Giá gốc (VND)</th>
-                  <th className="py-3 px-3 text-right whitespace-nowrap">Giá bán (VND)</th>
+                  <th className="py-3 px-3 text-right whitespace-nowrap">Giá vốn (VND)</th>
+                  <th className="py-3 px-3 text-right whitespace-nowrap">Giá niêm yết (VND)</th>
                   <th className="py-3 px-3">Người thực hiện (Vai trò)</th>
                   <th className="py-3 px-3">Chứng từ</th>
                   <th className="py-3 px-3">Ghi chú</th>
@@ -5213,7 +5213,7 @@ export default function InventoryModule() {
                 (BR-09, BR-10)
               </h3>
               <p className="text-xs text-slate-500">
-                Bấm vào một dòng phiếu nhập hoặc nút <strong>Xem chi tiết</strong> để xem lại đầy đủ thông tin Người nhập (Admin hay Warehouse), Số lượng, Giá gốc, Giá bán.
+                Bấm vào một dòng phiếu nhập hoặc nút <strong>Xem chi tiết</strong> để xem lại đầy đủ thông tin Người nhập (Admin hay Warehouse), Số lượng, Giá vốn, Giá niêm yết.
               </p>
             </div>
             <ExportExcelButton
@@ -5231,8 +5231,8 @@ export default function InventoryModule() {
                   <th className="py-3 px-3">Trạng thái</th>
                   <th className="py-3 px-3 text-right">Số dòng</th>
                   <th className="py-3 px-3 text-right">Tổng SL thực nhận</th>
-                  <th className="py-3 px-3 text-right">Tổng giá gốc</th>
-                  <th className="py-3 px-3 text-right">Tổng theo giá bán</th>
+                  <th className="py-3 px-3 text-right">Tổng giá vốn</th>
+                  <th className="py-3 px-3 text-right">Tổng theo giá niêm yết</th>
                   <th className="py-3 px-3">Người lập (Vai trò)</th>
                   <th className="py-3 px-3">Người kiểm (chiếc)</th>
                   <th className="py-3 px-3">Người hoàn thành (Vai trò)</th>
@@ -5440,9 +5440,9 @@ export default function InventoryModule() {
                                     <th className="py-2 px-2.5 text-center">ĐVT</th>
                                     <th className="py-2 px-2.5 text-right">SL Dự kiến</th>
                                     <th className="py-2 px-2.5 text-right">SL Thực nhận</th>
-                                    <th className="py-2 px-2.5 text-right">Giá gốc (VND)</th>
-                                    <th className="py-2 px-2.5 text-right">Giá bán hiện tại</th>
-                                    <th className="py-2 px-2.5 text-right">Thành tiền (Giá gốc)</th>
+                                    <th className="py-2 px-2.5 text-right">Giá vốn (VND)</th>
+                                    <th className="py-2 px-2.5 text-right">Giá niêm yết</th>
+                                    <th className="py-2 px-2.5 text-right">Thành tiền (Giá vốn)</th>
                                     <th className="py-2 px-2.5">Người kiểm dòng</th>
                                   </tr>
                                 </thead>
@@ -6922,8 +6922,8 @@ export default function InventoryModule() {
                       <th className="py-2.5 px-3 text-right">SL Dự kiến</th>
                       <th className="py-2.5 px-3 text-right">SL Thực nhập</th>
                       <th className="py-2.5 px-3 text-right">Chênh lệch</th>
-                      <th className="py-2.5 px-3 text-right">Giá gốc (VND)</th>
-                      <th className="py-2.5 px-3 text-right">Giá bán (VND)</th>
+                      <th className="py-2.5 px-3 text-right">Giá vốn (VND)</th>
+                      <th className="py-2.5 px-3 text-right">Giá niêm yết (VND)</th>
                       <th className="py-2.5 px-3 text-right">Thành tiền vốn</th>
                       <th className="py-2.5 px-3">Người kiểm dòng</th>
                       <th className="py-2.5 px-3">Ghi chú dòng</th>
@@ -7310,7 +7310,7 @@ export default function InventoryModule() {
                     )}
                   </span>
                   <span className="px-2.5 py-1 rounded-full bg-emerald-700 text-white font-bold">
-                    Tổng bán:{" "}
+                    Tổng niêm yết:{" "}
                     {formatVND(
                       adminImportRows.reduce(
                         (s, r) => s + (Number(r.sellingPrice) || 0) * (Number(r.quantity) || 0),
@@ -7352,10 +7352,10 @@ export default function InventoryModule() {
                         SỐ LƯỢNG
                       </th>
                       <th className="py-3 px-2.5 w-32 min-w-[120px] text-right">
-                        GIÁ GỐC NHẬP (VND)
+                        GIÁ VỐN NHẬP (VND)
                       </th>
                       <th className="py-3 px-2.5 w-32 min-w-[120px] text-right text-emerald-300">
-                        GIÁ BÁN LẺ (VND)
+                        GIÁ NIÊM YẾT (VND)
                       </th>
                       <th className="py-3 px-2 min-w-[120px]">GHI CHÚ</th>
                       <th className="py-3 px-2 w-20 text-center bg-slate-800 text-emerald-300">
@@ -8070,7 +8070,7 @@ export default function InventoryModule() {
                       </div>
                       <div>
                         <label className="block font-extrabold text-slate-800 mb-1">
-                          Giá bán lẻ / 1 {newRetailUnit || "Cái"} (VND):
+                          Giá niêm yết / 1 {newRetailUnit || "Cái"} (VND):
                         </label>
                         <input
                           type="text"

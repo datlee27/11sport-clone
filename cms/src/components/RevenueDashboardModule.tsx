@@ -1028,8 +1028,8 @@ function buildClientFallbackDashboard(
 
     if (stock > 0) {
       if (sellingPrice <= 0) {
-        pushReasons.push("Chưa đặt giá bán (0 VND)");
-        suggestedAction = "Cập nhật giá bán lẻ trong Quản lý Kho để POS có thể bán";
+        pushReasons.push("Chưa đặt giá niêm yết (0 VND)");
+        suggestedAction = "Cập nhật giá niêm yết trong Quản lý Kho để POS có thể bán";
         pushScore += 100;
       }
       if (stockFloor1 === 0 && stockFloor2 > 0) {

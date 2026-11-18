@@ -618,7 +618,7 @@ export default function ProductCodeCreatorModal({
               {canSetSellingPrice && (
                 <div>
                   <label htmlFor="pcc-sell" className="block font-bold uppercase text-slate-600 mb-1">
-                    Giá bán gốc
+                    Giá niêm yết
                   </label>
                   <input
                     id="pcc-sell"
@@ -633,7 +633,7 @@ export default function ProductCodeCreatorModal({
               {canSeeCost && (
                 <div>
                   <label htmlFor="pcc-cost" className="block font-bold uppercase text-slate-600 mb-1">
-                    Giá vốn gốc
+                    Giá vốn
                   </label>
                   <input
                     id="pcc-cost"
@@ -666,7 +666,7 @@ export default function ProductCodeCreatorModal({
           <div>
             <div className="flex items-center justify-between mb-2">
               <h3 className="font-bold uppercase text-slate-700">
-                4. Biến thể (Màu + Size) — giá riêng tuỳ chọn, trống = dùng giá gốc
+                4. Biến thể (Màu + Size) — giá riêng tuỳ chọn, trống = dùng giá mặc định
               </h3>
               <button
                 type="button"
@@ -702,7 +702,7 @@ export default function ProductCodeCreatorModal({
                     <th className="py-2 px-2 text-left">Màu *</th>
                     <th className="py-2 px-2 text-left">Mã màu (2–3)</th>
                     <th className="py-2 px-2 text-left">Size</th>
-                    {canSetSellingPrice && <th className="py-2 px-2 text-right">Giá bán riêng</th>}
+                    {canSetSellingPrice && <th className="py-2 px-2 text-right">Giá niêm yết riêng</th>}
                     {canSeeCost && <th className="py-2 px-2 text-right">Giá vốn riêng</th>}
                     {isEditing && <th className="py-2 px-2 text-center">Tồn hiện tại</th>}
                     <th className="py-2 px-2 text-left">Mã con (server)</th>
@@ -748,13 +748,13 @@ export default function ProductCodeCreatorModal({
                         {canSetSellingPrice && (
                           <td className="py-1.5 px-2 text-right">
                             <input
-                              aria-label={`Giá bán biến thể ${idx + 1}`}
+                              aria-label={`Giá niêm yết biến thể ${idx + 1}`}
                               inputMode="numeric"
                               value={v.sellingPrice ? formatNumberDots(v.sellingPrice) : ""}
                               onChange={(e) =>
                                 updateVariant(idx, { sellingPrice: parseNumberDots(e.target.value) })
                               }
-                              placeholder={sellingPrice ? formatNumberDots(sellingPrice) : "= giá gốc"}
+                              placeholder={sellingPrice ? formatNumberDots(sellingPrice) : "= giá niêm yết"}
                               className="w-28 px-2 py-1.5 rounded border border-slate-300 text-right"
                             />
                           </td>
@@ -768,7 +768,7 @@ export default function ProductCodeCreatorModal({
                               onChange={(e) =>
                                 updateVariant(idx, { costPrice: parseNumberDots(e.target.value) })
                               }
-                              placeholder={costPrice ? formatNumberDots(costPrice) : "= giá gốc"}
+                              placeholder={costPrice ? formatNumberDots(costPrice) : "= giá vốn"}
                               className="w-28 px-2 py-1.5 rounded border border-slate-300 text-right"
                             />
                           </td>
