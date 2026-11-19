@@ -42,9 +42,9 @@
     "semantic_hash": ""
   },
   "cms/src/app/page.tsx": {
-    "mtime": 1795078413.472118,
-    "seen": 1795079436.0937998,
-    "ast_hash": "0ee5818f0ffa36aef21e002397c724a2",
+    "mtime": 1795079783.1057644,
+    "seen": 1795079834.2170959,
+    "ast_hash": "2c09493fa215899bf3e6ca3bc086bb4e",
     "semantic_hash": ""
   },
   "cms/src/components/BarcodeLabelModal.tsx": {
@@ -516,9 +516,9 @@
     "semantic_hash": ""
   },
   "web/src/app/page.tsx": {
-    "mtime": 1795078413.5631492,
-    "seen": 1795079436.094012,
-    "ast_hash": "9528d928ca247821315d8fd56f2a9b9a",
+    "mtime": 1795079561.915554,
+    "seen": 1795079620.572556,
+    "ast_hash": "694b2a495a07dd2e599a866251145bbd",
     "semantic_hash": ""
   },
   "web/src/components/AccountProfileTab.tsx": {

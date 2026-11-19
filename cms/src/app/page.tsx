@@ -546,8 +546,8 @@ export default function CmsDashboardPage() {
                 <span className="font-extrabold text-sm sm:text-base tracking-tight">
                   11SPORT CMS
                 </span>
-                <span className="text-[10px] font-mono bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded">
-                  {adminUser.role}
+                <span className="hidden lg:inline text-[10px] font-mono bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded">
+                  v2.0
                 </span>
               </div>
               <button

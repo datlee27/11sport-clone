@@ -432,7 +432,7 @@ export default function WebPosHomePage() {
               <div className="font-extrabold text-sm md:text-base tracking-tight flex items-center gap-2 truncate">
                 <span className="truncate">11SPORT POS & KHO VẬN</span>
                 <span className="hidden lg:inline text-[11px] font-mono bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded">
-                  v1.0
+                  v2.0
                 </span>
               </div>
             </div>

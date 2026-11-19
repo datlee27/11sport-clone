@@ -1,7 +1,7 @@
 # Graph Report - 11sport-IT  (2026-11-19)
 
 ## Corpus Check
-- 197 files · ~485,148 words
+- 197 files · ~485,150 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 11 file(s) not represented in the graph (top: (none) 3, .example 3, .css 2)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `92660292`
+- Built from commit: `b0d0846b`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -520,16 +520,16 @@ Nodes (3): 2.10 Quản lý Loại Dịch Vụ & Đơn Dịch Vụ (`/service-typ
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `StockMovement` connect `StockMovement` to `Tài liệu Triển khai & Vận hành (Deployment & Runbook) - 11Sport v1.0`, `InventoryModule.tsx`, `cms/src/lib/api.ts`, `InventoryModule.tsx`, `3. Quy tắc Nghiệp vụ đã chốt (Business Rules)`, `CameraScannerModal.tsx`?**
-  _High betweenness centrality (0.236) - this node is a cross-community bridge._
+  _High betweenness centrality (0.239) - this node is a cross-community bridge._
 - **What connects `PATH`, `RFC-4180` to the rest of the system?**
   _2 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `productCode.ts` be split into smaller, more focused modules?**
   _Cohesion score 0.12063492063492064 - nodes in this community are weakly interconnected._
 - **Why does `2.6 Trả / Đổi hàng (`/returns`)` connect `StockMovement` to `2. Danh sách Endpoints`, `ordersCustomers.ts`?**
-  _High betweenness centrality (0.142) - this node is a cross-community bridge._
+  _High betweenness centrality (0.143) - this node is a cross-community bridge._
 - **Should `MyAttendanceCalendar.tsx` be split into smaller, more focused modules?**
   _Cohesion score 0.054612054612054615 - nodes in this community are weakly interconnected._
 - **Why does `executeUnpackSetToRetail()` connect `ordersCustomers.ts` to `StockMovement`, `imports.ts`, `imports.ts`?**
-  _High betweenness centrality (0.140) - this node is a cross-community bridge._
+  _High betweenness centrality (0.141) - this node is a cross-community bridge._
 - **Should `cms/src/lib/api.ts` be split into smaller, more focused modules?**
   _Cohesion score 0.04108108108108108 - nodes in this community are weakly interconnected._
