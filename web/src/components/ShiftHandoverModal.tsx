@@ -348,9 +348,9 @@ export default function ShiftHandoverModal({
     <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 text-slate-900">
       <div className="bg-white text-slate-900 rounded-3xl max-w-2xl w-full max-h-[92vh] shadow-2xl border border-slate-200 flex flex-col overflow-hidden animate-fade-in">
         {/* Header */}
-        <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between shrink-0">
+        <div className="bg-blue-600 text-white px-6 py-4 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-emerald-500/20 text-emerald-400 rounded-xl">
+            <div className="p-2 bg-blue-500/20 text-blue-400 rounded-xl">
               <Boxes className="w-5 h-5" />
             </div>
             <div>
@@ -361,7 +361,7 @@ export default function ShiftHandoverModal({
                 <span
                   className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
                     isReachedCheckoutTime
-                      ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                      ? "bg-blue-500/20 text-blue-300 border border-blue-500/40"
                       : "bg-amber-500/20 text-amber-300 border border-amber-500/40"
                   }`}
                 >
@@ -378,7 +378,7 @@ export default function ShiftHandoverModal({
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
+            className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-blue-700 transition cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -394,24 +394,24 @@ export default function ShiftHandoverModal({
           )}
 
           {savedNotice && (
-            <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold rounded-xl flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <div className="p-3.5 bg-blue-50 border border-blue-200 text-blue-800 text-xs font-bold rounded-xl flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />
               <span>{savedNotice}</span>
             </div>
           )}
 
           {/* Mục 1: Tổng số lượng mặt hàng kiểm trong ngày (Tất cả bao gồm size, màu - không cần ghi chi tiết từng mã) */}
           <div className="space-y-3">
-            <div className="p-3.5 bg-emerald-50/80 border border-emerald-200 rounded-2xl flex items-center justify-between gap-2">
+            <div className="p-3.5 bg-blue-50/80 border border-blue-200 rounded-2xl flex items-center justify-between gap-2">
               <div>
-                <div className="text-xs font-extrabold text-emerald-950">
+                <div className="text-xs font-extrabold text-blue-950">
                   1. Tổng Số Lượng Mặt Hàng Kiểm Hôm Nay ({dailyCheck?.date || "Hôm nay"})
                 </div>
-                <p className="text-[11px] text-emerald-800 mt-0.5">
+                <p className="text-[11px] text-blue-800 mt-0.5">
                   Chỉ cần nhập <b>tổng số lượng</b> của từng nhóm (đã gộp tất cả mã, size, màu tại Tầng 1):
                 </p>
               </div>
-              <span className="px-3 py-1 rounded-xl bg-emerald-600 text-white text-xs font-extrabold shrink-0">
+              <span className="px-3 py-1 rounded-xl bg-blue-600 text-white text-xs font-extrabold shrink-0">
                 {checkedCategories.join(" + ") || "Vợt"}
               </span>
             </div>
@@ -444,8 +444,8 @@ export default function ShiftHandoverModal({
                             <span
                               className={`px-2.5 py-0.5 rounded-lg text-xs font-extrabold ${
                                 item.isPrimaryCategory
-                                  ? "bg-emerald-600 text-white"
-                                  : "bg-sky-600 text-white"
+                                  ? "bg-blue-600 text-white"
+                                  : "bg-blue-600 text-white"
                               }`}
                             >
                               {item.categoryName}
@@ -470,7 +470,7 @@ export default function ShiftHandoverModal({
                                   : `Thiếu ${diff} ${item.unit || "Cái"}`}
                               </span>
                             ) : (
-                              <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-bold text-[11px]">
+                              <span className="px-2 py-0.5 rounded-md bg-blue-100 text-blue-800 font-bold text-[11px]">
                                 Khớp tồn Tầng 1
                               </span>
                             )}
@@ -489,7 +489,7 @@ export default function ShiftHandoverModal({
                                     setSelectedUnitFilter(ub.unit);
                                     setShowProductFilterSection(true);
                                   }}
-                                  className="px-2 py-0.5 rounded-md bg-white border border-slate-200 hover:border-emerald-400 text-slate-700 font-mono font-bold transition cursor-pointer"
+                                  className="px-2 py-0.5 rounded-md bg-white border border-slate-200 hover:border-blue-400 text-slate-700 font-mono font-bold transition cursor-pointer"
                                   title={`Lọc danh sách theo ĐVT ${ub.unit}`}
                                 >
                                   {ub.totalQty} {ub.unit}
@@ -518,7 +518,7 @@ export default function ShiftHandoverModal({
                               value={actual}
                               onChange={(e) => handleDirectTotalChange(key, e.target.value)}
                               className={`w-16 text-center font-mono text-sm font-black bg-transparent outline-none ${
-                                isDiff ? "text-amber-700" : "text-emerald-700"
+                                isDiff ? "text-amber-700" : "text-blue-700"
                               }`}
                             />
                             <button
@@ -546,12 +546,12 @@ export default function ShiftHandoverModal({
                   className="w-full px-4 py-2.5 bg-slate-50 hover:bg-slate-100/80 flex items-center justify-between gap-2 text-xs font-extrabold text-slate-800 transition cursor-pointer"
                 >
                   <span className="flex items-center gap-2">
-                    <Filter className="w-3.5 h-3.5 text-emerald-600" />
+                    <Filter className="w-3.5 h-3.5 text-blue-600" />
                     <span>Lọc Sản Phẩm Kiểm Tầng 1 Theo ĐVT ({allCheckProducts.length} mã)</span>
                   </span>
                   <span className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500">
                     {selectedUnitFilter !== "ALL" && (
-                      <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800">
+                      <span className="px-2 py-0.5 rounded-md bg-blue-100 text-blue-800">
                         ĐVT: {selectedUnitFilter}
                       </span>
                     )}
@@ -572,7 +572,7 @@ export default function ShiftHandoverModal({
                         onClick={() => setSelectedUnitFilter("ALL")}
                         className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition cursor-pointer ${
                           selectedUnitFilter === "ALL"
-                            ? "bg-emerald-600 text-white border-emerald-600 shadow-2xs"
+                            ? "bg-blue-600 text-white border-blue-600 shadow-2xs"
                             : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
                         }`}
                       >
@@ -587,8 +587,8 @@ export default function ShiftHandoverModal({
                             onClick={() => setSelectedUnitFilter(u.unit)}
                             className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition cursor-pointer ${
                               active
-                                ? "bg-emerald-600 text-white border-emerald-600 shadow-2xs"
-                                : "bg-white text-slate-700 border-slate-200 hover:border-emerald-400"
+                                ? "bg-blue-600 text-white border-blue-600 shadow-2xs"
+                                : "bg-white text-slate-700 border-slate-200 hover:border-blue-400"
                             }`}
                           >
                             {u.unit} · <span className="font-mono">{u.totalQty}</span> ({u.productCount} mã)
@@ -606,7 +606,7 @@ export default function ShiftHandoverModal({
                           value={productSearch}
                           onChange={(e) => setProductSearch(e.target.value)}
                           placeholder="Tìm theo mã hoặc tên sản phẩm..."
-                          className="w-full pl-8 pr-7 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-emerald-500"
+                          className="w-full pl-8 pr-7 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500"
                         />
                         {productSearch && (
                           <button
@@ -626,7 +626,7 @@ export default function ShiftHandoverModal({
                             setSelectedCategoryFilter(e.target.value);
                             setSelectedUnitFilter("ALL");
                           }}
-                          className="px-2.5 py-1.5 text-xs font-bold border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-emerald-500"
+                          className="px-2.5 py-1.5 text-xs font-bold border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-blue-500"
                         >
                           <option value="ALL">Tất cả nhóm</option>
                           {checkedCategories.map((cat) => (
@@ -639,7 +639,7 @@ export default function ShiftHandoverModal({
 
                       <div className="text-[11px] font-bold text-slate-600 ml-auto">
                         Tổng lọc:{" "}
-                        <span className="font-mono text-emerald-700">
+                        <span className="font-mono text-blue-700">
                           {filteredTotalQty}{" "}
                           {selectedUnitFilter !== "ALL" ? selectedUnitFilter : "SP"}
                         </span>{" "}
@@ -681,7 +681,7 @@ export default function ShiftHandoverModal({
                                     {p.unit || "Cái"}
                                   </span>
                                 </td>
-                                <td className="py-1.5 px-2.5 text-right font-mono font-extrabold text-emerald-700 whitespace-nowrap">
+                                <td className="py-1.5 px-2.5 text-right font-mono font-extrabold text-blue-700 whitespace-nowrap">
                                   {p.stockQtyFloor1}
                                 </td>
                               </tr>
@@ -731,7 +731,7 @@ export default function ShiftHandoverModal({
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder="Ghi lý do nếu lệch số lượng hoặc ghi chú dặn ca sau (không bắt buộc)..."
-              className="w-full px-3.5 py-2 bg-white text-slate-900 placeholder:text-slate-400 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
+              className="w-full px-3.5 py-2 bg-white text-slate-900 placeholder:text-slate-400 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-blue-500 outline-none"
             />
           </div>
 
@@ -759,7 +759,7 @@ export default function ShiftHandoverModal({
 
           {/* Thông báo quy tắc tính giờ */}
           <div className="p-3 rounded-xl bg-slate-100 text-[11px] text-slate-600 flex items-start gap-2">
-            <Clock className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+            <Clock className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
             <div>
               {isReachedCheckoutTime ? (
                 <>
@@ -801,7 +801,7 @@ export default function ShiftHandoverModal({
                 <button
                   type="submit"
                   disabled={submitting || loading}
-                  className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold rounded-xl shadow-lg transition flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-extrabold rounded-xl shadow-lg transition flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
                 >
                   <Send className="w-3.5 h-3.5" />
                   <span>

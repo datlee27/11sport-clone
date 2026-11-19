@@ -1,7 +1,7 @@
 # Graph Report - 11sport-IT  (2026-11-19)
 
 ## Corpus Check
-- 197 files · ~485,150 words
+- 197 files · ~485,457 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 11 file(s) not represented in the graph (top: (none) 3, .example 3, .css 2)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `b0d0846b`
+- Built from commit: `0a104c68`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -349,7 +349,7 @@ Nodes (6): Cấu trúc, Dự án bán hàng 11 Sport, graphify, Luồng làm vi�
 
 ### Community 52 - "Design System - 11Sport (POS, Kho & CMS)"
 Cohesion: 0.33
-Nodes (5): 1. Nhận diện Thương hiệu Thể thao (Athletic & High-Contrast POS), 2. Bảng màu (Color Tokens - TailwindCSS), 3. Typography & Định dạng hiển thị, 4. Các Component cốt lõi, Design System - 11Sport (POS, Kho & CMS)
+Nodes (5): 1. Nhận diện Thương hiệu Thể thao (Athletic & High-Contrast POS), 2. Bảng màu (Color Tokens - TailwindCSS — White & Clean Dual-App), 3. Typography & Định dạng hiển thị, 4. Các Component cốt lõi, Design System - 11Sport (POS, Kho & CMS)
 
 ### Community 53 - "3. Quy tắc Nghiệp vụ đã chốt (Business Rules)"
 Cohesion: 0.17

@@ -96,7 +96,7 @@ export default function CategoryBrandModule() {
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-4 sm:p-5 space-y-4">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-slate-100">
           <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-slate-900 text-emerald-400 flex items-center justify-center shrink-0 shadow-xs">
+            <div className="w-10 h-10 rounded-xl bg-teal-600 text-teal-400 flex items-center justify-center shrink-0 shadow-xs">
               <Layers className="w-5 h-5" />
             </div>
             <div>
@@ -104,7 +104,7 @@ export default function CategoryBrandModule() {
                 <h2 className="font-extrabold text-slate-900 text-base sm:text-lg tracking-tight">
                    Trung tâm Danh mục, Thương hiệu &amp; Sản phẩm
                 </h2>
-                <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 font-mono text-[11px] font-bold">
+                <span className="px-2.5 py-0.5 rounded-full bg-teal-50 border border-teal-200 text-teal-800 font-mono text-[11px] font-bold">
                   Chuẩn SKU v5.0
                 </span>
               </div>
@@ -123,11 +123,11 @@ export default function CategoryBrandModule() {
 
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <div className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+              <Sparkles className="w-3.5 h-3.5 text-teal-600" />
               <span>Tổng quan:</span>
               <strong className="font-mono text-slate-900">{counts.categories}</strong> Danh mục ·{" "}
               <strong className="font-mono text-slate-900">{counts.brands}</strong> Thương hiệu ·{" "}
-              <strong className="font-mono text-emerald-700">{counts.products}</strong> Sản phẩm
+              <strong className="font-mono text-teal-700">{counts.products}</strong> Sản phẩm
             </div>
           </div>
         </div>
@@ -149,7 +149,7 @@ export default function CategoryBrandModule() {
                 onClick={() => setTab(t.id)}
                 className={`group text-left p-3.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
                   active
-                    ? "bg-slate-900 text-white border-slate-900 shadow-md"
+                    ? "bg-teal-600 text-white border-slate-900 shadow-md"
                     : "bg-slate-50/70 hover:bg-white text-slate-700 border-slate-200 hover:border-slate-300"
                 }`}
               >
@@ -157,7 +157,7 @@ export default function CategoryBrandModule() {
                   <div
                     className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition ${
                       active
-                        ? "bg-emerald-500 text-slate-950"
+                        ? "bg-teal-500 text-slate-950"
                         : "bg-white border border-slate-200 text-slate-700 group-hover:border-slate-300"
                     }`}
                   >
@@ -167,7 +167,7 @@ export default function CategoryBrandModule() {
                     <div className="flex items-center gap-1.5">
                       <span
                         className={`text-[10px] font-extrabold uppercase tracking-wider ${
-                          active ? "text-emerald-400" : "text-slate-400"
+                          active ? "text-teal-400" : "text-slate-400"
                         }`}
                       >
                         {t.step}

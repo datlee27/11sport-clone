@@ -472,7 +472,7 @@ export default function ProductCodeCreatorModal({
               </>
             ) : (
               <>
-                <Sparkles className="w-5 h-5 text-emerald-600" />
+                <Sparkles className="w-5 h-5 text-blue-600" />
                 <span>Tạo sản phẩm chuẩn mã (Cate + Brand + Version + Màu + Size)</span>
               </>
             )}
@@ -576,7 +576,7 @@ export default function ProductCodeCreatorModal({
                 <button
                   type="button"
                   onClick={() => setVersionCode(preview.suggestedVersionCode)}
-                  className="mt-1 text-[11px] text-emerald-700 font-bold hover:underline cursor-pointer"
+                  className="mt-1 text-[11px] text-blue-700 font-bold hover:underline cursor-pointer"
                 >
                   Dùng gợi ý {preview.suggestedVersionCode}
                 </button>
@@ -697,7 +697,7 @@ export default function ProductCodeCreatorModal({
             </datalist>
             <div className="overflow-x-auto border border-slate-200 rounded-xl">
               <table className="w-full">
-                <thead className="bg-slate-900 text-white uppercase text-[11px]">
+                <thead className="bg-slate-100 text-slate-700 border-b border-slate-200 uppercase text-[11px]">
                   <tr>
                     <th className="py-2 px-2 text-left">Màu *</th>
                     <th className="py-2 px-2 text-left">Mã màu (2–3)</th>
@@ -829,7 +829,7 @@ export default function ProductCodeCreatorModal({
                     {preview.versionCode}
                   </span>
                   =
-                  <span className="px-3 py-1 rounded bg-emerald-600 text-white text-sm font-extrabold">
+                  <span className="px-3 py-1 rounded bg-blue-600 text-white text-sm font-extrabold">
                     {preview.code}
                   </span>
                 </div>
@@ -906,7 +906,7 @@ export default function ProductCodeCreatorModal({
             onClick={handleSubmit}
             disabled={submitting || Boolean(dup) || conflicts.length > 0}
             className={`px-5 py-2 rounded-lg disabled:opacity-60 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer ${
-              isEditing ? "bg-blue-600 hover:bg-blue-700" : "bg-emerald-600 hover:bg-emerald-700"
+              isEditing ? "bg-blue-600 hover:bg-blue-700" : "bg-blue-600 hover:bg-blue-700"
             }`}
           >
             {submitting ? (

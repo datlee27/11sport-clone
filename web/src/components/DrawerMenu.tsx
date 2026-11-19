@@ -109,25 +109,25 @@ export default function DrawerMenu({
 
       {/* Nội dung Drawer (trái: 5 tab chức năng, phải: tiện ích nhân sự) */}
       <aside
-        className={`fixed top-0 bottom-0 w-80 max-w-[85vw] bg-slate-900 text-white shadow-2xl border-slate-800 flex flex-col z-10 duration-200 ${
+        className={`fixed top-0 bottom-0 w-80 max-w-[85vw] bg-white text-slate-900 shadow-2xl border-slate-200 flex flex-col z-10 duration-200 ${
           isLeft
             ? "left-0 border-r animate-in slide-in-from-left"
             : "right-0 border-l animate-in slide-in-from-right"
         }`}
       >
         {/* Header của Drawer */}
-        <div className="px-4 py-3.5 bg-slate-950 border-b border-slate-800 flex items-center justify-between gap-2">
+        <div className="px-4 py-3.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2.5 min-w-0">
             <img
-              src="/logo-11sport-white.svg"
+              src="/logo-11sport.svg"
               alt="11Sport Logo"
               className="h-9 w-auto object-contain shrink-0"
             />
             <div className="min-w-0">
-              <div className="font-extrabold text-sm tracking-tight truncate">
+              <div className="font-extrabold text-sm tracking-tight text-slate-900 truncate">
                 {isLeft ? "MENU ĐIỀU HƯỚNG" : "TIỆN ÍCH NHÂN SỰ"}
               </div>
-              <div className="text-[11px] text-slate-400 truncate">
+              <div className="text-[11px] text-slate-500 truncate">
                 11Sport POS & Kho vận
               </div>
             </div>
@@ -137,7 +137,7 @@ export default function DrawerMenu({
             type="button"
             onClick={onClose}
             title="Đóng menu"
-            className="w-9 h-9 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition shrink-0"
+            className="w-9 h-9 rounded-xl bg-slate-200/70 hover:bg-slate-200 text-slate-600 hover:text-slate-900 flex items-center justify-center transition shrink-0"
           >
             <X className="w-4 h-4" />
           </button>
@@ -145,22 +145,22 @@ export default function DrawerMenu({
 
         {/* Thông tin nhân sự đang đăng nhập (chỉ hiện ở Drawer phải hoặc khi cần) */}
         {!isLeft && (
-          <div className="p-4 border-b border-slate-800 bg-slate-900/60">
-            <div className="bg-slate-800/90 border border-slate-700/80 rounded-xl p-3 flex items-start gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center shrink-0 mt-0.5">
-                <ShieldCheck className="w-5 h-5 text-emerald-400" />
+          <div className="p-4 border-b border-slate-200 bg-slate-50/70">
+            <div className="bg-white border border-slate-200 rounded-xl p-3 flex items-start gap-3 shadow-2xs">
+              <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center shrink-0 mt-0.5">
+                <ShieldCheck className="w-5 h-5 text-blue-600" />
               </div>
               <div className="min-w-0 flex-1">
-                <div className="text-xs text-slate-400">Đang đăng nhập:</div>
-                <div className="font-bold text-sm text-white truncate">
+                <div className="text-xs text-slate-500">Đang đăng nhập:</div>
+                <div className="font-bold text-sm text-slate-900 truncate">
                   {currentUser.fullName}
                 </div>
                 {currentUser.username && (
-                  <div className="text-[11px] text-slate-400 font-mono truncate">
+                  <div className="text-[11px] text-slate-500 font-mono truncate">
                     @{currentUser.username}
                   </div>
                 )}
-                <div className="mt-1.5 inline-block font-mono text-[10px] px-2 py-0.5 rounded bg-emerald-600 text-white font-bold">
+                <div className="mt-1.5 inline-block font-mono text-[10px] px-2 py-0.5 rounded bg-blue-600 text-white font-bold">
                   {getRoleDisplayName(currentUser.role)}
                 </div>
               </div>
@@ -173,7 +173,7 @@ export default function DrawerMenu({
           {isLeft ? (
             /* DRAWER TRÁI: HIỂN THỊ CÁC TAB CHỨC NĂNG BÁN HÀNG, DỊCH VỤ & KHO */
             <div className="space-y-1.5">
-              <div className="px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-emerald-400">
+              <div className="px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-blue-600">
                 Phân hệ Bán hàng & Kho ({tabs.length} Tab)
               </div>
               {tabs.map((tab) => {
@@ -203,10 +203,10 @@ export default function DrawerMenu({
                     }}
                     className={`w-full text-left px-3 py-3 rounded-xl text-xs font-bold flex items-center justify-between gap-2.5 transition ${
                       !isAllowed
-                        ? "opacity-40 cursor-not-allowed text-slate-500 bg-slate-900/40"
+                        ? "opacity-45 cursor-not-allowed text-slate-400 bg-slate-50"
                         : isActive
-                          ? "bg-emerald-600 text-white shadow-md"
-                          : "text-slate-200 hover:bg-slate-800 hover:text-white"
+                          ? "bg-blue-600 text-white shadow-sm"
+                          : "text-slate-700 hover:bg-blue-50 hover:text-blue-700"
                     }`}
                   >
                     <div className="flex items-center gap-3 min-w-0">
@@ -214,20 +214,20 @@ export default function DrawerMenu({
                         className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
                           isActive
                             ? "bg-white/20 text-white"
-                            : "bg-emerald-500/15 text-emerald-400"
+                            : "bg-blue-50 text-blue-600"
                         }`}
                       >
                         {isAllowed ? (
                           <Icon className="w-4 h-4" />
                         ) : (
-                          <Lock className="w-4 h-4 text-amber-400" />
+                          <Lock className="w-4 h-4 text-amber-500" />
                         )}
                       </div>
                       <span className="truncate">{tab.label}</span>
                     </div>
                     <ChevronRight
                       className={`w-4 h-4 shrink-0 ${
-                        isActive ? "text-white" : "text-slate-500"
+                        isActive ? "text-white" : "text-slate-400"
                       }`}
                     />
                   </button>
@@ -238,7 +238,7 @@ export default function DrawerMenu({
             /* DRAWER PHẢI: TIỆN ÍCH NHÂN SỰ & QUẢN TRỊ */
             <>
               <div className="space-y-1.5">
-                <div className="px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                <div className="px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-500">
                   Tiện ích nhân sự
                 </div>
 
@@ -255,8 +255,8 @@ export default function DrawerMenu({
                       className={`w-full text-left px-3 py-3 rounded-xl text-xs font-bold flex items-center justify-between gap-2.5 transition ${
                         activeDrawerPage === "NONE" &&
                         activeTab === "PUSH_PRODUCTS"
-                          ? "bg-amber-500 text-slate-950 shadow-md"
-                          : "text-slate-200 hover:bg-slate-800 hover:text-white"
+                          ? "bg-amber-500 text-white shadow-sm"
+                          : "text-slate-700 hover:bg-blue-50 hover:text-blue-700"
                       }`}
                     >
                       <div className="flex items-center gap-3 min-w-0">
@@ -264,8 +264,8 @@ export default function DrawerMenu({
                           className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
                             activeDrawerPage === "NONE" &&
                             activeTab === "PUSH_PRODUCTS"
-                              ? "bg-slate-950/15 text-slate-950"
-                              : "bg-amber-500/15 text-amber-400"
+                              ? "bg-white/20 text-white"
+                              : "bg-amber-50 text-amber-600"
                           }`}
                         >
                           <Rocket className="w-4 h-4" />
@@ -278,8 +278,8 @@ export default function DrawerMenu({
                             className={`text-[10px] font-normal truncate mt-0.5 ${
                               activeDrawerPage === "NONE" &&
                               activeTab === "PUSH_PRODUCTS"
-                                ? "text-slate-800"
-                                : "text-slate-400"
+                                ? "text-amber-50"
+                                : "text-slate-500"
                             }`}
                           >
                             Quan sát tồn kho cao, bán chậm & đọng vốn
@@ -290,8 +290,8 @@ export default function DrawerMenu({
                         className={`w-4 h-4 shrink-0 ${
                           activeDrawerPage === "NONE" &&
                           activeTab === "PUSH_PRODUCTS"
-                            ? "text-slate-950"
-                            : "text-slate-500"
+                            ? "text-white"
+                            : "text-slate-400"
                         }`}
                       />
                     </button>
@@ -306,8 +306,8 @@ export default function DrawerMenu({
                   }}
                   className={`w-full text-left px-3 py-3 rounded-xl text-xs font-bold flex items-center justify-between gap-2.5 transition ${
                     activeDrawerPage === "ATTENDANCE"
-                      ? "bg-emerald-600 text-white shadow-md"
-                      : "text-slate-200 hover:bg-slate-800 hover:text-white"
+                      ? "bg-blue-600 text-white shadow-sm"
+                      : "text-slate-700 hover:bg-blue-50 hover:text-blue-700"
                   }`}
                 >
                   <div className="flex items-center gap-3 min-w-0">
@@ -315,7 +315,7 @@ export default function DrawerMenu({
                       className={`relative w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
                         activeDrawerPage === "ATTENDANCE"
                           ? "bg-white/20 text-white"
-                          : "bg-amber-500/15 text-amber-400"
+                          : "bg-amber-50 text-amber-600"
                       }`}
                     >
                       <Clock className="w-4 h-4" />
@@ -341,8 +341,8 @@ export default function DrawerMenu({
                       <div
                         className={`text-[10px] font-normal truncate mt-0.5 ${
                           activeDrawerPage === "ATTENDANCE"
-                            ? "text-emerald-100"
-                            : "text-slate-400"
+                            ? "text-blue-100"
+                            : "text-slate-500"
                         }`}
                       >
                         Lịch công tháng, đơn từ & tăng ca
@@ -353,7 +353,7 @@ export default function DrawerMenu({
                     className={`w-4 h-4 shrink-0 ${
                       activeDrawerPage === "ATTENDANCE"
                         ? "text-white"
-                        : "text-slate-500"
+                        : "text-slate-400"
                     }`}
                   />
                 </button>
@@ -367,8 +367,8 @@ export default function DrawerMenu({
                   }}
                   className={`w-full text-left px-3 py-3 rounded-xl text-xs font-bold flex items-center justify-between gap-2.5 transition ${
                     activeDrawerPage === "PROFILE"
-                      ? "bg-emerald-600 text-white shadow-md"
-                      : "text-slate-200 hover:bg-slate-800 hover:text-white"
+                      ? "bg-blue-600 text-white shadow-sm"
+                      : "text-slate-700 hover:bg-blue-50 hover:text-blue-700"
                   }`}
                 >
                   <div className="flex items-center gap-3 min-w-0">
@@ -376,7 +376,7 @@ export default function DrawerMenu({
                       className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
                         activeDrawerPage === "PROFILE"
                           ? "bg-white/20 text-white"
-                          : "bg-emerald-500/15 text-emerald-400"
+                          : "bg-blue-50 text-blue-600"
                       }`}
                     >
                       <UserCog className="w-4 h-4" />
@@ -386,8 +386,8 @@ export default function DrawerMenu({
                       <div
                         className={`text-[10px] font-normal truncate mt-0.5 ${
                           activeDrawerPage === "PROFILE"
-                            ? "text-emerald-100"
-                            : "text-slate-400"
+                            ? "text-blue-100"
+                            : "text-slate-500"
                         }`}
                       >
                         Xem hồ sơ & chỉnh sửa thông tin cá nhân
@@ -398,7 +398,7 @@ export default function DrawerMenu({
                     className={`w-4 h-4 shrink-0 ${
                       activeDrawerPage === "PROFILE"
                         ? "text-white"
-                        : "text-slate-500"
+                        : "text-slate-400"
                     }`}
                   />
                 </button>
@@ -411,27 +411,27 @@ export default function DrawerMenu({
                       onClose();
                       onOpenChangePassword();
                     }}
-                    className="w-full text-left px-3 py-3 rounded-xl text-xs font-bold flex items-center justify-between gap-2.5 text-slate-200 hover:bg-slate-800 hover:text-white transition"
+                    className="w-full text-left px-3 py-3 rounded-xl text-xs font-bold flex items-center justify-between gap-2.5 text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition"
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-8 h-8 rounded-lg bg-amber-500/15 text-amber-400 flex items-center justify-center shrink-0">
+                      <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
                         <KeyRound className="w-4 h-4" />
                       </div>
                       <div className="min-w-0">
                         <div className="truncate">Đổi mật khẩu</div>
-                        <div className="text-[10px] font-normal truncate mt-0.5 text-slate-400">
+                        <div className="text-[10px] font-normal truncate mt-0.5 text-slate-500">
                           Cập nhật mật khẩu đăng nhập hệ thống
                         </div>
                       </div>
                     </div>
-                    <ChevronRight className="w-4 h-4 shrink-0 text-slate-500" />
+                    <ChevronRight className="w-4 h-4 shrink-0 text-slate-400" />
                   </button>
                 )}
               </div>
 
               {(currentUser.role === "ADMIN" || currentUser.role === "CEO") && (
-                <div className="space-y-1 pt-2 border-t border-slate-800">
-                  <div className="px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                <div className="space-y-1 pt-2 border-t border-slate-200">
+                  <div className="px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-500">
                     Quản trị hệ thống
                   </div>
                   <a
@@ -439,7 +439,7 @@ export default function DrawerMenu({
                     target="_blank"
                     rel="noreferrer"
                     onClick={onClose}
-                    className="w-full px-3 py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 text-xs font-bold text-emerald-400 border border-slate-700/80 flex items-center justify-between gap-2 transition"
+                    className="w-full px-3 py-2.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-xs font-bold text-blue-700 border border-blue-200 flex items-center justify-between gap-2 transition"
                   >
                     <span>Mở trang Quản trị CMS</span>
                     <ExternalLink className="w-4 h-4 shrink-0" />
@@ -452,14 +452,14 @@ export default function DrawerMenu({
 
         {/* Footer của Drawer phải: Nút Đăng xuất */}
         {!isLeft && (
-          <div className="p-4 border-t border-slate-800 bg-slate-950/80 pb-safe">
+          <div className="p-4 border-t border-slate-200 bg-slate-50 pb-safe">
             <button
               type="button"
               onClick={() => {
                 onClose();
                 onLogout();
               }}
-              className="w-full py-3 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-xs font-bold text-white flex items-center justify-center gap-2 shadow-lg transition"
+              className="w-full py-3 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-xs font-bold text-white flex items-center justify-center gap-2 shadow-xs transition"
             >
               <LogOut className="w-4 h-4" />
               <span>Đăng xuất tài khoản</span>

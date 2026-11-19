@@ -180,14 +180,14 @@ export default function InvoicePdfModal({ order, onClose }: InvoicePdfModalProps
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/75 p-2 sm:p-4 overflow-y-auto">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[95vh] sm:max-h-[90vh]">
         {/* Thanh công cụ Modal */}
-        <div className="bg-slate-900 text-white px-3 py-3 sm:px-6 sm:py-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div className="bg-white text-slate-900 border-b border-slate-200 px-3 py-3 sm:px-6 sm:py-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div className="flex items-center justify-between gap-2 min-w-0">
             <div className="flex items-center gap-2 min-w-0">
-              <Printer className="w-5 h-5 shrink-0 text-emerald-400" />
-              <h3 className="font-bold text-base sm:text-lg truncate">
-                Xuất / In Hóa Đơn PDF — <span className="font-mono text-emerald-400">{orderCode}</span>
+              <Printer className="w-5 h-5 shrink-0 text-teal-600" />
+              <h3 className="font-bold text-base sm:text-lg truncate text-slate-900">
+                Xuất / In Hóa Đơn PDF — <span className="font-mono text-teal-700">{orderCode}</span>
                 {order.status === "DRAFT" && (
-                  <span className="ml-2 px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-400/40 text-xs font-extrabold">
+                  <span className="ml-2 px-2 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 text-xs font-extrabold">
                     BẢN NHÁP
                   </span>
                 )}
@@ -196,7 +196,7 @@ export default function InvoicePdfModal({ order, onClose }: InvoicePdfModalProps
             <button
               type="button"
               onClick={onClose}
-              className="md:hidden w-10 h-10 shrink-0 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center"
+              className="md:hidden w-10 h-10 shrink-0 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 flex items-center justify-center"
               title="Đóng"
             >
               <X className="w-5 h-5" />
@@ -205,14 +205,14 @@ export default function InvoicePdfModal({ order, onClose }: InvoicePdfModalProps
 
           <div className="flex flex-col sm:flex-row sm:items-center gap-2">
             {/* Chuyển đổi khổ K80 và A4 */}
-            <div className="bg-slate-800 p-1 rounded-lg grid grid-cols-2 sm:flex sm:items-center gap-1">
+            <div className="bg-slate-100 border border-slate-200 p-1 rounded-lg grid grid-cols-2 sm:flex sm:items-center gap-1">
               <button
                 type="button"
                 onClick={() => setPaperSize("K80")}
                 className={`min-h-[40px] px-3 py-1.5 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition ${
                   paperSize === "K80"
-                    ? "bg-emerald-600 text-white shadow"
-                    : "text-slate-300 hover:text-white"
+                    ? "bg-teal-600 text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
                 }`}
               >
                 <Receipt className="w-4 h-4" />
@@ -223,8 +223,8 @@ export default function InvoicePdfModal({ order, onClose }: InvoicePdfModalProps
                 onClick={() => setPaperSize("A4")}
                 className={`min-h-[40px] px-3 py-1.5 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition ${
                   paperSize === "A4"
-                    ? "bg-emerald-600 text-white shadow"
-                    : "text-slate-300 hover:text-white"
+                    ? "bg-teal-600 text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
                 }`}
               >
                 <FileText className="w-4 h-4" />
@@ -235,7 +235,7 @@ export default function InvoicePdfModal({ order, onClose }: InvoicePdfModalProps
             <button
               type="button"
               onClick={handlePrint}
-              className="min-h-[44px] px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm flex items-center justify-center gap-1.5 shadow"
+              className="min-h-[44px] px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-semibold text-sm flex items-center justify-center gap-1.5 shadow-xs"
             >
               <Download className="w-4 h-4" />
               In / Lưu PDF ({paperSize})
@@ -244,7 +244,7 @@ export default function InvoicePdfModal({ order, onClose }: InvoicePdfModalProps
             <button
               type="button"
               onClick={onClose}
-              className="hidden md:flex w-10 h-10 items-center justify-center rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white"
+              className="hidden md:flex w-10 h-10 items-center justify-center rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900"
               title="Đóng"
             >
               <X className="w-5 h-5" />

@@ -311,8 +311,8 @@ export default function WebPosHomePage() {
 
   if (checkingAuth) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white">
-        <div className="text-sm font-semibold text-slate-300">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-700">
+        <div className="text-sm font-semibold text-slate-600">
           Đang kiểm tra phiên đăng nhập...
         </div>
       </div>
@@ -322,11 +322,11 @@ export default function WebPosHomePage() {
   // Màn hình Đăng nhập khi chưa có phiên đăng nhập
   if (!currentUser) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-900 px-4 py-8">
-        <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-800">
-          <div className="bg-slate-950 text-white px-6 py-6 text-center border-b border-slate-800">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50/70 to-white px-4 py-8">
+        <div className="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-200">
+          <div className="bg-white text-slate-900 px-6 py-6 text-center border-b border-slate-100">
             <img
-              src="/logo-11sport-white.svg"
+              src="/logo-11sport.svg"
               alt="11Sport Logo"
               className="h-16 w-auto object-contain mx-auto mb-3"
             />
@@ -355,7 +355,7 @@ export default function WebPosHomePage() {
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder="Nhập username"
                   autoComplete="username"
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:border-emerald-600 focus:outline-none"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:border-blue-600 focus:outline-none"
                 />
               </div>
             </div>
@@ -372,7 +372,7 @@ export default function WebPosHomePage() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Nhập mật khẩu..."
                   autoComplete="current-password"
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:border-emerald-600 focus:outline-none"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:border-blue-600 focus:outline-none"
                 />
               </div>
             </div>
@@ -380,7 +380,7 @@ export default function WebPosHomePage() {
             <button
               type="submit"
               disabled={loginLoading}
-              className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg transition"
+              className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg transition"
             >
               <LogIn className="w-4 h-4" />
               {loginLoading ? "Đang xác thực..." : "Đăng nhập vào Hệ thống"}
@@ -402,7 +402,7 @@ export default function WebPosHomePage() {
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
       {/* Header thương hiệu 11Sport & Thông tin người dùng */}
-      <header className="sticky top-0 z-30 bg-slate-900 text-white shadow-lg print:hidden">
+      <header className="sticky top-0 z-30 bg-white text-slate-900 border-b border-slate-200 shadow-2xs print:hidden">
         <div className="w-full mx-auto px-2 sm:px-3 lg:px-4 py-2 md:py-2.5 flex items-center justify-between gap-2 md:gap-3">
           <div className="flex items-center gap-2 md:gap-3 min-w-0">
             {/* Nút mở Drawer Menu bên trái cho 5 Tab chức năng */}
@@ -411,7 +411,7 @@ export default function WebPosHomePage() {
               onClick={() => setLeftDrawerOpen(true)}
               title="Mở menu điều hướng 5 tab"
               aria-label="Mở menu điều hướng 5 tab"
-              className="relative min-h-[40px] px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-xs font-extrabold text-white shadow-xs flex items-center justify-center gap-2 transition shrink-0 cursor-pointer"
+              className="relative min-h-[40px] px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-xs font-extrabold text-white shadow-xs flex items-center justify-center gap-2 transition shrink-0 cursor-pointer"
             >
               <Menu className="w-4 h-4 text-white" />
               <span className="hidden sm:inline">
@@ -424,14 +424,14 @@ export default function WebPosHomePage() {
             </button>
 
             <img
-              src="/logo-11sport-white.svg"
+              src="/logo-11sport.svg"
               alt="11Sport Logo"
               className="h-8 md:h-10 w-auto object-contain shrink-0"
             />
             <div className="min-w-0 hidden sm:block">
-              <div className="font-extrabold text-sm md:text-base tracking-tight flex items-center gap-2 truncate">
+              <div className="font-extrabold text-sm md:text-base tracking-tight text-slate-900 flex items-center gap-2 truncate">
                 <span className="truncate">11SPORT POS & KHO VẬN</span>
-                <span className="hidden lg:inline text-[11px] font-mono bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded">
+                <span className="hidden lg:inline text-[11px] font-mono bg-blue-50 text-blue-600 border border-blue-200 px-2 py-0.5 rounded font-bold">
                   v2.0
                 </span>
               </div>
@@ -452,15 +452,15 @@ export default function WebPosHomePage() {
               className={`hidden md:flex items-center gap-2 px-3.5 py-2 rounded-xl border transition cursor-pointer ${
                 activeDrawerPage === "PROFILE" ||
                 activeDrawerPage === "ATTENDANCE"
-                  ? "bg-emerald-600/20 border-emerald-500 text-white"
-                  : "bg-slate-800 hover:bg-slate-700 border-slate-700"
+                  ? "bg-blue-50 border-blue-300 text-blue-900"
+                  : "bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-800"
               }`}
             >
-              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              <ShieldCheck className="w-4 h-4 text-blue-600" />
               <div className="text-xs">
-                <span className="text-slate-400">Nhân sự: </span>
-                <strong className="text-white">{currentUser.fullName}</strong>{" "}
-                <span className="font-mono text-[10px] px-2 py-0.5 rounded bg-emerald-600 text-white font-bold ml-1">
+                <span className="text-slate-500">Nhân sự: </span>
+                <strong className="text-slate-900">{currentUser.fullName}</strong>{" "}
+                <span className="font-mono text-[10px] px-2 py-0.5 rounded bg-blue-600 text-white font-bold ml-1">
                   {getRoleDisplayName(currentUser.role)}
                 </span>
               </div>
@@ -471,9 +471,9 @@ export default function WebPosHomePage() {
               onClick={() => setRightDrawerOpen(true)}
               title="Tiện ích nhân sự"
               aria-label="Mở tiện ích nhân sự"
-              className="relative min-h-[40px] min-w-[40px] px-2.5 md:px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-white border border-slate-700 flex items-center justify-center gap-1.5 transition cursor-pointer"
+              className="relative min-h-[40px] min-w-[40px] px-2.5 md:px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200/80 text-xs font-bold text-slate-800 border border-slate-200 flex items-center justify-center gap-1.5 transition cursor-pointer"
             >
-              <User className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-emerald-400" />
+              <User className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-blue-600" />
               <span className="hidden sm:inline">Tiện ích</span>
               {hasUnseenShiftSchedule && (
                 <span
@@ -481,7 +481,7 @@ export default function WebPosHomePage() {
                   className="absolute -top-1 -right-1 flex h-3 w-3"
                 >
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-red-600 border border-slate-900" />
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-red-600 border border-white" />
                 </span>
               )}
             </button>
@@ -600,7 +600,7 @@ export default function WebPosHomePage() {
       {showChangePwdModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/65 p-4 print:hidden">
           <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
-            <div className="bg-slate-900 text-white px-5 py-4 flex items-center justify-between">
+            <div className="bg-blue-600 text-white px-5 py-4 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <KeyRound className="w-4 h-4 text-amber-400" />
                 <h3 className="font-extrabold text-sm">
@@ -610,7 +610,7 @@ export default function WebPosHomePage() {
               <button
                 type="button"
                 onClick={() => setShowChangePwdModal(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-blue-700"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -621,7 +621,7 @@ export default function WebPosHomePage() {
                 <div
                   className={`p-3 rounded-xl border text-xs font-bold flex items-start gap-2 ${
                     pwdMessage.type === "success"
-                      ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                      ? "bg-blue-50 border-blue-200 text-blue-800"
                       : "bg-red-50 border-red-200 text-red-700"
                   }`}
                 >
@@ -644,7 +644,7 @@ export default function WebPosHomePage() {
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
                   placeholder="Nhập mật khẩu đang sử dụng..."
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:border-emerald-600 focus:outline-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:border-blue-600 focus:outline-none"
                 />
               </div>
 
@@ -658,7 +658,7 @@ export default function WebPosHomePage() {
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="Tối thiểu 4 ký tự..."
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:border-emerald-600 focus:outline-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:border-blue-600 focus:outline-none"
                 />
               </div>
 
@@ -672,7 +672,7 @@ export default function WebPosHomePage() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Nhập lại mật khẩu mới..."
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:border-emerald-600 focus:outline-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:border-blue-600 focus:outline-none"
                 />
               </div>
 
@@ -687,7 +687,7 @@ export default function WebPosHomePage() {
                 <button
                   type="submit"
                   disabled={pwdSaving}
-                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white text-xs font-extrabold"
+                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-xs font-extrabold"
                 >
                   {pwdSaving ? "Đang lưu..." : "Lưu mật khẩu mới"}
                 </button>

@@ -184,12 +184,12 @@ export default function InvoicePdfModal({ order, onClose }: InvoicePdfModalProps
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/75 p-2 sm:p-4 overflow-y-auto">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[95vh] sm:max-h-[90vh]">
         {/* Thanh công cụ Modal */}
-        <div className="bg-slate-900 text-white px-3 py-3 sm:px-6 sm:py-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div className="bg-blue-600 text-white px-3 py-3 sm:px-6 sm:py-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div className="flex items-center justify-between gap-2 min-w-0">
             <div className="flex items-center gap-2 min-w-0">
-              <Printer className="w-5 h-5 shrink-0 text-emerald-400" />
+              <Printer className="w-5 h-5 shrink-0 text-blue-400" />
               <h3 className="font-bold text-base sm:text-lg truncate">
-                Xuất / In Hóa Đơn PDF — <span className="font-mono text-emerald-400">{orderCode}</span>
+                Xuất / In Hóa Đơn PDF — <span className="font-mono text-blue-400">{orderCode}</span>
                 {order.status === "DRAFT" && (
                   <span className="ml-2 px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-400/40 text-xs font-extrabold">
                     BẢN NHÁP
@@ -214,7 +214,7 @@ export default function InvoicePdfModal({ order, onClose }: InvoicePdfModalProps
                 type="button"
                 onClick={() => setPaperSize("K80")}
                 className={`min-h-[40px] px-3 py-1.5 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition ${paperSize === "K80"
-                  ? "bg-emerald-600 text-white shadow"
+                  ? "bg-blue-600 text-white shadow"
                   : "text-slate-300 hover:text-white"
                   }`}
               >
@@ -225,7 +225,7 @@ export default function InvoicePdfModal({ order, onClose }: InvoicePdfModalProps
                 type="button"
                 onClick={() => setPaperSize("A4")}
                 className={`min-h-[40px] px-3 py-1.5 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition ${paperSize === "A4"
-                  ? "bg-emerald-600 text-white shadow"
+                  ? "bg-blue-600 text-white shadow"
                   : "text-slate-300 hover:text-white"
                   }`}
               >
@@ -237,7 +237,7 @@ export default function InvoicePdfModal({ order, onClose }: InvoicePdfModalProps
             <button
               type="button"
               onClick={handlePrint}
-              className="min-h-[44px] px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm flex items-center justify-center gap-1.5 shadow"
+              className="min-h-[44px] px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm flex items-center justify-center gap-1.5 shadow"
             >
               <Download className="w-4 h-4" />
               In / Lưu PDF ({paperSize})

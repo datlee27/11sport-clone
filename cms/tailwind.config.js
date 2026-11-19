@@ -9,15 +9,24 @@ module.exports = {
     extend: {
       colors: {
         primary: {
-          50: "#ECFDF5",
-          100: "#D1FAE5",
-          500: "#10B981",
-          600: "#059669",
-          700: "#047857",
+          50: "#F0FDFA",
+          100: "#CCFBF1",
+          200: "#99F6E4",
+          300: "#5EEAD4",
+          400: "#2DD4BF",
+          500: "#14B8A6",
+          600: "#0D9488",
+          700: "#0F766E",
+          800: "#115E59",
+          900: "#134E4A",
+        },
+        accent: {
+          500: "#06B6D4",
+          600: "#0891B2",
         },
         brand: {
-          dark: "#0F172A",
-          slate: "#1E293B",
+          dark: "#FFFFFF",
+          slate: "#F8FAFC",
         }
       },
       fontFamily: {

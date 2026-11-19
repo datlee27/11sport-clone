@@ -117,7 +117,7 @@ const STATUS_BADGE_MAP: Record<
 > = {
   RECEIVED: {
     label: "Đã nhận đồ",
-    cls: "bg-sky-50 text-sky-700 border-sky-200",
+    cls: "bg-blue-50 text-blue-700 border-blue-200",
   },
   IN_PROGRESS: {
     label: "Đang xử lý",
@@ -125,7 +125,7 @@ const STATUS_BADGE_MAP: Record<
   },
   READY: {
     label: "Đã xong (Chờ lấy)",
-    cls: "bg-emerald-50 text-emerald-700 border-emerald-300",
+    cls: "bg-blue-50 text-blue-700 border-blue-300",
   },
   RETURNED: {
     label: "Đã trả khách",
@@ -772,7 +772,7 @@ export default function PosServiceSection({
           )}
 
           {successMsg && (
-            <div className="mt-3 p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold flex items-start gap-2">
+            <div className="mt-3 p-3 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold flex items-start gap-2">
               <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
               <span>{successMsg}</span>
             </div>
@@ -1036,7 +1036,7 @@ export default function PosServiceSection({
                   </span>
                 )}
                 {!lookingUpCustomer && isExistingCustomer && (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
                     <UserCheck className="w-3.5 h-3.5" /> Khách quen
                   </span>
                 )}
@@ -1279,7 +1279,7 @@ export default function PosServiceSection({
                         }
                         className={`py-2 px-2 rounded-lg text-xs font-bold border flex items-center justify-center gap-1.5 ${
                           paymentMethod === pm.id
-                            ? "bg-emerald-600 text-white border-emerald-600"
+                            ? "bg-blue-600 text-white border-blue-600"
                             : "bg-white text-slate-700 border-slate-300"
                         }`}
                       >
@@ -1389,7 +1389,7 @@ export default function PosServiceSection({
               <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-200">
                 <span className="text-slate-600">
                   Thu ngay:{" "}
-                  <strong className="font-mono text-emerald-700">
+                  <strong className="font-mono text-blue-700">
                     {formatVND(computedPaidAmount)}
                   </strong>
                 </span>
@@ -1451,15 +1451,15 @@ export default function PosServiceSection({
 
           {/* Thẻ thống kê nhanh */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-3">
-            <div className="p-2.5 rounded-xl bg-sky-50 border border-sky-200">
-              <div className="text-[11px] font-bold text-sky-700">Đã nhận / Đang làm</div>
-              <div className="text-lg font-extrabold text-sky-900 mt-0.5">
+            <div className="p-2.5 rounded-xl bg-blue-50 border border-blue-200">
+              <div className="text-[11px] font-bold text-blue-700">Đã nhận / Đang làm</div>
+              <div className="text-lg font-extrabold text-blue-900 mt-0.5">
                 {ordersMeta.receivedCount + ordersMeta.inProgressCount} đơn
               </div>
             </div>
-            <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200">
-              <div className="text-[11px] font-bold text-emerald-700">Đã xong (Chờ lấy)</div>
-              <div className="text-lg font-extrabold text-emerald-900 mt-0.5">
+            <div className="p-2.5 rounded-xl bg-blue-50 border border-blue-200">
+              <div className="text-[11px] font-bold text-blue-700">Đã xong (Chờ lấy)</div>
+              <div className="text-lg font-extrabold text-blue-900 mt-0.5">
                 {ordersMeta.readyCount} đơn
               </div>
             </div>
@@ -1648,7 +1648,7 @@ export default function PosServiceSection({
                         </span>
                         <span>
                           Đã thu:{" "}
-                          <strong className="font-mono text-emerald-700">
+                          <strong className="font-mono text-blue-700">
                             {formatVND(ord.paidAmount)}
                           </strong>
                         </span>
@@ -1657,7 +1657,7 @@ export default function PosServiceSection({
                             Còn thu: {formatVND(ord.remainingAmount)}
                           </span>
                         ) : (
-                          <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold">
+                          <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 font-bold">
                             Đã thu đủ
                           </span>
                         )}
@@ -1669,7 +1669,7 @@ export default function PosServiceSection({
                             type="button"
                             disabled={submittingCollect}
                             onClick={() => handleOpenCollectReadyOrder(ord)}
-                            className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold flex items-center gap-1 shadow-xs transition"
+                            className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-extrabold flex items-center gap-1 shadow-xs transition"
                           >
                             <Wallet className="w-3.5 h-3.5" />
                             Xác nhận lấy tiền &amp; Trả đồ
@@ -1732,7 +1732,7 @@ export default function PosServiceSection({
                     {formatVND(collectModalOrder.totalAmount)}
                   </strong>{" "}
                   • Đã thu:{" "}
-                  <strong className="font-mono text-emerald-700">
+                  <strong className="font-mono text-blue-700">
                     {formatVND(collectModalOrder.paidAmount)}
                   </strong>
                 </div>
@@ -1777,7 +1777,7 @@ export default function PosServiceSection({
                       onClick={() => setCollectMethod(pm.id as ServicePaymentMethod)}
                       className={`py-2 px-2 rounded-lg text-xs font-bold border ${
                         collectMethod === pm.id
-                          ? "bg-emerald-600 text-white border-emerald-600"
+                          ? "bg-blue-600 text-white border-blue-600"
                           : "bg-white text-slate-700 border-slate-300"
                       }`}
                     >
@@ -1873,7 +1873,7 @@ export default function PosServiceSection({
                 <button
                   type="submit"
                   disabled={submittingCollect}
-                  className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold"
+                  className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-extrabold"
                 >
                   {submittingCollect ? "Đang xử lý..." : "Xác nhận Thu tiền & Trả đồ"}
                 </button>
@@ -1888,7 +1888,7 @@ export default function PosServiceSection({
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden my-8">
             {/* Thanh công cụ Modal */}
-            <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-3.5 bg-slate-900 text-white">
+            <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-3.5 bg-blue-600 text-white">
               <div className="flex items-center gap-3">
                 <span className="font-bold text-sm">
                   Xem trước Hóa Đơn Dịch Vụ (2 bản: Khách &amp; Shop) — {printOrder.orderCode}
@@ -1924,7 +1924,7 @@ export default function PosServiceSection({
                   type="button"
                   onClick={() => handlePrintServiceReceipt("SPLIT_2_BILLS")}
                   title="Tách thành 2 lệnh in riêng biệt để máy in K80 tự động cắt rời Liên 1 và Liên 2"
-                  className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 transition shadow cursor-pointer"
+                  className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold flex items-center gap-1.5 transition shadow cursor-pointer"
                 >
                   <Printer className="w-4 h-4" />
                   In 2 Bill (Tự cắt rời)

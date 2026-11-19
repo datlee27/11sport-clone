@@ -669,15 +669,15 @@ export default function InventoryTab() {
               type="button"
               onClick={() => setActiveWarehouse("FLOOR_1")}
               className={`px-3.5 py-2 rounded-xl text-xs font-extrabold transition flex items-center gap-2 border-2 ${effectiveWarehouse === "FLOOR_1"
-                ? "bg-emerald-600 text-white border-emerald-700 shadow-sm"
-                : "bg-emerald-50/60 text-emerald-900 border-emerald-200 hover:bg-emerald-100"
+                ? "bg-blue-600 text-white border-blue-700 shadow-sm"
+                : "bg-blue-50/60 text-blue-900 border-blue-200 hover:bg-blue-100"
                 }`}
             >
               <span>🏢 KHO TẦNG 1</span>
               <span
                 className={`px-2 py-0.5 rounded-full font-mono text-[11px] ${effectiveWarehouse === "FLOOR_1"
-                  ? "bg-white text-emerald-800"
-                  : "bg-emerald-200 text-emerald-900"
+                  ? "bg-white text-blue-800"
+                  : "bg-blue-200 text-blue-900"
                   }`}
               >
                 {totalStockFloor1.toLocaleString("vi-VN")}
@@ -705,7 +705,7 @@ export default function InventoryTab() {
               type="button"
               onClick={() => setActiveWarehouse("ALL")}
               className={`px-3.5 py-2 rounded-xl text-xs font-extrabold transition flex items-center gap-2 border-2 ${effectiveWarehouse === "ALL"
-                ? "bg-slate-900 text-white border-slate-900 shadow-sm"
+                ? "bg-blue-600 text-white border-slate-900 shadow-sm"
                 : "bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200"
                 }`}
             >
@@ -752,7 +752,7 @@ export default function InventoryTab() {
                   ? "🏬 Tồn Kho Tầng 2"
                   : "Tổng tồn cả 2 kho"}
             </p>
-            <p className="text-2xl md:text-3xl font-extrabold font-mono text-emerald-600 mt-1">
+            <p className="text-2xl md:text-3xl font-extrabold font-mono text-blue-600 mt-1">
               {effectiveWarehouse === "FLOOR_1"
                 ? totalStockFloor1
                 : effectiveWarehouse === "FLOOR_2"
@@ -760,16 +760,16 @@ export default function InventoryTab() {
                   : totalStock}
             </p>
           </div>
-          <div className="w-12 h-12 shrink-0 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+          <div className="w-12 h-12 shrink-0 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
             <Layers className="w-6 h-6" />
           </div>
         </div>
 
-        <div className="bg-slate-900 text-white rounded-xl p-4 md:p-5 shadow-sm flex flex-col justify-center sm:col-span-2 lg:col-span-1">
-          <p className="text-xs font-bold uppercase text-emerald-400">
+        <div className="bg-blue-50/80 border border-blue-200 text-slate-800 rounded-xl p-4 md:p-5 shadow-sm flex flex-col justify-center sm:col-span-2 lg:col-span-1">
+          <p className="text-xs font-bold uppercase text-blue-700">
             Quy chuẩn 1 Mã Chung • Đa Màu & Size (v2.8)
           </p>
-          <p className="text-xs text-slate-300 mt-1">
+          <p className="text-xs text-slate-600 mt-1">
             Mỗi dòng sản phẩm dùng <b>1 Mã IN HOA VIẾT LIỀN</b> duy nhất (in lên tem mã vạch). Bấm vào từng dòng để xem hoặc thêm chi tiết <b>Màu sắc • Size • Số lượng</b>.
           </p>
         </div>
@@ -786,7 +786,7 @@ export default function InventoryTab() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Tìm mã SP, tên, màu, size, ghi chú..."
-                className="w-full min-h-[40px] pl-9 pr-3 py-2 rounded-lg border border-slate-300 text-sm focus:border-emerald-600 focus:outline-none"
+                className="w-full min-h-[40px] pl-9 pr-3 py-2 rounded-lg border border-slate-300 text-sm focus:border-blue-600 focus:outline-none"
               />
             </div>
 
@@ -795,7 +795,7 @@ export default function InventoryTab() {
               <select
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
-                className="flex-1 sm:flex-none min-w-0 min-h-[40px] px-3 py-2 rounded-lg border border-slate-300 text-sm bg-white focus:border-emerald-600 focus:outline-none"
+                className="flex-1 sm:flex-none min-w-0 min-h-[40px] px-3 py-2 rounded-lg border border-slate-300 text-sm bg-white focus:border-blue-600 focus:outline-none"
               >
                 <option value="">Tất cả Category</option>
                 {categories.map((c) => (
@@ -809,7 +809,7 @@ export default function InventoryTab() {
                 aria-label="Lọc theo thương hiệu"
                 value={brandFilter}
                 onChange={(e) => setBrandFilter(e.target.value)}
-                className="flex-1 sm:flex-none min-w-0 min-h-[40px] px-3 py-2 rounded-lg border border-slate-300 text-sm bg-white focus:border-emerald-600 focus:outline-none"
+                className="flex-1 sm:flex-none min-w-0 min-h-[40px] px-3 py-2 rounded-lg border border-slate-300 text-sm bg-white focus:border-blue-600 focus:outline-none"
               >
                 <option value="">Tất cả Thương hiệu</option>
                 {brandOptions
@@ -829,11 +829,11 @@ export default function InventoryTab() {
               onClick={() => setShowScannerPanel((v) => !v)}
               className={`min-h-[40px] px-3.5 py-2 rounded-lg border text-xs font-extrabold flex items-center justify-center gap-1.5 transition cursor-pointer ${
                 showScannerPanel || Object.keys(scannedCheckCounts).length > 0
-                  ? "bg-emerald-50 border-emerald-400 text-emerald-900"
+                  ? "bg-blue-50 border-blue-400 text-blue-900"
                   : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
               }`}
             >
-              <ScanBarcode className="w-4 h-4 text-emerald-600" />
+              <ScanBarcode className="w-4 h-4 text-blue-600" />
               <span>
                 Máy quét kiểm kho
                 {Object.keys(scannedCheckCounts).length > 0
@@ -875,7 +875,7 @@ export default function InventoryTab() {
                   onClick={handleSaveAllPriceChanges}
                   className={`min-h-[40px] px-4 py-2 rounded-lg text-xs font-extrabold flex items-center justify-center gap-1.5 transition shadow-sm ${
                     changedPriceProducts.length > 0
-                      ? "bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer"
+                      ? "bg-blue-600 hover:bg-blue-700 text-white cursor-pointer"
                       : "bg-slate-200 text-slate-400 cursor-not-allowed"
                   }`}
                 >
@@ -900,15 +900,15 @@ export default function InventoryTab() {
 
         {/* THANH MÁY QUÉT LABEL — QUÉT KIỂM HÀNG & ĐỐI CHIẾU TỒN KHO TRÊN KỆ */}
         {(showScannerPanel || Object.keys(scannedCheckCounts).length > 0 || lastScanFeedback) && (
-          <div className="rounded-xl border border-emerald-300 bg-emerald-50/50 p-3 shadow-2xs">
+          <div className="rounded-xl border border-blue-300 bg-blue-50/50 p-3 shadow-2xs">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0">
                   <ScanBarcode className="w-4 h-4" />
                 </div>
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-xs font-extrabold uppercase tracking-wider text-emerald-950">
+                    <span className="text-xs font-extrabold uppercase tracking-wider text-blue-950">
                       Máy Quét Label — Quét Kiểm Hàng &amp; Đối Chiếu Tồn Kho
                     </span>
                     <button
@@ -916,7 +916,7 @@ export default function InventoryTab() {
                       onClick={() => setScannerEnabled((v) => !v)}
                       className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold transition ${
                         scannerEnabled
-                          ? "bg-emerald-600 text-white shadow-xs"
+                          ? "bg-blue-600 text-white shadow-xs"
                           : "bg-slate-200 text-slate-600"
                       }`}
                     >
@@ -942,11 +942,11 @@ export default function InventoryTab() {
                     value={scannerInput}
                     onChange={(e) => setScannerInput(e.target.value)}
                     placeholder="Quét hoặc gõ mã SP + Enter..."
-                    className="w-48 sm:w-56 px-3 py-1.5 rounded-lg border border-emerald-400 bg-white text-xs font-mono font-extrabold text-slate-900 uppercase focus:border-emerald-600 focus:outline-none"
+                    className="w-48 sm:w-56 px-3 py-1.5 rounded-lg border border-blue-400 bg-white text-xs font-mono font-extrabold text-slate-900 uppercase focus:border-blue-600 focus:outline-none"
                   />
                   <button
                     type="submit"
-                    className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold whitespace-nowrap shadow-xs"
+                    className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-extrabold whitespace-nowrap shadow-xs"
                   >
                     +1 Kiểm
                   </button>
@@ -959,8 +959,8 @@ export default function InventoryTab() {
                       onClick={() => setOnlyShowScanned((v) => !v)}
                       className={`px-2.5 py-1.5 rounded-lg border text-xs font-extrabold transition ${
                         onlyShowScanned
-                          ? "bg-emerald-700 text-white border-emerald-700"
-                          : "bg-white text-emerald-800 border-emerald-300 hover:bg-emerald-50"
+                          ? "bg-blue-700 text-white border-blue-700"
+                          : "bg-white text-blue-800 border-blue-300 hover:bg-blue-50"
                       }`}
                     >
                       {onlyShowScanned
@@ -1008,7 +1008,7 @@ export default function InventoryTab() {
               <div
                 className={`mt-2.5 px-3 py-2 rounded-lg text-xs font-bold flex items-center justify-between gap-2 border ${
                   lastScanFeedback.type === "success"
-                    ? "bg-emerald-100/90 border-emerald-300 text-emerald-950"
+                    ? "bg-blue-100/90 border-blue-300 text-blue-950"
                     : lastScanFeedback.type === "warning"
                       ? "bg-amber-100/90 border-amber-300 text-amber-950"
                       : "bg-red-100/90 border-red-300 text-red-900"
@@ -1018,7 +1018,7 @@ export default function InventoryTab() {
                   {lastScanFeedback.type === "error" ? (
                     <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
                   ) : (
-                    <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+                    <CheckCircle2 className="w-4 h-4 shrink-0 text-blue-600" />
                   )}
                   <span className="truncate">{lastScanFeedback.message}</span>
                 </div>
@@ -1031,8 +1031,8 @@ export default function InventoryTab() {
         )}
 
         {priceStatusMsg && (
-          <div className="mb-3 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+          <div className="mb-3 p-3 rounded-xl bg-blue-50 border border-blue-200 text-blue-800 text-xs font-bold flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 shrink-0 text-blue-600" />
             <span>{priceStatusMsg}</span>
           </div>
         )}
@@ -1040,7 +1040,7 @@ export default function InventoryTab() {
         {/* Bảng tồn kho */}
         <div className="overflow-x-auto border border-slate-200 rounded-xl max-w-full">
           <table className="w-full min-w-[920px] text-sm text-left">
-            <thead className="bg-slate-900 text-white text-xs uppercase">
+            <thead className="bg-slate-100 text-slate-700 border-b border-slate-200 text-xs uppercase">
               <tr>
                 <th className="py-3 px-3 w-10">STT</th>
                 <th className="py-3 px-3">Mã SP (chung)</th>
@@ -1049,7 +1049,7 @@ export default function InventoryTab() {
                 <th className="py-3 px-3">Danh mục</th>
                 <th className="py-3 px-2 text-center">ĐVT</th>
                 {(effectiveWarehouse === "FLOOR_1" || effectiveWarehouse === "ALL") && (
-                  <th className="py-3 px-3 text-right text-emerald-300">🏢 Tầng 1</th>
+                  <th className="py-3 px-3 text-right text-blue-300">🏢 Tầng 1</th>
                 )}
                 {(effectiveWarehouse === "FLOOR_2" || effectiveWarehouse === "ALL") && (
                   <th className="py-3 px-3 text-right text-blue-300">🏬 Tầng 2</th>
@@ -1106,9 +1106,9 @@ export default function InventoryTab() {
                     <React.Fragment key={p._id}>
                       <tr
                         className={`hover:bg-slate-50 transition-colors ${lastScannedProdId === p._id
-                          ? "bg-emerald-100/80 ring-2 ring-inset ring-emerald-500"
+                          ? "bg-blue-100/80 ring-2 ring-inset ring-blue-500"
                           : scannedQty > 0
-                            ? "bg-emerald-50/40"
+                            ? "bg-blue-50/40"
                             : ""
                           }`}
                       >
@@ -1135,7 +1135,7 @@ export default function InventoryTab() {
                             {scannedQty > 0 && (
                               <span
                                 className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-extrabold font-mono border ${scannedQty === sysStockForCompare
-                                  ? "bg-emerald-600 text-white border-emerald-700"
+                                  ? "bg-blue-600 text-white border-blue-700"
                                   : scannedQty > sysStockForCompare
                                     ? "bg-amber-500 text-white border-amber-600"
                                     : "bg-teal-100 text-teal-900 border-teal-300"
@@ -1230,9 +1230,9 @@ export default function InventoryTab() {
                                               key={`${v.variantKey || vIdx}`}
                                               title={`Mã con: ${childCode}`}
                                               className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold border ${lastScannedVariantCode === childCode
-                                                ? "bg-emerald-600 text-white border-emerald-700 ring-2 ring-emerald-300"
+                                                ? "bg-blue-600 text-white border-blue-700 ring-2 ring-blue-300"
                                                 : vQty > 0
-                                                  ? "bg-white text-emerald-800 border-emerald-200"
+                                                  ? "bg-white text-blue-800 border-blue-200"
                                                   : "bg-slate-100 text-slate-400 border-slate-200"
                                                 }`}
                                             >
@@ -1299,10 +1299,10 @@ export default function InventoryTab() {
                         <td className="py-3 px-3 text-xs text-slate-600">{catName}</td>
                         <td className="py-3 px-2 text-center text-xs">{p.unit}</td>
                         {(effectiveWarehouse === "FLOOR_1" || effectiveWarehouse === "ALL") && (
-                          <td className="py-3 px-3 text-right font-mono font-extrabold bg-emerald-50/30">
+                          <td className="py-3 px-3 text-right font-mono font-extrabold bg-blue-50/30">
                             <span
                               className={`px-2.5 py-1 rounded-full text-xs ${f1 > 0
-                                ? "bg-emerald-100 text-emerald-800"
+                                ? "bg-blue-100 text-blue-800"
                                 : "bg-red-50 text-red-600"
                                 }`}
                             >
@@ -1369,9 +1369,9 @@ export default function InventoryTab() {
                                     }
                                   }}
                                   placeholder="Nhập giá niêm yết..."
-                                  className={`w-full pl-2 pr-9 py-1.5 rounded-lg border text-right text-xs font-mono font-bold focus:border-emerald-600 focus:outline-none ${priceEdits[p._id] !== undefined &&
+                                  className={`w-full pl-2 pr-9 py-1.5 rounded-lg border text-right text-xs font-mono font-bold focus:border-blue-600 focus:outline-none ${priceEdits[p._id] !== undefined &&
                                     priceEdits[p._id] !== Number(p.sellingPrice || 0)
-                                    ? "border-emerald-500 bg-emerald-50/70 text-emerald-950 ring-1 ring-emerald-400"
+                                    ? "border-blue-500 bg-blue-50/70 text-blue-950 ring-1 ring-blue-400"
                                     : (priceEdits[p._id] ?? p.sellingPrice) > 0
                                       ? "border-slate-300 bg-white text-slate-900"
                                       : "border-amber-300 bg-amber-50 text-amber-900"
@@ -1417,7 +1417,7 @@ export default function InventoryTab() {
                                 </div>
                                 <span className="text-[11px] text-slate-500">
                                   Mỗi thuộc tính (Màu + Size) có <b className="font-mono text-indigo-700">Mã con riêng</b> để in tem &amp; quét kiểm kho • Giá niêm yết:{" "}
-                                  <b className="font-mono text-emerald-700">
+                                  <b className="font-mono text-blue-700">
                                     {formatVND(Number(priceEdits[p._id] ?? p.sellingPrice ?? 0))}
                                   </b>
                                 </span>
@@ -1432,7 +1432,7 @@ export default function InventoryTab() {
                                       <th className="py-2 px-3 text-left">Màu sắc</th>
                                       <th className="py-2 px-3 text-left">Size</th>
                                       <th className="py-2 px-3 text-right">Giá niêm yết</th>
-                                      <th className="py-2 px-3 text-right text-emerald-700">
+                                      <th className="py-2 px-3 text-right text-blue-700">
                                         🏢 Tồn Kho Tầng 1
                                       </th>
                                       {!isSales && (
@@ -1471,7 +1471,7 @@ export default function InventoryTab() {
                                             key={v.variantKey || vIdx}
                                             className={
                                               lastScannedVariantCode === childCode
-                                                ? "bg-emerald-50"
+                                                ? "bg-blue-50"
                                                 : ""
                                             }
                                           >
@@ -1481,7 +1481,7 @@ export default function InventoryTab() {
                                                 {childCode}
                                               </span>
                                               {vScanned > 0 && (
-                                                <span className="ml-1.5 px-1.5 py-0.5 rounded bg-emerald-600 text-white font-mono text-[10px] font-bold">
+                                                <span className="ml-1.5 px-1.5 py-0.5 rounded bg-blue-600 text-white font-mono text-[10px] font-bold">
                                                   Đã quét: {vScanned}
                                                 </span>
                                               )}
@@ -1516,7 +1516,7 @@ export default function InventoryTab() {
                                                 <div className="text-[9px] font-sans font-bold text-amber-600">Giá riêng</div>
                                               )}
                                             </td>
-                                            <td className="py-2 px-3 text-right font-mono font-bold text-emerald-700">
+                                            <td className="py-2 px-3 text-right font-mono font-bold text-blue-700">
                                               {v.stockFloor1}
                                             </td>
                                             {!isSales && (
@@ -1637,7 +1637,7 @@ export default function InventoryTab() {
                                     type="button"
                                     disabled={addingVariantProdId === p._id}
                                     onClick={() => handleAddVariantToProduct(p)}
-                                    className="px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1"
+                                    className="px-3 py-1.5 rounded bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1"
                                   >
                                     <Plus className="w-3.5 h-3.5" />
                                     <span>
