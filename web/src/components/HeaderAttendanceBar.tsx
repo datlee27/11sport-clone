@@ -244,17 +244,25 @@ export default function HeaderAttendanceBar({ currentUser }: Props) {
     if (!isWorkingNow) return;
 
     const timer = setInterval(() => {
+      if (typeof document !== "undefined" && document.hidden) return;
       pollPendingHandover();
-    }, 6000);
+    }, 15000);
 
     const handleFocus = () => {
       pollPendingHandover();
     };
+    const handleVisibility = () => {
+      if (typeof document !== "undefined" && !document.hidden) {
+        pollPendingHandover();
+      }
+    };
     window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibility);
 
     return () => {
       clearInterval(timer);
       window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibility);
     };
   }, [currentUser, attendance, pollPendingHandover]);
 

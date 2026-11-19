@@ -1477,6 +1477,12 @@ export async function apiRequest<T = any>(
 
   const json = await res.json().catch(() => ({}));
   if (!res.ok) {
+    if (res.status === 401 && !endpoint.startsWith("/auth/login") && typeof window !== "undefined") {
+      if (getStoredToken()) {
+        clearStoredAuth();
+        window.location.reload();
+      }
+    }
     const errMessage = json?.message || `Lỗi hệ thống (${res.status})`;
     const error: any = new Error(errMessage);
     error.code = json?.code || "API_ERROR";

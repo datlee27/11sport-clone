@@ -207,4 +207,10 @@ const OrderSchema = new Schema<IOrder>(
   { timestamps: true }
 );
 
+OrderSchema.index({ createdAt: -1 });
+OrderSchema.index({ status: 1, createdAt: -1 });
+OrderSchema.index({ paymentMethod: 1, createdAt: -1 });
+OrderSchema.index({ shiftDate: -1, status: 1 });
+OrderSchema.index({ 'debtPayments.paidAt': 1 });
+
 export const OrderModel = mongoose.model<IOrder>('Order', OrderSchema);

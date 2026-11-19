@@ -6,6 +6,7 @@ import {
   stockMovementRepo,
 } from '../config/db';
 import { ApiError } from '../utils/errors';
+import { requireRoles } from '../middleware/auth';
 import { IReturnItem, IExchangeItem, ReturnCondition } from '../models/ReturnExchange';
 import { DebtStatus, IDebtAdjustmentRecord, PaymentMethod } from '../models/Order';
 import {
@@ -21,6 +22,13 @@ import { filterAndRankBySearch } from '../utils/search';
 import { withOrderLock, deepCloneSnapshot } from '../utils/orderLock';
 
 export const returnsRouter = Router();
+returnsRouter.use(
+  '/returns',
+  requireRoles(
+    ['CEO', 'ADMIN', 'SALES', 'ACCOUNTANT'],
+    'Chỉ Bán hàng, Kế toán hoặc Quản lý mới có quyền thực hiện trả/đổi hàng'
+  )
+);
 
 async function generateNextReturnExchangeCode(isExchange: boolean): Promise<string> {
   const all = await returnExchangeRepo.find({});

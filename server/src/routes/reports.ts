@@ -180,13 +180,27 @@ reportsRouter.get('/reports/staff-activity', async (req, res, next) => {
       return true;
     };
 
+    const dateRangeFilter: Record<string, Date> = {};
+    if (fromDate) dateRangeFilter.$gte = fromDate;
+    if (toDate) dateRangeFilter.$lte = toDate;
+    const hasDateFilter = Boolean(fromDate || toDate);
+
     const [staffList, orders, returns, imports, movements, transferMovements] = await Promise.all([
       staffRepo.find({}, { createdAt: 1 }),
-      orderRepo.find({}, { createdAt: -1 }),
-      returnExchangeRepo.find({}, { createdAt: -1 }),
-      importReceiptRepo.find({}, { createdAt: -1 }),
-      stockMovementRepo.find({ type: 'ADJUSTMENT' }, { createdAt: -1 }),
-      stockMovementRepo.find({ type: 'TRANSFER' }, { createdAt: -1 }),
+      orderRepo.find(
+        hasDateFilter ? { status: { $ne: 'DRAFT' }, createdAt: dateRangeFilter } : { status: { $ne: 'DRAFT' } },
+        { createdAt: -1 }
+      ),
+      returnExchangeRepo.find(hasDateFilter ? { createdAt: dateRangeFilter } : {}, { createdAt: -1 }),
+      importReceiptRepo.find(hasDateFilter ? { createdAt: dateRangeFilter } : {}, { createdAt: -1 }),
+      stockMovementRepo.find(
+        hasDateFilter ? { type: 'ADJUSTMENT', createdAt: dateRangeFilter } : { type: 'ADJUSTMENT' },
+        { createdAt: -1 }
+      ),
+      stockMovementRepo.find(
+        hasDateFilter ? { type: 'TRANSFER', createdAt: dateRangeFilter } : { type: 'TRANSFER' },
+        { createdAt: -1 }
+      ),
     ]);
 
     const knownIds = new Set(staffList.map((s) => String(s._id)));
@@ -435,13 +449,53 @@ reportsRouter.get('/reports/revenue-dashboard', async (req, res, next) => {
       return true;
     };
 
-    const [orders, returns, products, categories, serviceOrders] = await Promise.all([
-      orderRepo.find({}, { createdAt: -1 }),
+    const hasDateRange = Boolean(fromDate || toDate);
+    const createdRange: Record<string, Date> = {};
+    if (fromDate) createdRange.$gte = fromDate;
+    if (toDate) createdRange.$lte = toDate;
+
+    const [returns, products, categories, serviceOrders] = await Promise.all([
       returnExchangeRepo.find({}, { createdAt: -1 }),
       productRepo.find({}, { createdAt: -1 }),
       categoryRepo.find({}, { createdAt: 1 }),
-      serviceOrderRepo.find({}, { createdAt: -1 }),
+      serviceOrderRepo.find(
+        hasDateRange
+          ? {
+              $or: [
+                { createdAt: createdRange },
+                {
+                  status: 'RETURNED',
+                  ...(fromDate ? { updatedAt: { $gte: fromDate } } : {}),
+                },
+              ],
+            }
+          : {},
+        { createdAt: -1 }
+      ),
     ]);
+
+    const returnOrderIds = Array.from(
+      new Set(returns.map((r) => String(r.orderId || '').trim()).filter(Boolean))
+    );
+    const validReturnOrderObjectIds = returnOrderIds.filter((id) =>
+      /^[a-f0-9]{24}$/i.test(id)
+    );
+    const orders = await orderRepo.find(
+      hasDateRange
+        ? {
+            status: { $ne: 'DRAFT' },
+            $or: [
+              { createdAt: createdRange },
+              { debtStatus: { $in: ['UNPAID', 'PARTIAL', 'SETTLED'] } },
+              { paymentMethod: 'OTHER' },
+              ...(validReturnOrderObjectIds.length > 0
+                ? [{ _id: { $in: validReturnOrderObjectIds } }]
+                : []),
+            ],
+          }
+        : { status: { $ne: 'DRAFT' } },
+      { createdAt: -1 }
+    );
 
     const catMap = new Map<string, string>();
     categories.forEach((c) => catMap.set(String(c._id), c.name));

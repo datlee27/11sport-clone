@@ -77,4 +77,8 @@ const StockMovementSchema = new Schema<IStockMovement>(
   { timestamps: true }
 );
 
+StockMovementSchema.index({ type: 1, createdAt: -1 });
+StockMovementSchema.index({ referenceId: 1 });
+StockMovementSchema.index({ productId: 1, createdAt: -1 });
+
 export const StockMovementModel = mongoose.model<IStockMovement>('StockMovement', StockMovementSchema);

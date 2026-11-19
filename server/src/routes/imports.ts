@@ -33,6 +33,7 @@ import {
   getBarcodeCandidatesServer,
 } from '../utils/tagMatch';
 import { ApiError } from '../utils/errors';
+import { requireRoles } from '../middleware/auth';
 import { IImportReceiptItem } from '../models/ImportReceipt';
 import {
   normalizeFloor,
@@ -61,6 +62,13 @@ import {
 } from '../utils/fileImportParser';
 
 export const importsRouter = Router();
+importsRouter.use(
+  '/imports',
+  requireRoles(
+    ['CEO', 'ADMIN', 'ACCOUNTANT'],
+    'Chỉ Giám đốc (CEO), Quản trị viên hoặc Kế toán mới có quyền quản lý nhập kho'
+  )
+);
 
 function inferRole(
   explicitRole?: string,

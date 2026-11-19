@@ -35,11 +35,11 @@ async function validateSkuCode(raw: any, exceptId?: string): Promise<string> {
 }
 
 function requireCategoryManager(role?: string) {
-  if (role && role !== 'CEO' && role !== 'ADMIN' && role !== 'ACCOUNTANT') {
+  if (!role || (role !== 'CEO' && role !== 'ADMIN')) {
     throw new ApiError(
       403,
       'FORBIDDEN',
-      'Chỉ Giám đốc (CEO), Quản trị viên (ADMIN) hoặc Kế toán (ACCOUNTANT) mới có quyền quản lý danh mục sản phẩm'
+      'Chỉ Giám đốc (CEO) hoặc Quản trị viên (ADMIN) mới có quyền quản lý danh mục sản phẩm'
     );
   }
 }

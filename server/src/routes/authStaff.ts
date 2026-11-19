@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { staffRepo } from '../config/db';
 import { hashPassword, verifyPassword, signToken } from '../utils/auth';
+import { invalidateStaffAuthCache } from '../middleware/auth';
 import { ApiError } from '../utils/errors';
 import { filterAndRankBySearch } from '../utils/search';
 import { parseStaffImportFile } from '../utils/staffImportParser';
@@ -152,6 +153,7 @@ authStaffRouter.post('/auth/change-password', async (req, res, next) => {
       passwordHash: hashPassword(cleanNewPassword),
       mustChangePassword: false,
     });
+    invalidateStaffAuthCache(String(staff._id));
 
     res.json({
       data: {
@@ -957,6 +959,7 @@ authStaffRouter.patch('/staff/:id', async (req, res, next) => {
     }
 
     const updated = await staffRepo.updateById(id, updateData);
+    invalidateStaffAuthCache(String(id));
     const { passwordHash, ...safeStaff } = updated!;
     res.json({
       data: safeStaff,

@@ -137,4 +137,7 @@ const ReturnExchangeSchema = new Schema<IReturnExchange>(
   { timestamps: true }
 );
 
+ReturnExchangeSchema.index({ createdAt: -1 });
+ReturnExchangeSchema.index({ orderId: 1, createdAt: -1 });
+
 export const ReturnExchangeModel = mongoose.model<IReturnExchange>('ReturnExchange', ReturnExchangeSchema);

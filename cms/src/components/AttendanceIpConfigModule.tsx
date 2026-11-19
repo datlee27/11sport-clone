@@ -112,7 +112,10 @@ export default function AttendanceIpConfigModule({
     if (!currentList.includes(detectedClientIp)) {
       currentList.push(detectedClientIp);
       setAllowedIpsText(currentList.join("\n"));
-      showToast(`Đã thêm IP ${detectedClientIp} vào Cơ sở 1`, "success");
+      showToast(
+        `Đã thêm IP ${detectedClientIp} vào ô Cơ sở 1 — nhớ bấm "Lưu Cấu Hình IP (2 Cơ Sở)" bên dưới để áp dụng!`,
+        "info"
+      );
     } else {
       showToast(`IP ${detectedClientIp} đã có trong danh sách Cơ sở 1`, "info");
     }
@@ -127,7 +130,10 @@ export default function AttendanceIpConfigModule({
     if (!currentList.includes(detectedClientIp)) {
       currentList.push(detectedClientIp);
       setAllowedIps2Text(currentList.join("\n"));
-      showToast(`Đã thêm IP ${detectedClientIp} vào Cơ sở 2`, "success");
+      showToast(
+        `Đã thêm IP ${detectedClientIp} vào ô Cơ sở 2 — nhớ bấm "Lưu Cấu Hình IP (2 Cơ Sở)" bên dưới để áp dụng!`,
+        "info"
+      );
     } else {
       showToast(`IP ${detectedClientIp} đã có trong danh sách Cơ sở 2`, "info");
     }

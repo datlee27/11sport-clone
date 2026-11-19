@@ -143,4 +143,7 @@ const ImportReceiptSchema = new Schema<IImportReceipt>(
   { timestamps: true }
 );
 
+ImportReceiptSchema.index({ createdAt: -1 });
+ImportReceiptSchema.index({ status: 1, createdAt: -1 });
+
 export const ImportReceiptModel = mongoose.model<IImportReceipt>('ImportReceipt', ImportReceiptSchema);
