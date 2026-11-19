@@ -629,6 +629,14 @@ export interface RevenueDashboardSummary {
   cardFeeNet?: number;
   cardFeeTotal: number;
   orderRevenue: number;
+  productOrderRevenue?: number;
+  productNetRevenue?: number;
+  serviceGrossRevenue?: number;
+  serviceDiscountTotal?: number;
+  serviceRevenue?: number;
+  serviceCardFeeCollected?: number;
+  serviceCashCollected?: number;
+  servicePendingCollection?: number;
   returnGoodsTotal?: number;
   exchangeGoodsTotal?: number;
   returnTotal: number;
@@ -647,18 +655,54 @@ export interface RevenueDashboardSummary {
   initialDebtInPeriod?: number;
   debtCollectedInPeriod?: number;
   debtOrdersInPeriod?: number;
+  salesCogs?: number;
+  giftCogs?: number;
+  giftRetailValue?: number;
   estimatedCogs: number;
   cogs?: number;
   cogsEstimated?: boolean;
   grossProfit: number;
   grossMarginPercent: number;
   totalOrders: number;
+  productOrdersCount?: number;
+  serviceOrdersCount?: number;
+  activeServiceOrdersCount?: number;
+  completedServiceOrdersCount?: number;
+  cancelledServiceOrdersCount?: number;
   paidOrders: number;
   returnedOrders: number;
   avgOrderValue: number;
   totalUnitsSold: number;
+  totalServiceUnits?: number;
   totalGiftUnits: number;
   totalUnitsReturned: number;
+}
+
+export interface RevenueByServiceType {
+  serviceCode: string;
+  serviceName: string;
+  unit: string;
+  orderCount: number;
+  quantity: number;
+  revenue: number;
+  sharePercent: number;
+}
+
+export interface ServiceStatsData {
+  summary: {
+    totalServiceOrders: number;
+    activeServiceOrders: number;
+    completedServiceOrders: number;
+    cancelledServiceOrders: number;
+    totalServiceUnits: number;
+    serviceGrossRevenue: number;
+    serviceDiscountTotal: number;
+    serviceRevenue: number;
+    serviceCardFeeCollected: number;
+    serviceCashCollected: number;
+    servicePendingCollection: number;
+  };
+  byServiceType: RevenueByServiceType[];
 }
 
 export interface RevenueByPaymentMethod {
@@ -824,6 +868,7 @@ export interface DebtManagementData {
 
 export interface RevenueDashboardData {
   summary: RevenueDashboardSummary;
+  serviceStats?: ServiceStatsData;
   byPaymentMethod: RevenueByPaymentMethod[];
   byCategory: RevenueByCategory[];
   dailyTrend: DailyRevenueTrend[];

@@ -102,9 +102,9 @@
     "semantic_hash": ""
   },
   "cms/src/components/RevenueDashboardModule.tsx": {
-    "mtime": 1794986852.5005262,
-    "seen": 1794987304.066159,
-    "ast_hash": "4922157c024e81bb435a20d681680689",
+    "mtime": 1794997586.3100624,
+    "seen": 1794997869.8197792,
+    "ast_hash": "10f21e5c9a145f6577759f537554fb2c",
     "semantic_hash": ""
   },
   "cms/src/components/StaffActivityModule.tsx": {
@@ -120,9 +120,9 @@
     "semantic_hash": ""
   },
   "cms/src/lib/api.ts": {
-    "mtime": 1794971083.7653656,
-    "seen": 1794971894.111468,
-    "ast_hash": "c3ffc6ca6ecac09505f6f6eca7f741dd",
+    "mtime": 1794997206.2940605,
+    "seen": 1794997869.819795,
+    "ast_hash": "2c44f132cbb1e2fb4020f5a968824478",
     "semantic_hash": ""
   },
   "cms/src/lib/barcodeScanner.ts": {
@@ -312,9 +312,9 @@
     "semantic_hash": ""
   },
   "server/src/routes/reports.ts": {
-    "mtime": 1794795186.4007745,
-    "seen": 1794818425.2791328,
-    "ast_hash": "e6f0d582c38fcf78a64298048658c2c6",
+    "mtime": 1794997182.5229006,
+    "seen": 1794997869.819904,
+    "ast_hash": "9c8842569ff1b4b9b4e330d08868657d",
     "semantic_hash": ""
   },
   "server/src/routes/returns.ts": {
@@ -432,9 +432,9 @@
     "semantic_hash": ""
   },
   "server/tests/revenue-dashboard.test.ts": {
-    "mtime": 1794472275.381845,
-    "seen": 1794472359.507075,
-    "ast_hash": "28dadee99183f6942001b08da9ef2660",
+    "mtime": 1794997784.3373823,
+    "seen": 1794997869.8199759,
+    "ast_hash": "ded6ffa6f9546647e4dcf9ccc949d930",
     "semantic_hash": ""
   },
   "server/tests/search.test.ts": {
@@ -642,9 +642,9 @@
     "semantic_hash": ""
   },
   "docs/api-contract.md": {
-    "mtime": 1794990347.991593,
-    "seen": 1794991079.294671,
-    "ast_hash": "ca03f2b8e990a976aa9d5dc01e3cf574",
+    "mtime": 1794996681.6500065,
+    "seen": 1794997869.820089,
+    "ast_hash": "48d07b53b9df722dfed1cc29925c379f",
     "semantic_hash": ""
   },
   "docs/design/design-system.md": {
@@ -1002,9 +1002,9 @@
     "semantic_hash": ""
   },
   "server/src/routes/services.ts": {
-    "mtime": 1794648675.318062,
-    "seen": 1794648920.174836,
-    "ast_hash": "c15c543030fb0b042d7bb5c4ed152508",
+    "mtime": 1794994721.9860716,
+    "seen": 1794996275.850952,
+    "ast_hash": "0342a65c522a3d720cdfb2d059bca119",
     "semantic_hash": ""
   },
   "web/src/components/PosServiceSection.tsx": {

@@ -434,25 +434,34 @@
     ```
   - Nguồn dữ liệu: đơn hàng (`createdBy`), phiếu trả/đổi (`performedBy`), phiếu nhập (`createdBy`, `completedBy`, `items[].scanCounts`), sổ kho loại `ADJUSTMENT` (`performedBy`). Thao tác không gắn được với nhân viên nào được gom vào dòng "Không xác định" (`staffId = ""`).
 
-### 2.8 Dashboard Doanh thu chi tiết & Phân tích Sản phẩm (`/reports/revenue-dashboard`) *(v2.3 & v4.1)*
+### 2.8 Dashboard Doanh thu chi tiết & Phân tích Sản phẩm (`/reports/revenue-dashboard`) *(v2.3, v4.1 & v4.4)*
 - `GET /api/v1/reports/revenue-dashboard?from=YYYY-MM-DD&to=YYYY-MM-DD&categoryId=...&paymentMethod=...`
   - Chỉ role `CEO` (Giám đốc), `ADMIN` (Quản lý) hoặc `ACCOUNTANT` (Kế toán) → role khác `403 FORBIDDEN`.
   - Trả về:
     - `summary`:
-      - Doanh thu & giảm giá: `grossRevenue` (tổng giá gốc × SL không tính quà), `itemDiscountTotal` (giảm giá SP), `billDiscountTotal` (giảm giá Bill), `totalDiscount`, `orderRevenue` (**tiền hàng bán sau giảm SP & giảm Bill `S - B`, KHÔNG gồm phí quẹt thẻ**).
+      - Doanh thu & giảm giá: `grossRevenue` (tổng giá niêm yết × SL không tính quà + tổng giá gốc dịch vụ), `itemDiscountTotal` (giảm giá SP + dòng dịch vụ), `billDiscountTotal` (giảm giá Bill bán hàng + phiếu dịch vụ), `totalDiscount`, `orderRevenue` (**tổng tiền hàng bán + tiền dịch vụ sau giảm SP & giảm Bill `S - B`, KHÔNG gồm phí quẹt thẻ**), kèm tách riêng `productOrderRevenue`, `productNetRevenue` và `serviceRevenue`.
       - Trả/đổi hàng: `returnGoodsTotal` (tổng tiền hàng trả đã phân bổ giảm Bill), `exchangeGoodsTotal` (tổng tiền hàng xuất đổi), `returnTotal`, `exchangeTotal`, `netReturnImpact`, `netReturnRefund`, `returnFromPriorPeriods` (phần `returnGoodsTotal` của phiếu trong kỳ nhưng thuộc đơn gốc tạo trước đầu kỳ `from`).
-      - **Doanh thu thuần (`netRevenue`)**: `orderRevenue - returnGoodsTotal + exchangeGoodsTotal` (**KHÔNG gồm phí quẹt thẻ**).
-      - **Phí quẹt thẻ hiển thị riêng**: `cardFeeCollected` (phí thẻ thu từ đơn trong kỳ), `cardFeeRefunded` (phí thẻ hoàn lại trên phiếu trả trong kỳ), `cardFeeNet = cardFeeCollected - cardFeeRefunded` (kèm `cardFeeTotal = cardFeeNet` để tương thích ngược). Khi lọc `categoryId`, các trường `cardFee* = 0`.
-      - **Giá vốn & Lãi gộp**: `estimatedCogs` (tính từ `unitCost` lưu lúc bán/trả/đổi; dòng trả chỉ đảo giá vốn khi `condition === "GOOD"` / `restocked`; nếu có dòng đơn/phiếu cũ thiếu `unitCost` phải fallback `product.costPrice` hiện tại thì `cogsEstimated = true`), `cogsEstimated` (`boolean`), `grossProfit = netRevenue - estimatedCogs`, `grossMarginPercent`.
-      - **Thực thu & Công nợ trong kỳ**:
-        - `cashAtPurchase`: tổng tiền khách trả ngay lúc mua của các đơn trong kỳ (`totalAmount - initialDebtAmount`, bao gồm phí thẻ thực thu).
+      - **Doanh thu thuần (`netRevenue`)**: `orderRevenue - returnGoodsTotal + exchangeGoodsTotal` (`= productNetRevenue + serviceRevenue`, **KHÔNG gồm phí quẹt thẻ**).
+      - **Quy tắc tính Doanh thu & Thực thu Dịch vụ (`ServiceOrder`) *(v4.4)***:
+        - **Doanh thu dịch vụ (`serviceRevenue`)**: Tính theo ngày tạo đơn dịch vụ (`createdAt` trong kỳ, áp dụng cho mọi đơn dịch vụ có `status !== "CANCELLED"`). Giá vốn dịch vụ = `0đ` (100% `serviceRevenue` cộng vào `grossProfit`).
+        - **Thực thu dịch vụ (`serviceCashCollected`)**: **Chỉ tính vào Thực thu (`cashCollected`) sau khi đơn dịch vụ đã hoàn thành (`status === "RETURNED"`)** đối với tất cả các trường hợp (trả lúc gửi đồ, đặt cọc, trả lúc nhận đồ), xét theo mốc hoàn thành `returnedAt || updatedAt || createdAt`. Các đơn dịch vụ chưa hoàn thành (`RECEIVED | IN_PROGRESS | READY`) được ghi nhận vào `servicePendingCollection` (chờ hoàn thành).
+      - **Phí quẹt thẻ thu hộ ngân hàng (Tách riêng, KHÔNG tính vào Doanh thu thuần & Thực thu)**: `cardFeeCollected` (phí thẻ thu hộ từ đơn bán hàng + đơn dịch vụ trong kỳ), `cardFeeRefunded` (phí thẻ hoàn lại trên phiếu trả trong kỳ), `cardFeeNet = cardFeeCollected - cardFeeRefunded` (kèm `cardFeeTotal = cardFeeNet` để tương thích ngược). Khi lọc `categoryId` sản phẩm, các trường `cardFee* = 0`.
+      - **Giá vốn & Lãi gộp (Tách rõ Giá vốn hàng bán & Chi phí giá vốn quà tặng)**:
+        - `salesCogs`: tổng giá vốn của hàng bán thu tiền (+ hàng đổi − hàng trả `GOOD` không phải quà tặng).
+        - `giftCogs`: tổng chi phí giá vốn của hàng xuất tặng khuyến mãi 0đ (`isGift = true`, trừ hàng tặng trả lại `GOOD` nếu có).
+        - `giftRetailValue`: tổng trị giá niêm yết của các mặt hàng xuất tặng 0đ.
+        - `estimatedCogs = salesCogs + giftCogs` (tổng giá vốn trừ vào lãi gộp; giá vốn dịch vụ = `0đ`), `cogsEstimated` (`boolean`), `grossProfit = netRevenue - estimatedCogs`, `grossMarginPercent`.
+      - **Thực thu & Công nợ trong kỳ (Không gồm phí thẻ thu hộ ngân hàng)**:
+        - `cashAtPurchase`: tổng tiền hàng thực thu ngay lúc mua của các đơn bán hàng trong kỳ (`afterBillDiscount - initialDebtAmount`, **không gồm phí quẹt thẻ thu hộ ngân hàng**).
+        - `serviceCashCollected`: tổng tiền dịch vụ thực thu (không gồm phí thẻ) từ các đơn dịch vụ **đã hoàn thành (`status === "RETURNED"`)** trong kỳ.
+        - `servicePendingCollection`: tổng tiền dịch vụ (không gồm phí thẻ) của các đơn dịch vụ tạo trong kỳ nhưng **chưa hoàn thành (`status !== "RETURNED"`)**.
         - `debtCollectedInPeriod`: tổng tiền thu nợ (`debtPayments[].amount`) có `paidAt` trong kỳ (mọi đơn, kể cả đơn kỳ trước).
-        - `cashRefunded`: tổng tiền mặt/CK/thẻ thực hoàn cho khách trong kỳ (`cashRefund`, không gồm phần cấn trừ công nợ `debtReduction`).
-        - `cashCollected` (kèm `collectedRevenue = cashCollected` tương thích ngược): **`cashAtPurchase + debtCollectedInPeriod - cashRefunded`** (có thể `< 0` trong ngày chỉ có hoàn tiền, không clamp `0`; bằng `null` nếu lọc theo `categoryId`).
+        - `cashRefunded`: tổng tiền hàng thực hoàn cho khách trong kỳ (không gồm phần cấn trừ công nợ `debtReduction` và không gồm `refundedCardFee`).
+        - `cashCollected` (kèm `collectedRevenue = cashCollected` tương thích ngược): **`cashAtPurchase + serviceCashCollected + debtCollectedInPeriod - cashRefunded`** (khớp `netRevenue - outstandingDebtInPeriod - servicePendingCollection` trong kỳ khép kín; bằng `null` nếu lọc theo `categoryId` sản phẩm).
         - `debtReducedByReturnInPeriod`: tổng công nợ giảm do trả hàng trong kỳ (`Σ debtReduction`).
-        - `outstandingDebtInPeriod` (và `outstandingDebt`): dư nợ hiện tại của các đơn tạo trong kỳ.
-        - Đồng nhất thức kỳ khép kín: `cashCollected = netRevenue + cardFeeNet - outstandingDebtInPeriod`.
-      - Thống kê đơn & SL: `totalOrders`, `paidOrders`, `returnedOrders` (số đơn `PARTIALLY_RETURNED` hoặc `FULLY_RETURNED`), `avgOrderValue`, `totalUnitsSold`, `totalGiftUnits`, `totalUnitsReturned`.
+        - `outstandingDebtInPeriod` (và `outstandingDebt`): dư nợ hiện tại của các đơn bán hàng tạo trong kỳ.
+      - Thống kê đơn & SL: `totalOrders` (`= productOrdersCount + serviceOrdersCount`), `productOrdersCount`, `serviceOrdersCount`, `completedServiceOrdersCount`, `pendingServiceOrdersCount`, `paidOrders`, `returnedOrders`, `avgOrderValue`, `totalUnitsSold`, `totalServiceUnits`, `totalGiftUnits`, `totalUnitsReturned`.
+    - `serviceStats`: Khối thống kê chi tiết mảng Dịch vụ (`summary` & `byServiceType[]`).
     - `byPaymentMethod`: Cơ cấu doanh thu (`orderRevenue` không gồm phí thẻ) theo hình thức thanh toán (`CASH`, `BANKING`, `CARD`, `OTHER`), tổng `revenue` khớp `orderRevenue`.
     - `byCategory`: Cơ cấu doanh thu thuần (`revenue`), số lượng bán, giá vốn và lãi gộp theo từng Category; tổng `revenue` (khi không lọc) khớp `netRevenue` (chênh lệch làm tròn = 0 nhờ dòng cuối nhận phần dư).
     - `dailyTrend`: Chuỗi doanh thu & lợi nhuận theo từng ngày trong kỳ (`grossRevenue`, `discountTotal`, `orderRevenue`, `returnImpact`, `netRevenue`, `cogs`, `grossProfit`, `cashCollected`), tổng các ngày khớp `summary`.

@@ -10,6 +10,7 @@ import {
   DebtCustomerSummary,
   Category,
   Order,
+  ServiceOrder,
   ReturnReceipt,
   Product,
   apiRequest,
@@ -44,6 +45,7 @@ import {
   Clock,
   Users,
   Wallet,
+  Wrench,
   X,
   FileText,
 } from "lucide-react";
@@ -159,7 +161,8 @@ function buildClientFallbackDashboard(
   returns: ReturnReceipt[],
   products: Product[],
   categories: Category[],
-  filters: { from: string; to: string; categoryId: string; paymentMethod: string }
+  filters: { from: string; to: string; categoryId: string; paymentMethod: string },
+  serviceOrders: ServiceOrder[] = []
 ): RevenueDashboardData {
   const fromDate = parseLocalDateBound(filters.from, false);
   const toDate = parseLocalDateBound(filters.to, true);
@@ -205,6 +208,8 @@ function buildClientFallbackDashboard(
   });
 
   const filterCatId = filters.categoryId || "";
+  const isServiceCatFilter = filterCatId.toUpperCase() === "SERVICE";
+  const isProductOnlyCatFilter = Boolean(filterCatId && !isServiceCatFilter);
   const filterPayMethod = filters.paymentMethod ? filters.paymentMethod.toUpperCase() : "";
 
   const getProdCatId = (p?: Product) => {
@@ -213,6 +218,7 @@ function buildClientFallbackDashboard(
   };
 
   const filteredOrders = orders.filter((o) => {
+    if (isServiceCatFilter) return false;
     if (o.status === "DRAFT") return false;
     if (!inRange(o.createdAt)) return false;
     if (filterPayMethod) {
@@ -223,7 +229,7 @@ function buildClientFallbackDashboard(
         return false;
       }
     }
-    if (filterCatId) {
+    if (isProductOnlyCatFilter) {
       const hasCat = (o.items || []).some((it) => {
         const p = prodById.get(String(it.productId)) || prodByCode.get(String(it.productCode));
         return p && getProdCatId(p) === filterCatId;
@@ -234,6 +240,7 @@ function buildClientFallbackDashboard(
   });
 
   const filteredReturns = returns.filter((r) => {
+    if (isServiceCatFilter) return false;
     if (!inRange(r.createdAt)) return false;
     if (filterPayMethod) {
       const origO = orderById.get(String(r.orderId));
@@ -245,7 +252,7 @@ function buildClientFallbackDashboard(
         return false;
       }
     }
-    if (filterCatId) {
+    if (isProductOnlyCatFilter) {
       const hasCat =
         (r.returnItems || []).some((it: any) => {
           const p = prodById.get(String(it.productId)) || prodByCode.get(String(it.productCode));
@@ -268,6 +275,9 @@ function buildClientFallbackDashboard(
   let orderRevenue = 0;
   let totalUnitsSold = 0;
   let totalGiftUnits = 0;
+  let salesCogs = 0;
+  let giftCogs = 0;
+  let giftRetailValue = 0;
   let estimatedCogs = 0;
   let cogsEstimated = false;
   let cashAtPurchase = 0;
@@ -485,6 +495,9 @@ function buildClientFallbackDashboard(
     let orderIncludedItemDisc = 0;
     let orderIncludedBillDisc = 0;
     let orderIncludedNetRev = 0;
+    let orderIncludedSalesCogs = 0;
+    let orderIncludedGiftCogs = 0;
+    let orderIncludedGiftRetail = 0;
     let orderIncludedCogs = 0;
     let orderIncludedUnits = 0;
 
@@ -512,6 +525,8 @@ function buildClientFallbackDashboard(
 
       if (isGift) {
         totalGiftUnits += qty;
+        orderIncludedGiftCogs += itemCogs;
+        orderIncludedGiftRetail += origPrice * qty;
       } else {
         totalUnitsSold += qty;
         orderIncludedUnits += qty;
@@ -519,6 +534,7 @@ function buildClientFallbackDashboard(
         orderIncludedItemDisc += itemDisc;
         orderIncludedBillDisc += billDiscShare;
         orderIncludedNetRev += netItemRev;
+        orderIncludedSalesCogs += itemCogs;
       }
       orderIncludedCogs += itemCogs;
 
@@ -545,10 +561,14 @@ function buildClientFallbackDashboard(
     billDiscountTotal += effectiveBillDisc;
     cardFeeCollected += effectiveCardFee;
     orderRevenue += effectiveOrderRev;
+    salesCogs += orderIncludedSalesCogs;
+    giftCogs += orderIncludedGiftCogs;
+    giftRetailValue += orderIncludedGiftRetail;
     estimatedCogs += orderIncludedCogs;
 
     const dm = extractClientOrderDebtMeta(o, refundedCashByOrderId.get(String(o._id)) || 0);
-    const orderCashAtPurchase = filterCatId ? 0 : dm.cashAtPurchase;
+    const netOrderCashAtPurchase = Math.max(0, dm.cashAtPurchase - orderCardFee);
+    const orderCashAtPurchase = filterCatId ? 0 : netOrderCashAtPurchase;
     cashAtPurchase += orderCashAtPurchase;
 
     if (dm.initialDebtAmount > 0 || dm.debtAmount > 0) {
@@ -596,6 +616,8 @@ function buildClientFallbackDashboard(
     const hr = ensureHour(r.createdAt);
     let rRetGoods = 0;
     let rExGoods = 0;
+    let rSalesCogsImpact = 0;
+    let rGiftCogsImpact = 0;
     let rCogsImpact = 0;
     const origOrder = orderById.get(String(r.orderId));
     const origSub = Math.max(0, Number(origOrder?.subtotal) || 0);
@@ -675,8 +697,14 @@ function buildClientFallbackDashboard(
       st.returnedQty += qty;
       st.revenue -= netRetLine;
       if (it.condition === "GOOD" || it.restocked) {
-        st.cogs -= qty * resolvedUnitCost;
-        rCogsImpact -= qty * resolvedUnitCost;
+        const retLineCogs = qty * resolvedUnitCost;
+        st.cogs -= retLineCogs;
+        rCogsImpact -= retLineCogs;
+        if (retIsGift) {
+          rGiftCogsImpact -= retLineCogs;
+        } else {
+          rSalesCogsImpact -= retLineCogs;
+        }
       }
     }
 
@@ -698,6 +726,7 @@ function buildClientFallbackDashboard(
       st.exchangeOutQty += qty;
       st.revenue += line;
       st.cogs += qty * unitCost;
+      rSalesCogsImpact += qty * unitCost;
       rCogsImpact += qty * unitCost;
     }
 
@@ -718,11 +747,11 @@ function buildClientFallbackDashboard(
       0,
       Math.round(Number(r.refundAmount ?? (r.netDifference < 0 ? Math.abs(r.netDifference) : 0)) || 0)
     );
-    const rCashRef = filterCatId
-      ? 0
-      : r.cashRefund !== undefined && r.cashRefund !== null
-      ? Math.max(0, Math.round(Number(r.cashRefund) || 0))
-      : Math.max(0, rRefundAmt - rDebtRed);
+    const rawCashRef =
+      r.cashRefund !== undefined && r.cashRefund !== null
+        ? Math.max(0, Math.round(Number(r.cashRefund) || 0))
+        : Math.max(0, rRefundAmt - rDebtRed);
+    const rCashRef = filterCatId ? 0 : Math.max(0, rawCashRef - rRefundedFee);
     const rAddCharge = filterCatId
       ? 0
       : Math.max(0, Math.round(Number(r.additionalCharge ?? (r.netDifference > 0 ? r.netDifference : 0)) || 0));
@@ -738,6 +767,8 @@ function buildClientFallbackDashboard(
     returnTotal += filterCatId ? rRetGoods : rRetGoods + rRefundedFee;
     exchangeTotal += rExGoods;
     netReturnImpact += goodsDiff;
+    salesCogs += rSalesCogsImpact;
+    giftCogs += rGiftCogsImpact;
     estimatedCogs += rCogsImpact;
 
     const rCashDelta = rAddCharge - rCashRef;
@@ -755,14 +786,173 @@ function buildClientFallbackDashboard(
     hr.cashCollected += rCashDelta;
   }
 
+  const productOrderRevenue = orderRevenue;
+  const productNetRevenue = productOrderRevenue - returnGoodsTotal + exchangeGoodsTotal;
+  const productOrdersCount = filteredOrders.length;
+
+  let serviceOrdersCount = 0;
+  let activeServiceOrdersCount = 0;
+  let completedServiceOrdersCount = 0;
+  let cancelledServiceOrdersCount = 0;
+  let totalServiceUnits = 0;
+  let serviceGrossRevenue = 0;
+  let serviceDiscountTotal = 0;
+  let serviceRevenue = 0;
+  let serviceCardFeeCollected = 0;
+  let serviceCashCollected = 0;
+  let servicePendingCollection = 0;
+  const serviceTypeStatsMap = new Map<
+    string,
+    {
+      serviceCode: string;
+      serviceName: string;
+      unit: string;
+      quantity: number;
+      revenue: number;
+      orderIds: Set<string>;
+    }
+  >();
+
+  if (!isProductOnlyCatFilter) {
+    for (const so of serviceOrders) {
+      const matchesServicePayFilter =
+        !filterPayMethod || (filterPayMethod !== "DEBT" && so.paymentMethod === filterPayMethod);
+      if (!matchesServicePayFilter) continue;
+
+      const soItems = so.items || [];
+      const calcRaw = soItems.reduce(
+        (s, it) => s + Math.max(0, Number(it.unitPrice) || 0) * Math.max(1, Number(it.quantity) || 1),
+        0
+      );
+      const calcItemDisc = soItems.reduce(
+        (s, it) => s + Math.max(0, Number(it.discountAmount) || 0),
+        0
+      );
+      const soGross = Math.max(0, Number(so.rawSubtotal ?? calcRaw) || 0);
+      const soItemDisc = Math.max(0, Number(so.itemDiscountTotal ?? calcItemDisc) || 0);
+      const soSub = Math.max(0, Number(so.subtotal ?? Math.max(0, soGross - soItemDisc)) || 0);
+      const soBillDisc = Math.min(soSub, Math.max(0, Math.round(Number(so.billDiscountAmount) || 0)));
+      const soAfterBill = Math.max(0, soSub - soBillDisc);
+      const soCardFee = Math.max(0, Math.round(Number(so.cardFee) || 0));
+      const soTotal = Math.max(0, Number(so.totalAmount) || soAfterBill + soCardFee);
+      const soNetAmt = soAfterBill > 0 ? soAfterBill : Math.max(0, soTotal - soCardFee);
+      const soUnits = soItems.reduce((s, it) => s + Math.max(0, Number(it.quantity) || 0), 0);
+
+      if (inRange(so.createdAt)) {
+        if (so.status === "CANCELLED") {
+          cancelledServiceOrdersCount += 1;
+        } else {
+          serviceOrdersCount += 1;
+          if (so.status === "RETURNED") {
+            completedServiceOrdersCount += 1;
+          } else {
+            activeServiceOrdersCount += 1;
+            servicePendingCollection += soNetAmt;
+          }
+          totalServiceUnits += soUnits;
+          serviceGrossRevenue += soGross;
+          serviceDiscountTotal += soItemDisc + soBillDisc;
+          serviceRevenue += soAfterBill;
+          serviceCardFeeCollected += soCardFee;
+
+          grossRevenue += soGross;
+          itemDiscountTotal += soItemDisc;
+          billDiscountTotal += soBillDisc;
+          orderRevenue += soAfterBill;
+          cardFeeCollected += soCardFee;
+
+          const day = ensureDay(so.createdAt);
+          const hr = ensureHour(so.createdAt);
+          day.orders += 1;
+          day.grossRevenue += soGross;
+          day.discountTotal += soItemDisc + soBillDisc;
+          day.orderRevenue += soAfterBill;
+          day.netRevenue += soAfterBill;
+          day.grossProfit = day.netRevenue - day.cogs;
+
+          hr.orders += 1;
+          hr.grossRevenue += soGross;
+          hr.discountTotal += soItemDisc + soBillDisc;
+          hr.orderRevenue += soAfterBill;
+          hr.netRevenue += soAfterBill;
+          hr.grossProfit = hr.netRevenue - hr.cogs;
+
+          const pm = paymentStats[so.paymentMethod] || paymentStats.CASH;
+          pm.orders += 1;
+          pm.revenue += soAfterBill;
+
+          let allocatedSvcBillDisc = 0;
+          for (let idx = 0; idx < soItems.length; idx++) {
+            const it = soItems[idx];
+            const lineTotal = Math.max(0, Number(it.lineTotal) || 0);
+            let bShare = 0;
+            if (soSub > 0 && soBillDisc > 0 && lineTotal > 0) {
+              if (idx === soItems.length - 1) {
+                bShare = Math.max(0, soBillDisc - allocatedSvcBillDisc);
+              } else {
+                bShare = Math.min(
+                  Math.max(0, soBillDisc - allocatedSvcBillDisc),
+                  Math.round((lineTotal / soSub) * soBillDisc)
+                );
+              }
+              allocatedSvcBillDisc += bShare;
+            }
+            const netSvcLineRev = Math.max(0, lineTotal - bShare);
+            const codeKey = String(it.serviceCode || it.serviceName || "SERVICE").toUpperCase();
+            if (!serviceTypeStatsMap.has(codeKey)) {
+              serviceTypeStatsMap.set(codeKey, {
+                serviceCode: codeKey,
+                serviceName: it.serviceName || codeKey,
+                unit: it.unit || "Cây",
+                quantity: 0,
+                revenue: 0,
+                orderIds: new Set<string>(),
+              });
+            }
+            const stRow = serviceTypeStatsMap.get(codeKey)!;
+            stRow.quantity += Math.max(0, Number(it.quantity) || 0);
+            stRow.revenue += netSvcLineRev;
+            stRow.orderIds.add(String(so._id));
+          }
+        }
+      }
+
+      if (so.status === "RETURNED") {
+        const completedAt = so.returnedAt || so.updatedAt || so.createdAt;
+        if (inRange(completedAt)) {
+          const collectedAmt = soNetAmt;
+          serviceCashCollected += collectedAmt;
+          const cDay = ensureDay(completedAt);
+          const cHr = ensureHour(completedAt);
+          cDay.cashCollected += collectedAmt;
+          cHr.cashCollected += collectedAmt;
+        }
+      }
+    }
+  }
+
+  const byServiceType = Array.from(serviceTypeStatsMap.values())
+    .map((st) => ({
+      serviceCode: st.serviceCode,
+      serviceName: st.serviceName,
+      unit: st.unit,
+      orderCount: st.orderIds.size,
+      quantity: st.quantity,
+      revenue: st.revenue,
+      sharePercent:
+        serviceRevenue > 0 ? Math.round((st.revenue / serviceRevenue) * 1000) / 10 : 0,
+    }))
+    .sort((a, b) => b.revenue - a.revenue);
+
   const netRevenue = orderRevenue - returnGoodsTotal + exchangeGoodsTotal;
   const cardFeeNet = cardFeeCollected - cardFeeRefunded;
   const cardFeeTotal = cardFeeNet;
   const grossProfit = netRevenue - estimatedCogs;
   const grossMarginPercent =
     netRevenue > 0 ? Math.round((grossProfit / netRevenue) * 1000) / 10 : 0;
-  const totalOrders = filteredOrders.length;
-  const paidOrders = filteredOrders.filter((o) => o.status === "PAID").length;
+  const totalOrders = productOrdersCount + serviceOrdersCount;
+  const paidOrders =
+    filteredOrders.filter((o) => o.status === "PAID").length + completedServiceOrdersCount;
   const returnedOrders = filteredOrders.filter(
     (o) => o.status === "PARTIALLY_RETURNED" || o.status === "FULLY_RETURNED"
   ).length;
@@ -930,7 +1120,9 @@ function buildClientFallbackDashboard(
     }
   }
 
-  const cashCollected = filterCatId ? null : cashAtPurchase + debtCollectedInPeriod - cashRefunded;
+  const cashCollected = isProductOnlyCatFilter
+    ? null
+    : cashAtPurchase + serviceCashCollected + debtCollectedInPeriod - cashRefunded;
   const collectedRevenue = cashCollected ?? Math.max(0, netRevenue - outstandingDebtInPeriod);
 
   const debtCustomers = Array.from(customerDebtMap.values())
@@ -987,6 +1179,18 @@ function buildClientFallbackDashboard(
     cRow.cogs += st.cogs;
     cRow.grossProfit = cRow.revenue - cRow.cogs;
   });
+
+  if (!isProductOnlyCatFilter && (serviceRevenue > 0 || totalServiceUnits > 0)) {
+    catStatsMap.set("SERVICE", {
+      categoryId: "SERVICE",
+      categoryName: "Dịch vụ (Căng vợt / Sửa chữa)",
+      unitsSold: totalServiceUnits,
+      revenue: serviceRevenue,
+      netRevenue: serviceRevenue,
+      cogs: 0,
+      grossProfit: serviceRevenue,
+    });
+  }
 
   const totalCatRev = Array.from(catStatsMap.values()).reduce((s, c) => s + c.revenue, 0);
   const byCategory = Array.from(catStatsMap.values())
@@ -1142,6 +1346,14 @@ function buildClientFallbackDashboard(
       cardFeeNet,
       cardFeeTotal,
       orderRevenue,
+      productOrderRevenue,
+      productNetRevenue,
+      serviceGrossRevenue,
+      serviceDiscountTotal,
+      serviceRevenue,
+      serviceCardFeeCollected,
+      serviceCashCollected,
+      servicePendingCollection,
       returnGoodsTotal,
       exchangeGoodsTotal,
       returnTotal,
@@ -1160,18 +1372,43 @@ function buildClientFallbackDashboard(
       initialDebtInPeriod,
       debtCollectedInPeriod,
       debtOrdersInPeriod,
+      salesCogs,
+      giftCogs,
+      giftRetailValue,
       estimatedCogs,
       cogs: estimatedCogs,
       cogsEstimated,
       grossProfit,
       grossMarginPercent,
       totalOrders,
+      productOrdersCount,
+      serviceOrdersCount,
+      activeServiceOrdersCount,
+      completedServiceOrdersCount,
+      cancelledServiceOrdersCount,
       paidOrders,
       returnedOrders,
       avgOrderValue,
       totalUnitsSold,
+      totalServiceUnits,
       totalGiftUnits,
       totalUnitsReturned,
+    },
+    serviceStats: {
+      summary: {
+        totalServiceOrders: serviceOrdersCount,
+        activeServiceOrders: activeServiceOrdersCount,
+        completedServiceOrders: completedServiceOrdersCount,
+        cancelledServiceOrders: cancelledServiceOrdersCount,
+        totalServiceUnits,
+        serviceGrossRevenue,
+        serviceDiscountTotal,
+        serviceRevenue,
+        serviceCardFeeCollected,
+        serviceCashCollected,
+        servicePendingCollection,
+      },
+      byServiceType,
     },
     byPaymentMethod,
     byCategory,
@@ -1419,17 +1656,19 @@ export default function RevenueDashboardModule({
         // Fallback nếu server chưa cập nhật endpoint mới
       }
 
-      const [ordRes, retRes, prodRes] = await Promise.all([
+      const [ordRes, retRes, prodRes, svcRes] = await Promise.all([
         apiRequest<Order[]>("/orders"),
         apiRequest<ReturnReceipt[]>("/returns"),
         apiRequest<Product[]>("/products"),
+        apiRequest<ServiceOrder[]>("/service-orders").catch(() => ({ data: [] })),
       ]);
       const fallback = buildClientFallbackDashboard(
         Array.isArray(ordRes.data) ? ordRes.data : [],
         Array.isArray(retRes.data) ? retRes.data : [],
         Array.isArray(prodRes.data) ? prodRes.data : [],
         catList,
-        { from: fromDate, to: toDate, categoryId, paymentMethod }
+        { from: fromDate, to: toDate, categoryId, paymentMethod },
+        Array.isArray(svcRes.data) ? svcRes.data : []
       );
       setData(fallback);
     } catch {
@@ -1795,7 +2034,8 @@ export default function RevenueDashboardModule({
               onChange={(e) => setCategoryId(e.target.value)}
               className="w-full px-2.5 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-white text-xs font-semibold"
             >
-              <option value="">Tất cả Category</option>
+              <option value="">Tất cả Category &amp; Dịch vụ</option>
+              <option value="SERVICE">🔧 Dịch vụ (Căng vợt / Sửa chữa)</option>
               {categories.map((c) => (
                 <option key={c._id} value={c._id}>
                   {c.name}
@@ -1862,7 +2102,7 @@ export default function RevenueDashboardModule({
         <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-xs font-extrabold uppercase text-slate-500">
-              1. Doanh thu thuần & Thực thu
+              1. Doanh thu thuần &amp; Thực thu
             </span>
             <span className="p-2 rounded-xl bg-emerald-100 text-emerald-700">
               <DollarSign className="w-4 h-4" />
@@ -1871,7 +2111,22 @@ export default function RevenueDashboardModule({
           <div className="text-2xl font-black font-mono text-emerald-700 mt-2">
             {formatVND(s?.netRevenue || 0)}
           </div>
-          <div className="mt-3 pt-2.5 border-t border-slate-100 space-y-1 text-[11px] text-slate-600">
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] font-semibold">
+            <span className="text-slate-600">
+              Bán SP:{" "}
+              <strong className="font-mono text-slate-900">
+                {formatVND(
+                  s?.productNetRevenue ??
+                    Math.max(0, (s?.netRevenue || 0) - (s?.serviceRevenue || 0))
+                )}
+              </strong>
+            </span>
+            <span className="text-indigo-700">
+              • Dịch vụ:{" "}
+              <strong className="font-mono">{formatVND(s?.serviceRevenue || 0)}</strong>
+            </span>
+          </div>
+          <div className="mt-2.5 pt-2.5 border-t border-slate-100 space-y-1 text-[11px] text-slate-600">
             <div className="flex justify-between">
               <span className="font-semibold text-emerald-700">
                 Thực thu vào quỹ (cashCollected):
@@ -1889,11 +2144,25 @@ export default function RevenueDashboardModule({
             {s?.cashCollected !== null && (
               <div className="pl-2 border-l-2 border-emerald-200 space-y-0.5 text-[10px] text-slate-500">
                 <div className="flex justify-between">
-                  <span>• Thu lúc mua (cashAtPurchase):</span>
+                  <span>• Thu lúc mua SP (cashAtPurchase):</span>
                   <span className="font-mono font-bold text-slate-700">
                     {formatVND(s?.cashAtPurchase ?? s?.collectedRevenue ?? 0)}
                   </span>
                 </div>
+                <div className="flex justify-between">
+                  <span>• Thực thu Dịch vụ (đã hoàn thành):</span>
+                  <span className="font-mono font-bold text-indigo-700">
+                    +{formatVND(s?.serviceCashCollected || 0)}
+                  </span>
+                </div>
+                {(s?.servicePendingCollection || 0) > 0 && (
+                  <div className="flex justify-between text-amber-700">
+                    <span>• Dịch vụ chờ hoàn thành (chưa tính thực thu):</span>
+                    <span className="font-mono font-bold">
+                      {formatVND(s?.servicePendingCollection || 0)}
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span>• Thu nợ trong kỳ:</span>
                   <span className="font-mono font-bold text-emerald-700">
@@ -1923,19 +2192,19 @@ export default function RevenueDashboardModule({
               </span>
             </div>
             <div className="flex justify-between pt-1 border-t border-slate-100">
-              <span>Tiền hàng niêm yết:</span>
+              <span>Tiền hàng &amp; DV niêm yết:</span>
               <span className="font-mono font-bold text-slate-800">
                 {formatVND(s?.grossRevenue || 0)}
               </span>
             </div>
             <div className="flex justify-between">
-              <span>Tổng giảm giá (SP + Bill):</span>
+              <span>Tổng giảm giá (SP + DV + Bill):</span>
               <span className="font-mono font-bold text-amber-700">
                 -{formatVND(s?.totalDiscount || 0)}
               </span>
             </div>
             <div className="flex justify-between">
-              <span>Doanh thu đơn bán (không gồm phí thẻ):</span>
+              <span>Doanh thu đơn bán &amp; DV (không gồm phí thẻ):</span>
               <span className="font-mono font-bold text-slate-800">
                 {formatVND(s?.orderRevenue || 0)}
               </span>
@@ -1978,14 +2247,20 @@ export default function RevenueDashboardModule({
           </div>
           <div className="mt-3 pt-2.5 border-t border-slate-800 space-y-1 text-[11px] text-slate-300">
             <div className="flex justify-between">
-              <span>Doanh thu thuần:</span>
+              <span>Doanh thu thuần (SP + Dịch vụ):</span>
               <span className="font-mono font-bold text-white">
                 {formatVND(s?.netRevenue || 0)}
               </span>
             </div>
+            <div className="flex justify-between text-[10px] text-indigo-300">
+              <span>• Lãi gộp mảng Dịch vụ (Giá vốn 0đ):</span>
+              <span className="font-mono font-bold">
+                +{formatVND(s?.serviceRevenue || 0)}
+              </span>
+            </div>
             <div className="flex justify-between items-center gap-1">
               <span className="flex items-center gap-1 flex-wrap">
-                Giá vốn hàng bán (COGS):
+                Tổng Giá vốn trừ vào Lãi gộp:
                 {s?.cogsEstimated && (
                   <span
                     title="Có đơn hàng cũ chưa lưu unitCost tại thời điểm bán, được ước tính theo giá vốn hiện tại của sản phẩm"
@@ -1999,9 +2274,34 @@ export default function RevenueDashboardModule({
                 {formatVND(s?.estimatedCogs || 0)}
               </span>
             </div>
+            <div className="pl-2 border-l-2 border-slate-700 space-y-0.5 text-[10px] text-slate-300">
+              <div className="flex justify-between">
+                <span>• Giá vốn hàng bán:</span>
+                <span className="font-mono font-bold text-amber-200">
+                  {formatVND(
+                    s?.salesCogs ??
+                      Math.max(0, (s?.estimatedCogs || 0) - (s?.giftCogs || 0))
+                  )}
+                </span>
+              </div>
+              <div className="flex justify-between text-purple-300">
+                <span>• Chi phí giá vốn quà tặng (0đ):</span>
+                <span className="font-mono font-bold">
+                  {formatVND(s?.giftCogs || 0)}
+                </span>
+              </div>
+              {((s?.giftRetailValue || 0) > 0 || (s?.totalGiftUnits || 0) > 0) && (
+                <div className="flex justify-between text-slate-400">
+                  <span>• Tổng trị giá niêm yết quà tặng:</span>
+                  <span className="font-mono font-semibold">
+                    {formatVND(s?.giftRetailValue || 0)}
+                  </span>
+                </div>
+              )}
+            </div>
             <div className="pt-1 border-t border-slate-800 space-y-0.5">
               <div className="flex justify-between">
-                <span>Phí quẹt thẻ ròng (Thu hộ - không tính DT):</span>
+                <span>Phí thẻ thu hộ NH (Không tính DT &amp; Thực thu):</span>
                 <span className="font-mono font-bold text-slate-300">
                   {formatVND(s?.cardFeeNet ?? s?.cardFeeTotal ?? 0)}
                 </span>
@@ -2017,7 +2317,7 @@ export default function RevenueDashboardModule({
         <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-xs font-extrabold uppercase text-slate-500">
-              3. Tổng số đơn & Trung bình đơn
+              3. Tổng số đơn &amp; Trung bình đơn
             </span>
             <span className="p-2 rounded-xl bg-blue-100 text-blue-700">
               <ShoppingBag className="w-4 h-4" />
@@ -2034,9 +2334,17 @@ export default function RevenueDashboardModule({
               </span>
             </div>
             <div className="flex justify-between">
-              <span>Đơn hoàn tất nguyên vẹn:</span>
-              <span className="font-mono font-bold text-emerald-700">
-                {s?.paidOrders || 0} đơn
+              <span>• Đơn bán hàng SP:</span>
+              <span className="font-mono font-bold text-slate-800">
+                {s?.productOrdersCount ??
+                  Math.max(0, (s?.totalOrders || 0) - (s?.serviceOrdersCount || 0))}{" "}
+                đơn
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span>• Đơn làm dịch vụ:</span>
+              <span className="font-mono font-bold text-indigo-700">
+                {s?.serviceOrdersCount || 0} đơn ({s?.completedServiceOrdersCount || 0} hoàn thành)
               </span>
             </div>
             <div className="flex justify-between">
@@ -2051,7 +2359,7 @@ export default function RevenueDashboardModule({
         <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-xs font-extrabold uppercase text-slate-500">
-              4. Sản lượng bán & Hàng tặng
+              4. Sản lượng bán &amp; Dịch vụ
             </span>
             <span className="p-2 rounded-xl bg-purple-100 text-purple-700">
               <PackageCheck className="w-4 h-4" />
@@ -2062,11 +2370,33 @@ export default function RevenueDashboardModule({
           </div>
           <div className="mt-3 pt-2.5 border-t border-slate-100 space-y-1 text-[11px] text-slate-600">
             <div className="flex justify-between">
+              <span>Lượt thực hiện dịch vụ:</span>
+              <span className="font-mono font-bold text-indigo-700">
+                {s?.totalServiceUnits || 0} lượt
+              </span>
+            </div>
+            <div className="flex justify-between">
               <span>Hàng tặng khuyến mãi (0đ):</span>
               <span className="font-mono font-bold text-purple-700">
                 {s?.totalGiftUnits || 0} SP
               </span>
             </div>
+            {((s?.totalGiftUnits || 0) > 0 || (s?.giftCogs || 0) > 0) && (
+              <div className="pl-2 border-l-2 border-purple-200 space-y-0.5 text-[10px] text-slate-500">
+                <div className="flex justify-between">
+                  <span>• Chi phí giá vốn quà tặng:</span>
+                  <span className="font-mono font-bold text-purple-700">
+                    {formatVND(s?.giftCogs || 0)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>• Trị giá niêm yết quà tặng:</span>
+                  <span className="font-mono font-bold text-slate-700">
+                    {formatVND(s?.giftRetailValue || 0)}
+                  </span>
+                </div>
+              </div>
+            )}
             <div className="flex justify-between">
               <span>Hàng khách trả lại:</span>
               <span className="font-mono font-bold text-red-600">
@@ -2081,6 +2411,118 @@ export default function RevenueDashboardModule({
             </div>
           </div>
         </div>
+      </div>
+
+      {/* KHỐI THỐNG KÊ RIÊNG MẢNG LÀM DỊCH VỤ (CĂNG VỢT / SỬA CHỮA) */}
+      <div className="bg-white rounded-2xl border border-indigo-200 p-5 shadow-sm space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-800 text-[11px] font-extrabold uppercase">
+              <Wrench className="w-3.5 h-3.5" />
+              Thống kê Doanh thu &amp; Thực thu Mảng Dịch vụ
+            </div>
+            <h3 className="font-extrabold text-slate-900 text-base mt-1">
+              Tổng quan Doanh thu Dịch vụ (Tính khi tạo đơn) &amp; Thực thu (Tính sau khi hoàn thành)
+            </h3>
+            <p className="text-xs text-slate-500">
+              Doanh thu dịch vụ được ghi nhận ngay theo ngày tạo phiếu (Giá vốn = 0đ, 100% vào Lãi gộp). Thực thu dịch vụ chỉ kết chuyển vào quỹ sau khi đơn dịch vụ đã hoàn thành trả khách (<strong>Đã trả khách</strong>).
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+          <div className="p-4 rounded-xl bg-indigo-50/60 border border-indigo-200">
+            <div className="text-xs font-bold text-indigo-900">
+              1. Doanh thu thuần Dịch vụ (Theo ngày tạo)
+            </div>
+            <div className="text-xl font-black font-mono text-indigo-700 mt-1">
+              {formatVND(s?.serviceRevenue || 0)}
+            </div>
+            <div className="mt-1.5 text-[11px] text-slate-600 flex justify-between">
+              <span>Giá gốc DV: {formatVND(s?.serviceGrossRevenue || 0)}</span>
+              <span>Giảm: -{formatVND(s?.serviceDiscountTotal || 0)}</span>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-xl bg-emerald-50/60 border border-emerald-200">
+            <div className="text-xs font-bold text-emerald-900">
+              2. Thực thu Dịch vụ (Đã hoàn thành)
+            </div>
+            <div className="text-xl font-black font-mono text-emerald-700 mt-1">
+              {formatVND(s?.serviceCashCollected || 0)}
+            </div>
+            <div className="mt-1.5 text-[11px] text-emerald-800">
+              Đã hoàn thành trả khách:{" "}
+              <strong>{s?.completedServiceOrdersCount || 0}</strong> đơn
+            </div>
+          </div>
+
+          <div className="p-4 rounded-xl bg-amber-50/60 border border-amber-200">
+            <div className="text-xs font-bold text-amber-900">
+              3. Đang làm / Chờ hoàn thành
+            </div>
+            <div className="text-xl font-black font-mono text-amber-700 mt-1">
+              {formatVND(s?.servicePendingCollection || 0)}
+            </div>
+            <div className="mt-1.5 text-[11px] text-amber-800">
+              Chưa kết chuyển thực thu:{" "}
+              <strong>{s?.activeServiceOrdersCount || 0}</strong> đơn đang xử lý
+            </div>
+          </div>
+
+          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+            <div className="text-xs font-bold text-slate-700">
+              4. Tổng số phiếu &amp; Lượt dịch vụ
+            </div>
+            <div className="text-xl font-black font-mono text-slate-900 mt-1">
+              {s?.serviceOrdersCount || 0} phiếu ({s?.totalServiceUnits || 0} lượt)
+            </div>
+            <div className="mt-1.5 text-[11px] text-slate-500">
+              Phí thẻ DV thu hộ: +{formatVND(s?.serviceCardFeeCollected || 0)}
+            </div>
+          </div>
+        </div>
+
+        {data?.serviceStats?.byServiceType && data.serviceStats.byServiceType.length > 0 && (
+          <div className="overflow-x-auto border border-slate-200 rounded-xl">
+            <table className="w-full text-xs text-left">
+              <thead className="bg-slate-900 text-white uppercase text-[11px]">
+                <tr>
+                  <th className="py-2.5 px-3.5">Mã DV</th>
+                  <th className="py-2.5 px-3.5">Tên loại dịch vụ</th>
+                  <th className="py-2.5 px-3.5 text-center">Số phiếu</th>
+                  <th className="py-2.5 px-3.5 text-center">Số lượng</th>
+                  <th className="py-2.5 px-3.5 text-right">Doanh thu thuần</th>
+                  <th className="py-2.5 px-3.5 text-right">Tỷ trọng</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {data.serviceStats.byServiceType.map((row) => (
+                  <tr key={row.serviceCode} className="hover:bg-slate-50">
+                    <td className="py-2.5 px-3.5 font-mono font-bold text-indigo-700">
+                      {row.serviceCode}
+                    </td>
+                    <td className="py-2.5 px-3.5 font-bold text-slate-900">
+                      {row.serviceName}
+                    </td>
+                    <td className="py-2.5 px-3.5 text-center font-mono">
+                      {row.orderCount} đơn
+                    </td>
+                    <td className="py-2.5 px-3.5 text-center font-mono font-bold">
+                      {row.quantity} {row.unit}
+                    </td>
+                    <td className="py-2.5 px-3.5 text-right font-mono font-extrabold text-emerald-700">
+                      {formatVND(row.revenue)}
+                    </td>
+                    <td className="py-2.5 px-3.5 text-right font-mono font-semibold text-slate-600">
+                      {row.sharePercent}%
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* KHU VỰC THỐNG KÊ CÔNG NỢ KHÁCH HÀNG (CHỈ HIỂN THỊ THÔNG TIN TRÊN DASHBOARD) */}
