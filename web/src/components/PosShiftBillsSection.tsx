@@ -232,7 +232,7 @@ export default function PosShiftBillsSection({
       </div>
 
       {/* Thẻ tổng hợp nhanh Bill trong ngày */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         <div className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-2xs">
           <div className="flex items-center justify-between text-xs text-slate-500 font-semibold">
             <span>Số Bill đã thanh toán</span>
@@ -273,15 +273,21 @@ export default function PosShiftBillsSection({
 
         <div className="bg-white rounded-xl border border-indigo-200 p-3.5 shadow-2xs">
           <div className="flex items-center justify-between text-xs text-indigo-900 font-semibold">
-            <span>Chuyển khoản & Quẹt thẻ</span>
+            <span>{dateFilter === "ALL" ? "Chuyển khoản (3 ngày)" : "Chuyển khoản trong ngày"}</span>
             <Landmark className="w-4 h-4 text-indigo-600" />
           </div>
           <div className="mt-1.5 text-lg sm:text-xl font-mono font-black text-indigo-700 break-all">
-            {formatVND(summary.bankingTotal + summary.cardTotal)}
+            {formatVND(summary.bankingTotal)}
           </div>
-          <div className="mt-0.5 text-[11px] font-mono text-slate-500 flex flex-wrap gap-x-2">
-            <span>CK: {formatVND(summary.bankingTotal)}</span>
-            <span>· Thẻ: {formatVND(summary.cardTotal)}</span>
+        </div>
+
+        <div className="bg-white rounded-xl border border-purple-200 p-3.5 shadow-2xs">
+          <div className="flex items-center justify-between text-xs text-purple-900 font-semibold">
+            <span>{dateFilter === "ALL" ? "Quẹt thẻ (3 ngày)" : "Quẹt thẻ trong ngày"}</span>
+            <CreditCard className="w-4 h-4 text-purple-600" />
+          </div>
+          <div className="mt-1.5 text-lg sm:text-xl font-mono font-black text-purple-700 break-all">
+            {formatVND(summary.cardTotal)}
           </div>
         </div>
       </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   StaffUser,
   DailyHandoverCheckData,
@@ -23,6 +23,10 @@ import {
   Clock,
   FileText,
   AlertTriangle,
+  Search,
+  Filter,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 
 interface Props {
@@ -74,6 +78,10 @@ export default function ShiftHandoverModal({
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [savedNotice, setSavedNotice] = useState("");
+  const [selectedUnitFilter, setSelectedUnitFilter] = useState<string>("ALL");
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>("ALL");
+  const [productSearch, setProductSearch] = useState<string>("");
+  const [showProductFilterSection, setShowProductFilterSection] = useState<boolean>(true);
 
   // Tính toán giờ kết thúc ca & trạng thái được phép xác nhận Check-out
   const now = new Date();
@@ -264,9 +272,81 @@ export default function ShiftHandoverModal({
     return (actualTotals[key] ?? 0) !== s.expectedTotalQty;
   }).length;
 
+  const allCheckProducts = useMemo(
+    () => (Array.isArray(dailyCheck?.products) ? dailyCheck.products : []),
+    [dailyCheck]
+  );
+
+  // Thống kê tổng số mã & tổng tồn Tầng 1 theo từng ĐVT (đơn vị tính)
+  const unitStats = useMemo(() => {
+    const map = new Map<string, { unit: string; productCount: number; totalQty: number }>();
+    for (const p of allCheckProducts) {
+      if (
+        selectedCategoryFilter !== "ALL" &&
+        String(p.categoryName || "").trim() !== selectedCategoryFilter
+      ) {
+        continue;
+      }
+      const u = String(p.unit || "Cái").trim() || "Cái";
+      const cur = map.get(u) || { unit: u, productCount: 0, totalQty: 0 };
+      cur.productCount += 1;
+      cur.totalQty += Number(p.stockQtyFloor1) || 0;
+      map.set(u, cur);
+    }
+    return Array.from(map.values()).sort((a, b) => b.totalQty - a.totalQty);
+  }, [allCheckProducts, selectedCategoryFilter]);
+
+  // Phân rã ĐVT cho từng nhóm danh mục (hữu ích khi 1 nhóm có nhiều ĐVT khác nhau)
+  const unitBreakdownByCategory = useMemo(() => {
+    const res = new Map<string, Array<{ unit: string; totalQty: number }>>();
+    for (const p of allCheckProducts) {
+      const cat = String(p.categoryName || "").trim();
+      const u = String(p.unit || "Cái").trim() || "Cái";
+      if (!cat) continue;
+      const list = res.get(cat) || [];
+      const found = list.find((x) => x.unit === u);
+      const qty = Number(p.stockQtyFloor1) || 0;
+      if (found) {
+        found.totalQty += qty;
+      } else {
+        list.push({ unit: u, totalQty: qty });
+      }
+      res.set(cat, list);
+    }
+    return res;
+  }, [allCheckProducts]);
+
+  const filteredCheckProducts = useMemo(() => {
+    const q = productSearch.trim().toLowerCase();
+    return allCheckProducts.filter((p) => {
+      if (
+        selectedCategoryFilter !== "ALL" &&
+        String(p.categoryName || "").trim() !== selectedCategoryFilter
+      ) {
+        return false;
+      }
+      if (selectedUnitFilter !== "ALL") {
+        const u = String(p.unit || "Cái").trim() || "Cái";
+        if (u !== selectedUnitFilter) return false;
+      }
+      if (q) {
+        const matchName = String(p.name || "").toLowerCase().includes(q);
+        const matchCode = String(p.code || "").toLowerCase().includes(q);
+        if (!matchName && !matchCode) return false;
+      }
+      return true;
+    });
+  }, [allCheckProducts, selectedCategoryFilter, selectedUnitFilter, productSearch]);
+
+  const filteredTotalQty = useMemo(
+    () =>
+      filteredCheckProducts.reduce((sum, p) => sum + (Number(p.stockQtyFloor1) || 0), 0),
+    [filteredCheckProducts]
+  );
+
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 text-slate-900">
-      <div className="bg-white text-slate-900 rounded-3xl max-w-xl w-full max-h-[92vh] shadow-2xl border border-slate-200 flex flex-col overflow-hidden animate-fade-in">
+      <div className="bg-white text-slate-900 rounded-3xl max-w-2xl w-full max-h-[92vh] shadow-2xl border border-slate-200 flex flex-col overflow-hidden animate-fade-in">
         {/* Header */}
         <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
@@ -375,7 +455,7 @@ export default function ShiftHandoverModal({
                             </span>
                           </div>
 
-                          <div className="mt-1.5 flex items-center gap-3 text-xs">
+                          <div className="mt-1.5 flex items-center gap-3 text-xs flex-wrap">
                             <span className="text-slate-600">
                               Tồn Tầng 1 để đối chiếu:{" "}
                               <b className="font-mono text-sm text-slate-900">
@@ -395,6 +475,28 @@ export default function ShiftHandoverModal({
                               </span>
                             )}
                           </div>
+
+                          {/* Phân rã nhanh theo từng ĐVT nếu nhóm có nhiều ĐVT */}
+                          {(unitBreakdownByCategory.get(item.categoryName)?.length || 0) > 1 && (
+                            <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px]">
+                              <span className="text-slate-500 font-semibold">Theo ĐVT:</span>
+                              {unitBreakdownByCategory.get(item.categoryName)?.map((ub) => (
+                                <button
+                                  key={ub.unit}
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedCategoryFilter(item.categoryName);
+                                    setSelectedUnitFilter(ub.unit);
+                                    setShowProductFilterSection(true);
+                                  }}
+                                  className="px-2 py-0.5 rounded-md bg-white border border-slate-200 hover:border-emerald-400 text-slate-700 font-mono font-bold transition cursor-pointer"
+                                  title={`Lọc danh sách theo ĐVT ${ub.unit}`}
+                                >
+                                  {ub.totalQty} {ub.unit}
+                                </button>
+                              ))}
+                            </div>
+                          )}
                         </div>
 
                         {/* Ô nhập tổng số lượng thực đếm */}
@@ -432,6 +534,164 @@ export default function ShiftHandoverModal({
                     </div>
                   );
                 })}
+              </div>
+            )}
+
+            {/* Lọc sản phẩm kiểm Tầng 1 theo ĐVT (Đơn vị tính) */}
+            {!loading && allCheckProducts.length > 0 && (
+              <div className="border border-slate-200 rounded-2xl bg-white overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setShowProductFilterSection((v) => !v)}
+                  className="w-full px-4 py-2.5 bg-slate-50 hover:bg-slate-100/80 flex items-center justify-between gap-2 text-xs font-extrabold text-slate-800 transition cursor-pointer"
+                >
+                  <span className="flex items-center gap-2">
+                    <Filter className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Lọc Sản Phẩm Kiểm Tầng 1 Theo ĐVT ({allCheckProducts.length} mã)</span>
+                  </span>
+                  <span className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500">
+                    {selectedUnitFilter !== "ALL" && (
+                      <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800">
+                        ĐVT: {selectedUnitFilter}
+                      </span>
+                    )}
+                    {showProductFilterSection ? (
+                      <ChevronUp className="w-4 h-4" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4" />
+                    )}
+                  </span>
+                </button>
+
+                {showProductFilterSection && (
+                  <div className="p-3.5 space-y-3 border-t border-slate-200">
+                    {/* Nút lọc nhanh theo ĐVT */}
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedUnitFilter("ALL")}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition cursor-pointer ${
+                          selectedUnitFilter === "ALL"
+                            ? "bg-emerald-600 text-white border-emerald-600 shadow-2xs"
+                            : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+                        }`}
+                      >
+                        Tất cả ĐVT ({allCheckProducts.filter((p) => selectedCategoryFilter === "ALL" || String(p.categoryName || "").trim() === selectedCategoryFilter).length} mã)
+                      </button>
+                      {unitStats.map((u) => {
+                        const active = selectedUnitFilter === u.unit;
+                        return (
+                          <button
+                            key={u.unit}
+                            type="button"
+                            onClick={() => setSelectedUnitFilter(u.unit)}
+                            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition cursor-pointer ${
+                              active
+                                ? "bg-emerald-600 text-white border-emerald-600 shadow-2xs"
+                                : "bg-white text-slate-700 border-slate-200 hover:border-emerald-400"
+                            }`}
+                          >
+                            {u.unit} · <span className="font-mono">{u.totalQty}</span> ({u.productCount} mã)
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Tìm kiếm nhanh + lọc nhóm */}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="relative flex-1 min-w-[180px]">
+                        <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
+                        <input
+                          type="text"
+                          value={productSearch}
+                          onChange={(e) => setProductSearch(e.target.value)}
+                          placeholder="Tìm theo mã hoặc tên sản phẩm..."
+                          className="w-full pl-8 pr-7 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-emerald-500"
+                        />
+                        {productSearch && (
+                          <button
+                            type="button"
+                            onClick={() => setProductSearch("")}
+                            className="absolute right-2 top-2 text-slate-400 hover:text-slate-600"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+
+                      {checkedCategories.length > 1 && (
+                        <select
+                          value={selectedCategoryFilter}
+                          onChange={(e) => {
+                            setSelectedCategoryFilter(e.target.value);
+                            setSelectedUnitFilter("ALL");
+                          }}
+                          className="px-2.5 py-1.5 text-xs font-bold border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-emerald-500"
+                        >
+                          <option value="ALL">Tất cả nhóm</option>
+                          {checkedCategories.map((cat) => (
+                            <option key={cat} value={cat}>
+                              {cat}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+
+                      <div className="text-[11px] font-bold text-slate-600 ml-auto">
+                        Tổng lọc:{" "}
+                        <span className="font-mono text-emerald-700">
+                          {filteredTotalQty}{" "}
+                          {selectedUnitFilter !== "ALL" ? selectedUnitFilter : "SP"}
+                        </span>{" "}
+                        ({filteredCheckProducts.length} mã)
+                      </div>
+                    </div>
+
+                    {/* Danh sách chi tiết sản phẩm */}
+                    <div className="border border-slate-200 rounded-xl overflow-hidden max-h-56 overflow-y-auto">
+                      {filteredCheckProducts.length === 0 ? (
+                        <div className="py-5 text-center text-xs text-slate-400">
+                          Không có sản phẩm nào khớp bộ lọc ĐVT / từ khóa hiện tại.
+                        </div>
+                      ) : (
+                        <table className="w-full text-[11px] text-left">
+                          <thead className="bg-slate-100 text-slate-600 uppercase text-[10px] sticky top-0">
+                            <tr>
+                              <th className="py-2 px-2.5">Mã SP</th>
+                              <th className="py-2 px-2.5">Tên sản phẩm</th>
+                              <th className="py-2 px-2.5">Nhóm</th>
+                              <th className="py-2 px-2.5 text-center">ĐVT</th>
+                              <th className="py-2 px-2.5 text-right">Tồn T1</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100">
+                            {filteredCheckProducts.map((p) => (
+                              <tr key={p._id} className="hover:bg-slate-50/80">
+                                <td className="py-1.5 px-2.5 font-mono font-bold text-slate-700 whitespace-nowrap">
+                                  {p.code}
+                                </td>
+                                <td className="py-1.5 px-2.5 font-semibold text-slate-900">
+                                  {p.name}
+                                </td>
+                                <td className="py-1.5 px-2.5 text-slate-600 whitespace-nowrap">
+                                  {p.categoryName}
+                                </td>
+                                <td className="py-1.5 px-2.5 text-center whitespace-nowrap">
+                                  <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 font-bold">
+                                    {p.unit || "Cái"}
+                                  </span>
+                                </td>
+                                <td className="py-1.5 px-2.5 text-right font-mono font-extrabold text-emerald-700 whitespace-nowrap">
+                                  {p.stockQtyFloor1}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
