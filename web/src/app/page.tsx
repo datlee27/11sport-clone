@@ -697,7 +697,7 @@ export default function WebPosHomePage() {
         </div>
       )}
 
-      {/* Modal Xuất / In Hóa Đơn PDF (K80 / A4) */}
+      {/* Modal Xuất / In Hóa Đơn PDF (K80) */}
       <InvoicePdfModal
         order={invoiceOrder}
         onClose={() => setInvoiceOrder(null)}

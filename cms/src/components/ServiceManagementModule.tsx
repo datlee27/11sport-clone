@@ -42,7 +42,7 @@ const STATUS_INFO: Record<
   { label: string; badgeCls: string }
 > = {
   RECEIVED: {
-    label: "Đã nhận đồ",
+    label: "Đã tiếp nhận",
     badgeCls: "bg-teal-50 text-teal-700 border-teal-200",
   },
   IN_PROGRESS: {
@@ -573,7 +573,7 @@ export default function ServiceManagementModule({
               </div>
             </div>
             <div className="bg-teal-50 p-3.5 rounded-xl border border-teal-200">
-              <div className="text-xs font-bold text-teal-700">Đã nhận / Đang xử lý</div>
+              <div className="text-xs font-bold text-teal-700">Tiếp nhận / Đang xử lý</div>
               <div className="text-xl font-extrabold text-teal-900 mt-1">
                 {ordersMeta.receivedCount + ordersMeta.inProgressCount}
               </div>
@@ -635,7 +635,7 @@ export default function ServiceManagementModule({
                   className="w-full px-2.5 py-2 text-xs bg-slate-50 border border-slate-300 rounded-lg"
                 >
                   <option value="ALL">Tất cả trạng thái</option>
-                  <option value="RECEIVED">Đã nhận đồ</option>
+                  <option value="RECEIVED">Đã tiếp nhận</option>
                   <option value="IN_PROGRESS">Đang xử lý</option>
                   <option value="READY">Đã xong (Chờ lấy)</option>
                   <option value="RETURNED">Đã trả khách</option>
@@ -896,7 +896,7 @@ export default function ServiceManagementModule({
                                 }
                                 className={`px-2.5 py-1 rounded-lg text-xs font-extrabold border ${stInfo.badgeCls}`}
                               >
-                                <option value="RECEIVED">Đã nhận đồ</option>
+                                <option value="RECEIVED">Đã tiếp nhận</option>
                                 <option value="IN_PROGRESS">Đang xử lý</option>
                                 <option value="READY">Đã xong (Chờ lấy)</option>
                                 <option value="RETURNED">Đã trả khách</option>
@@ -1521,7 +1521,7 @@ export default function ServiceManagementModule({
                     }
                     className="w-full px-2.5 py-2 border border-slate-300 rounded-lg font-bold"
                   >
-                    <option value="RECEIVED">Đã nhận đồ</option>
+                    <option value="RECEIVED">Đã tiếp nhận</option>
                     <option value="IN_PROGRESS">Đang xử lý</option>
                     <option value="READY">Đã xong (Chờ lấy)</option>
                     <option value="RETURNED">Đã trả khách</option>

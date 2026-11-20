@@ -20,7 +20,7 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "11Sport POS & Kho Vận — Hệ thống Quản lý Bán hàng & Kiểm kho",
   description:
-    "Hệ thống POS bán hàng tại quầy, xuất hóa đơn PDF K80/A4, kiểm hàng Camera OCR và quản lý kho 11Sport.",
+    "Hệ thống POS bán hàng tại quầy, xuất hóa đơn PDF K80, kiểm hàng Camera OCR và quản lý kho 11Sport.",
   icons: {
     icon: [
       { url: "/logo-11sport-icon.svg", type: "image/svg+xml" },

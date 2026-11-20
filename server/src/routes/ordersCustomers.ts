@@ -322,24 +322,9 @@ ordersCustomersRouter.get('/customers/lookup', async (req, res, next) => {
       }
     }
 
-    // Phân quyền kiểm tra bill trong ngày cho nhân viên SALES:
-    // Mở quyền check bill trong ngày (bỏ ràng buộc theo ca), giới hạn tối đa 3 ngày gần nhất.
-    const now = new Date();
-    const todayStr = toLocalDateStr(now);
-    const allowedDates = getSalesAllowedBillDates(todayStr, SALES_MAX_BILL_CHECK_DAYS);
-    const isSales = isSalesOnlyUser(req.user);
-    const staffShift = isSales
-      ? await resolveStaffShiftForDate(req.user, todayStr, now)
-      : 'BOTH';
-
-    const orders = isSales
-      ? allCustomerOrders.filter((o) => isOrderInSalesCurrentShift(o, staffShift, todayStr))
-      : allCustomerOrders;
-
-    const visibleOrderIdSet = new Set(orders.map((o) => String(o._id)));
-    const returns = isSales
-      ? allCustomerReturns.filter((r) => visibleOrderIdSet.has(String(r.orderId)))
-      : allCustomerReturns;
+    // Tra cứu lịch sử khách hàng: trả về toàn bộ đơn hàng và phiếu trả/đổi (không giới hạn ca hay số ngày).
+    const orders = allCustomerOrders;
+    const returns = allCustomerReturns;
 
     res.json({
       data: {
@@ -359,17 +344,6 @@ ordersCustomersRouter.get('/customers/lookup', async (req, res, next) => {
         totalDebtAmount,
         unpaidOrdersCount,
         overdueOrdersCount,
-        ...(isSales
-          ? {
-              shiftRestricted: true,
-              shiftDate: todayStr,
-              minDate: allowedDates[allowedDates.length - 1],
-              allowedDates,
-              maxDays: SALES_MAX_BILL_CHECK_DAYS,
-              shiftCode: 'BOTH',
-              shiftLabel: 'Trong ngày (Mọi ca · Tối đa 3 ngày)',
-            }
-          : {}),
       },
     });
   } catch (err) {
@@ -399,7 +373,7 @@ ordersCustomersRouter.get('/customers', async (req, res, next) => {
   }
 });
 
-// GET /api/v1/orders/current-shift — Kiểm tra Bill bán hàng trong ngày (bỏ ràng buộc theo ca, tối đa 3 ngày gần nhất cho Sales)
+// GET /api/v1/orders/current-shift — Tra cứu Bill bán hàng theo ngày hoặc toàn bộ lịch sử (không giới hạn ca hay số ngày)
 ordersCustomersRouter.get('/orders/current-shift', async (req, res, next) => {
   try {
     const {
@@ -411,8 +385,6 @@ ordersCustomersRouter.get('/orders/current-shift', async (req, res, next) => {
     } = req.query;
     const now = new Date();
     const todayStr = toLocalDateStr(now);
-    const allowedDates = getSalesAllowedBillDates(todayStr, SALES_MAX_BILL_CHECK_DAYS);
-    const isSales = isSalesOnlyUser(req.user);
 
     const rawDate = String(queryDate || '').trim();
     const isAllDates =
@@ -424,27 +396,18 @@ ordersCustomersRouter.get('/orders/current-shift', async (req, res, next) => {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(rawDate)) {
         throw new ApiError(400, 'INVALID_DATE', 'Định dạng ngày lọc không hợp lệ (YYYY-MM-DD)');
       }
-      if (isSales && !allowedDates.includes(rawDate)) {
-        throw new ApiError(
-          403,
-          'ORDER_SHIFT_RESTRICTED',
-          `Nhân viên Sales chỉ được kiểm tra bill trong ngày trong phạm vi tối đa ${SALES_MAX_BILL_CHECK_DAYS} ngày gần nhất (${allowedDates[allowedDates.length - 1]} đến ${todayStr}).`
-        );
-      }
     }
 
     const staffShift = await resolveStaffShiftForDate(req.user, todayStr, now);
     const allOrders = await orderRepo.find({}, { createdAt: -1 });
     const qShift = String(queryShiftCode || '').trim().toUpperCase();
 
-    // 1. Lọc danh sách đơn trong ngày (Sales xem được mọi ca trong ngày, tối đa 3 ngày gần nhất)
+    // 1. Lọc danh sách đơn theo ngày (nếu chọn) hoặc toàn bộ ngày (khi chọn ALL), không giới hạn ca hay số ngày
     const shiftOrders = allOrders
       .filter((o) => {
         const eff = getOrderEffectiveShiftAndDate(o);
-        if (!isAllDates) {
-          if (eff.shiftDate !== rawDate) return false;
-        } else {
-          if (!allowedDates.includes(eff.shiftDate)) return false;
+        if (!isAllDates && eff.shiftDate !== rawDate) {
+          return false;
         }
 
         if (qShift === 'SHIFT_1' || qShift === 'SHIFT_2') {
@@ -512,10 +475,7 @@ ordersCustomersRouter.get('/orders/current-shift', async (req, res, next) => {
         total: filtered.length,
         date: !isAllDates ? rawDate : todayStr,
         dateFilter: !isAllDates ? rawDate : 'ALL',
-        allowedDates,
-        minDate: allowedDates[allowedDates.length - 1],
         maxDate: todayStr,
-        maxDays: SALES_MAX_BILL_CHECK_DAYS,
         staffShift,
         shiftCode: effectiveShiftForMeta,
         shiftLabel: effectiveShiftLabel,
@@ -538,45 +498,13 @@ ordersCustomersRouter.get('/orders', async (req, res, next) => {
       debtStatus,
       date: queryDate,
       shiftCode: queryShiftCode,
-      forReturn,
     } = req.query;
     const allOrders = await orderRepo.find({}, { createdAt: -1 });
     const normFilterPhone = phone ? normalizePhoneDigits(String(phone)) : '';
     const now = new Date();
     const nowMs = now.getTime();
-    const todayStr = toLocalDateStr(now);
-    const allowedDates = getSalesAllowedBillDates(todayStr, SALES_MAX_BILL_CHECK_DAYS);
-    const isSales = isSalesOnlyUser(req.user);
-    const staffShift = isSales
-      ? await resolveStaffShiftForDate(req.user, todayStr, now)
-      : 'BOTH';
-
-    // Ngoại lệ duy nhất cho Sales: khi tra cứu ở mục Trả / Đổi hàng (forReturn=true kèm từ khóa cụ thể >= 2 ký tự)
-    const isReturnLookupWithQuery =
-      String(forReturn || '').toLowerCase() === 'true' &&
-      (String(search || '').trim().length >= 2 || String(phone || '').trim().length >= 3);
-
-    if (
-      isSales &&
-      !isReturnLookupWithQuery &&
-      typeof queryDate === 'string' &&
-      /^\d{4}-\d{2}-\d{2}$/.test(queryDate.trim()) &&
-      !allowedDates.includes(queryDate.trim())
-    ) {
-      throw new ApiError(
-        403,
-        'ORDER_SHIFT_RESTRICTED',
-        `Nhân viên Sales chỉ được kiểm tra bill trong phạm vi tối đa ${SALES_MAX_BILL_CHECK_DAYS} ngày gần nhất.`
-      );
-    }
 
     const baseFiltered = allOrders.filter((o) => {
-      if (isSales && !isReturnLookupWithQuery) {
-        if (!isOrderInSalesCurrentShift(o, staffShift, todayStr)) {
-          return false;
-        }
-      }
-
       const eff = getOrderEffectiveShiftAndDate(o);
       if (typeof queryDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(queryDate.trim())) {
         if (eff.shiftDate !== queryDate.trim()) return false;
@@ -641,16 +569,6 @@ ordersCustomersRouter.get('/orders', async (req, res, next) => {
       data: filtered,
       meta: {
         total: filtered.length,
-        ...(isSales
-          ? {
-              shiftDate: todayStr,
-              minDate: allowedDates[allowedDates.length - 1],
-              allowedDates,
-              maxDays: SALES_MAX_BILL_CHECK_DAYS,
-              shiftCode: 'BOTH',
-              shiftLabel: 'Cả ngày (Mọi ca · Tối đa 3 ngày)',
-            }
-          : {}),
       },
     });
   } catch (err) {
@@ -691,20 +609,6 @@ ordersCustomersRouter.get('/orders/:id', async (req, res, next) => {
 
     if (!order) {
       throw new ApiError(404, 'ORDER_NOT_FOUND', 'Không tìm thấy đơn hàng');
-    }
-
-    const isForReturn = String(req.query.forReturn || '').toLowerCase() === 'true';
-    if (isSalesOnlyUser(req.user) && !isForReturn) {
-      const now = new Date();
-      const todayStr = toLocalDateStr(now);
-      const staffShift = await resolveStaffShiftForDate(req.user, todayStr, now);
-      if (!isOrderInSalesCurrentShift(order, staffShift, todayStr)) {
-        throw new ApiError(
-          403,
-          'ORDER_SHIFT_RESTRICTED',
-          `Nhân viên Sales chỉ được kiểm tra đơn hàng trong ngày trong phạm vi tối đa ${SALES_MAX_BILL_CHECK_DAYS} ngày gần nhất (không giới hạn ca). Không được xem đơn cũ quá ${SALES_MAX_BILL_CHECK_DAYS} ngày.`
-        );
-      }
     }
 
     const returns = await returnExchangeRepo.find({ orderId: order._id }, { createdAt: -1 });

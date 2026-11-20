@@ -23,14 +23,6 @@ export default function CustomerTab({ onOpenInvoice }: CustomerTabProps) {
   const [customerInfo, setCustomerInfo] = useState<any>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [returns, setReturns] = useState<ReturnReceipt[]>([]);
-  const [lookupMeta, setLookupMeta] = useState<{
-    shiftRestricted?: boolean;
-    shiftDate?: string;
-    minDate?: string;
-    maxDays?: number;
-    shiftCode?: string;
-    shiftLabel?: string;
-  } | null>(null);
   const [allCustomers, setAllCustomers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
@@ -79,7 +71,6 @@ export default function CustomerTab({ onOpenInvoice }: CustomerTabProps) {
       const cust = res.data?.customer || res.data;
       const ordList = res.data?.orders || [];
       const retList = res.data?.returns || [];
-      setLookupMeta((res.meta as any) || null);
 
       if (!cust || (!cust.phone && !cust.customerPhone && ordList.length === 0)) {
         setCustomerInfo(null);
@@ -228,22 +219,13 @@ export default function CustomerTab({ onOpenInvoice }: CustomerTabProps) {
             <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
               <h3 className="font-bold text-slate-900 text-base flex items-center gap-2">
                 <ShoppingBag className="w-5 h-5 text-blue-600" />
-                {lookupMeta?.shiftRestricted
-                  ? `Đơn hàng trong 3 ngày gần nhất (${orders.length})`
-                  : `Lịch sử Đơn hàng (${orders.length})`}
+                {`Lịch sử Đơn hàng (${orders.length})`}
               </h3>
-              {lookupMeta?.shiftRestricted && (
-                <span className="text-xs font-semibold px-3 py-1 rounded-full bg-blue-50 text-blue-900 border border-blue-200">
-                  🔓 Hiển thị bill trong ngày (mọi ca) · Tối đa {lookupMeta.maxDays || 3} ngày gần nhất ({lookupMeta.minDate || lookupMeta.shiftDate} → {lookupMeta.shiftDate})
-                </span>
-              )}
             </div>
 
             {orders.length === 0 ? (
               <div className="text-center py-8 text-sm text-slate-500">
-                {lookupMeta?.shiftRestricted
-                  ? `Khách hàng chưa có đơn hàng nào trong ${lookupMeta.maxDays || 3} ngày gần nhất (${lookupMeta.minDate || lookupMeta.shiftDate} → ${lookupMeta.shiftDate}).`
-                  : "Khách hàng chưa có đơn hàng nào."}
+                Khách hàng chưa có đơn hàng nào.
               </div>
             ) : (
               <div className="overflow-x-auto border border-slate-200 rounded-xl max-w-full">
@@ -311,7 +293,7 @@ export default function CustomerTab({ onOpenInvoice }: CustomerTabProps) {
                             onClick={() => onOpenInvoice(ord)}
                             className="min-h-[40px] whitespace-nowrap px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold inline-flex items-center gap-1 shadow-sm"
                           >
-                            <Printer className="w-3.5 h-3.5" /> In PDF (K80/A4)
+                            <Printer className="w-3.5 h-3.5" /> In PDF (K80)
                           </button>
                         </td>
                       </tr>

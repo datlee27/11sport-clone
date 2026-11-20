@@ -42,11 +42,11 @@ function getLocalDateStr(d = new Date()): string {
   return `${y}-${m}-${day}`;
 }
 
-function getRecentAllowedDates(maxDays = 3): string[] {
+function getRecentQuickDates(days = 3): string[] {
   const now = new Date();
   const base = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0, 0);
   const dates: string[] = [];
-  for (let i = 0; i < maxDays; i++) {
+  for (let i = 0; i < days; i++) {
     const dt = new Date(base);
     dt.setDate(base.getDate() - i);
     dates.push(getLocalDateStr(dt));
@@ -95,12 +95,8 @@ export default function PosShiftBillsSection({
 
   const debouncedSearch = useDebounce(search, 300);
   const currentDayRef = useRef<string>(getLocalDateStr());
-  const allowedDates =
-    meta?.allowedDates && meta.allowedDates.length > 0
-      ? meta.allowedDates
-      : getRecentAllowedDates(3);
-  const minAllowedDate = meta?.minDate || allowedDates[allowedDates.length - 1] || getLocalDateStr();
-  const maxAllowedDate = meta?.maxDate || allowedDates[0] || getLocalDateStr();
+  const quickDates = getRecentQuickDates(3);
+  const maxDate = meta?.maxDate || getLocalDateStr();
 
   const loadShiftBills = useCallback(async () => {
     setLoading(true);
@@ -159,7 +155,7 @@ export default function PosShiftBillsSection({
 
   return (
     <div className="space-y-4">
-      {/* Banner thông tin Kiểm tra Bill trong ngày (tối đa 3 ngày gần nhất, không giới hạn ca) */}
+      {/* Banner thông tin Tra cứu Lịch sử Bill (không giới hạn ca hay số ngày) */}
       <div className="bg-white text-slate-900 rounded-xl p-4 sm:p-5 shadow-sm border border-slate-200 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div className="space-y-1.5">
           <div className="flex flex-wrap items-center gap-2">
@@ -169,23 +165,23 @@ export default function PosShiftBillsSection({
             </span>
             <span className="text-xs font-mono text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
               {dateFilter === "ALL"
-                ? `3 ngày gần nhất (${formatShortVnDate(minAllowedDate)} → ${formatShortVnDate(maxAllowedDate)})`
+                ? "Tất cả các ngày"
                 : `Ngày: ${formatShortVnDate(dateFilter || meta?.date || getLocalDateStr())}`}
             </span>
           </div>
           <h2 className="text-base sm:text-lg font-extrabold tracking-tight text-slate-900">
-            Lịch sử Hoá đơn (Kiểm tra Bill trong ngày · Tối đa 3 ngày)
+            Lịch sử Hoá đơn (Tra cứu Bill mọi ngày &amp; mọi ca)
           </h2>
           <p className="text-xs text-slate-600 flex items-center gap-1.5">
             <ShieldAlert className="w-4 h-4 text-blue-600 shrink-0" />
             <span>
-              Mở quyền cho Sales kiểm tra toàn bộ đơn hàng <strong>trong ngày (không giới hạn ca Ca 1 / Ca 2)</strong>, phạm vi tra cứu tối đa <strong>3 ngày gần nhất</strong> ({formatShortVnDate(minAllowedDate)} → {formatShortVnDate(maxAllowedDate)}).
+              Tra cứu toàn bộ đơn hàng, Chọn ngày bất kỳ hoặc bấm <strong>Tất cả</strong> để xem toàn bộ lịch sử bill.
             </span>
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 shrink-0">
-          {allowedDates.map((dStr, idx) => {
+          {quickDates.map((dStr, idx) => {
             const label =
               idx === 0
                 ? `Hôm nay (${dStr.slice(8, 10)}/${dStr.slice(5, 7)})`
@@ -198,11 +194,10 @@ export default function PosShiftBillsSection({
                 key={dStr}
                 type="button"
                 onClick={() => setDateFilter(dStr)}
-                className={`px-3 py-2 rounded-xl text-xs font-extrabold border transition cursor-pointer ${
-                  active
-                    ? "bg-blue-600 text-white border-blue-600 shadow-xs"
-                    : "bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200"
-                }`}
+                className={`px-3 py-2 rounded-xl text-xs font-extrabold border transition cursor-pointer ${active
+                  ? "bg-blue-600 text-white border-blue-600 shadow-xs"
+                  : "bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200"
+                  }`}
               >
                 {label}
               </button>
@@ -211,13 +206,12 @@ export default function PosShiftBillsSection({
           <button
             type="button"
             onClick={() => setDateFilter("ALL")}
-            className={`px-3 py-2 rounded-xl text-xs font-extrabold border transition cursor-pointer ${
-              dateFilter === "ALL"
-                ? "bg-blue-600 text-white border-blue-600 shadow-xs"
-                : "bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200"
-            }`}
+            className={`px-3 py-2 rounded-xl text-xs font-extrabold border transition cursor-pointer ${dateFilter === "ALL"
+              ? "bg-blue-600 text-white border-blue-600 shadow-xs"
+              : "bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200"
+              }`}
           >
-            Tất cả 3 ngày
+            Tất cả
           </button>
           <button
             type="button"
@@ -253,7 +247,7 @@ export default function PosShiftBillsSection({
 
         <div className="bg-white rounded-xl border border-blue-200 p-3.5 shadow-2xs">
           <div className="flex items-center justify-between text-xs text-blue-800 font-semibold">
-            <span>{dateFilter === "ALL" ? "Tổng tiền Bill (3 ngày)" : "Tổng tiền Bill trong ngày"}</span>
+            <span>{dateFilter === "ALL" ? "Tổng tiền Bill (Tất cả)" : "Tổng tiền Bill trong ngày"}</span>
             <FileText className="w-4 h-4 text-blue-600" />
           </div>
           <div className="mt-1.5 text-lg sm:text-xl font-mono font-black text-blue-700 break-all">
@@ -263,7 +257,7 @@ export default function PosShiftBillsSection({
 
         <div className="bg-white rounded-xl border border-amber-200 p-3.5 shadow-2xs">
           <div className="flex items-center justify-between text-xs text-amber-900 font-semibold">
-            <span>{dateFilter === "ALL" ? "Thực thu Tiền mặt (3 ngày)" : "Thực thu Tiền mặt trong ngày"}</span>
+            <span>{dateFilter === "ALL" ? "Thực thu Tiền mặt (Tất cả)" : "Thực thu Tiền mặt trong ngày"}</span>
             <Banknote className="w-4 h-4 text-amber-600" />
           </div>
           <div className="mt-1.5 text-lg sm:text-xl font-mono font-black text-amber-700 break-all">
@@ -273,7 +267,7 @@ export default function PosShiftBillsSection({
 
         <div className="bg-white rounded-xl border border-indigo-200 p-3.5 shadow-2xs">
           <div className="flex items-center justify-between text-xs text-indigo-900 font-semibold">
-            <span>{dateFilter === "ALL" ? "Chuyển khoản (3 ngày)" : "Chuyển khoản trong ngày"}</span>
+            <span>{dateFilter === "ALL" ? "Chuyển khoản (Tất cả)" : "Chuyển khoản trong ngày"}</span>
             <Landmark className="w-4 h-4 text-indigo-600" />
           </div>
           <div className="mt-1.5 text-lg sm:text-xl font-mono font-black text-indigo-700 break-all">
@@ -283,7 +277,7 @@ export default function PosShiftBillsSection({
 
         <div className="bg-white rounded-xl border border-purple-200 p-3.5 shadow-2xs">
           <div className="flex items-center justify-between text-xs text-purple-900 font-semibold">
-            <span>{dateFilter === "ALL" ? "Quẹt thẻ (3 ngày)" : "Quẹt thẻ trong ngày"}</span>
+            <span>{dateFilter === "ALL" ? "Quẹt thẻ (Tất cả)" : "Quẹt thẻ trong ngày"}</span>
             <CreditCard className="w-4 h-4 text-purple-600" />
           </div>
           <div className="mt-1.5 text-lg sm:text-xl font-mono font-black text-purple-700 break-all">
@@ -319,13 +313,12 @@ export default function PosShiftBillsSection({
             <input
               type="date"
               value={dateFilter === "ALL" ? "" : dateFilter}
-              min={minAllowedDate}
-              max={maxAllowedDate}
+              max={maxDate}
               onChange={(e) => {
                 const v = e.target.value;
                 setDateFilter(v ? v : "ALL");
               }}
-              title="Chọn ngày kiểm tra bill (tối đa 3 ngày gần nhất)"
+              title="Chọn ngày kiểm tra bill"
               className="min-h-[40px] px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono font-bold text-slate-700 bg-white focus:border-blue-600 focus:outline-none"
             />
 
@@ -381,7 +374,7 @@ export default function PosShiftBillsSection({
             <FileText className="w-8 h-8 text-slate-300 mx-auto" />
             <div className="text-sm font-bold text-slate-700">
               {dateFilter === "ALL"
-                ? "Chưa có bill nào trong 3 ngày gần nhất"
+                ? "Chưa có bill nào khớp bộ lọc"
                 : `Chưa có bill nào trong ngày ${formatShortVnDate(dateFilter)}`}
             </div>
             <p className="text-xs text-slate-400">
@@ -497,27 +490,26 @@ export default function PosShiftBillsSection({
                         </div>
                         {((ord.itemDiscountTotal || 0) > 0 ||
                           (ord.billDiscountAmount || 0) > 0) && (
-                          <div className="text-[10px] font-mono text-rose-600">
-                            Giảm: −
-                            {formatVND(
-                              (Number(ord.itemDiscountTotal) || 0) +
+                            <div className="text-[10px] font-mono text-rose-600">
+                              Giảm: −
+                              {formatVND(
+                                (Number(ord.itemDiscountTotal) || 0) +
                                 (Number(ord.billDiscountAmount) || 0)
-                            )}
-                          </div>
-                        )}
+                              )}
+                            </div>
+                          )}
                       </td>
 
                       <td className="py-3 px-3.5 text-center whitespace-nowrap">
                         <span
-                          className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full ${
-                            ord.status === "DRAFT"
-                              ? "bg-amber-100 text-amber-800 border border-amber-300"
-                              : ord.status === "PAID"
-                                ? "bg-blue-100 text-blue-800"
-                                : ord.status === "PARTIALLY_RETURNED"
-                                  ? "bg-orange-100 text-orange-800"
-                                  : "bg-red-100 text-red-700"
-                          }`}
+                          className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full ${ord.status === "DRAFT"
+                            ? "bg-amber-100 text-amber-800 border border-amber-300"
+                            : ord.status === "PAID"
+                              ? "bg-blue-100 text-blue-800"
+                              : ord.status === "PARTIALLY_RETURNED"
+                                ? "bg-orange-100 text-orange-800"
+                                : "bg-red-100 text-red-700"
+                            }`}
                         >
                           {ord.status === "DRAFT"
                             ? "Bản nháp"
@@ -544,7 +536,7 @@ export default function PosShiftBillsSection({
                             type="button"
                             onClick={() => onOpenInvoice(ord)}
                             className="px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold inline-flex items-center gap-1 shadow-2xs transition cursor-pointer"
-                            title="In hoặc xuất PDF hóa đơn (K80 / A4)"
+                            title="In hoặc xuất PDF hóa đơn (K80)"
                           >
                             <Printer className="w-3.5 h-3.5" />
                             <span>In Bill</span>
@@ -748,7 +740,7 @@ export default function PosShiftBillsSection({
                 className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-extrabold flex items-center gap-1.5 shadow-sm"
               >
                 <Printer className="w-4 h-4" />
-                <span>In / Xuất Hóa Đơn PDF (K80 / A4)</span>
+                <span>In / Xuất Hóa Đơn PDF (K80)</span>
               </button>
             </div>
           </div>
