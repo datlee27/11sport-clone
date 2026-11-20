@@ -3,8 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { ShoppingBag, Star } from "lucide-react";
-import { calcDiscountPercent, formatVND } from "@/lib/format";
+import { Package, ShoppingBag, Star } from "lucide-react";
+import { calcDiscountPercent, formatVND, resolveMediaUrl } from "@/lib/format";
 import { useCartStore } from "@/store/cartStore";
 import type { ProductListItem } from "@/types/storefront";
 
@@ -62,17 +62,17 @@ export function ProductCard({ product }: ProductCardProps) {
         href={`/san-pham/${product.slug}`}
         className="relative aspect-square bg-surface-muted rounded-t-xl overflow-hidden block"
       >
-        {displayImage ? (
+        {resolveMediaUrl(displayImage) ? (
           <Image
-            src={displayImage}
+            src={resolveMediaUrl(displayImage)}
             alt={product.name}
             fill
             sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
             className="object-cover transition-transform duration-200 ease-out group-hover:scale-105 motion-reduce:group-hover:scale-100"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-xs font-semibold text-ink-muted">
-            11 SPORT
+          <div className="w-full h-full flex flex-col items-center justify-center gap-1.5 text-slate-300">
+            <Package className="w-10 h-10 stroke-[1.5]" aria-hidden="true" />
           </div>
         )}
 

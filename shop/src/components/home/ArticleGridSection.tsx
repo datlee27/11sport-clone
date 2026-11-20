@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
-import { Calendar, ChevronRight } from "lucide-react";
+import { Calendar, ChevronRight, Newspaper } from "lucide-react";
+import { resolveMediaUrl } from "@/lib/format";
 import type { ArticleSummary } from "@/types/storefront";
 
 interface ArticleGridSectionProps {
@@ -39,17 +40,17 @@ export function ArticleGridSection({
               href={`/tin-tuc/${article.slug}`}
               className="relative aspect-[16/9] bg-surface-muted overflow-hidden block"
             >
-              {article.thumbnailUrl ? (
+              {resolveMediaUrl(article.thumbnailUrl) ? (
                 <Image
-                  src={article.thumbnailUrl}
+                  src={resolveMediaUrl(article.thumbnailUrl)}
                   alt={article.title}
                   fill
                   sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
                   className="object-cover transition-transform duration-200 group-hover:scale-105"
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-xs font-semibold text-ink-muted">
-                  11 SPORT BLOG
+                <div className="w-full h-full flex items-center justify-center text-slate-300">
+                  <Newspaper className="w-10 h-10 stroke-[1.5]" aria-hidden="true" />
                 </div>
               )}
             </Link>

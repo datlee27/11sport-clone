@@ -52,3 +52,19 @@ export function isValidPhoneVN(input: string | null | undefined): boolean {
   const digits = normalizePhoneVN(input);
   return /^0[0-9]{9,10}$/.test(digits);
 }
+
+/**
+ * Chuẩn hóa URL ảnh từ Backend (hỗ trợ Cloudinary https://... và /uploads/... trên server).
+ * Nếu không có ảnh hoặc là ảnh placeholder tĩnh /images/..., trả về chuỗi rỗng để UI hiển thị icon thay thế.
+ */
+export function resolveMediaUrl(url: string | null | undefined, fallback = ""): string {
+  const raw = String(url || "").trim();
+  if (!raw || raw.startsWith("/images/")) return fallback;
+  if (/^https?:\/\//i.test(raw) || raw.startsWith("data:")) return raw;
+  if (raw.startsWith("/uploads/")) {
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1";
+    const origin = apiBase.replace(/\/api\/v1\/?$/, "");
+    return `${origin}${raw}`;
+  }
+  return raw;
+}

@@ -12,6 +12,7 @@ import {
   ChevronUp,
   Gift,
   Minus,
+  Package,
   PhoneCall,
   Plus,
   RefreshCw,
@@ -23,7 +24,7 @@ import {
   ZoomIn,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
-import { calcDiscountPercent, formatVND } from "@/lib/format";
+import { calcDiscountPercent, formatVND, resolveMediaUrl } from "@/lib/format";
 import { useCartStore } from "@/store/cartStore";
 import { ProductCarousel } from "@/components/common/ProductCarousel";
 import type {
@@ -254,9 +255,9 @@ export function ProductDetailClient({
         {/* Left: Gallery (50% -> 6 cols) */}
         <div className="lg:col-span-6 space-y-3">
           <div className="relative aspect-square rounded-2xl bg-surface-muted border border-surface-border overflow-hidden group">
-            {activeImage ? (
+            {resolveMediaUrl(activeImage) ? (
               <Image
-                src={activeImage}
+                src={resolveMediaUrl(activeImage)}
                 alt={product.name}
                 fill
                 priority
@@ -264,8 +265,8 @@ export function ProductDetailClient({
                 className="object-cover"
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-sm font-semibold text-ink-muted">
-                11 SPORT
+              <div className="w-full h-full flex items-center justify-center text-slate-300">
+                <Package className="w-16 h-16 stroke-[1.5]" aria-hidden="true" />
               </div>
             )}
 
@@ -302,7 +303,7 @@ export function ProductDetailClient({
                   }`}
                 >
                   <Image
-                    src={imgUrl}
+                    src={resolveMediaUrl(imgUrl)}
                     alt={`${product.name} - ảnh ${idx + 1}`}
                     fill
                     sizes="80px"
@@ -944,7 +945,7 @@ export function ProductDetailClient({
 
           <div className="relative w-full max-w-3xl aspect-square rounded-2xl overflow-hidden bg-white">
             <Image
-              src={galleryImages[activeImageIdx]}
+              src={resolveMediaUrl(galleryImages[activeImageIdx])}
               alt={product.name}
               fill
               sizes="(max-width: 768px) 100vw, 768px"

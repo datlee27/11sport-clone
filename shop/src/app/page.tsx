@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { ChevronRight } from "lucide-react";
 import { buildMetadata } from "@/lib/seo";
+import { resolveMediaUrl } from "@/lib/format";
 import { fetchHomeData } from "@/lib/storefront";
 import { MotionReveal } from "@/components/common/MotionReveal";
 import { ProductCard } from "@/components/common/ProductCard";
@@ -23,7 +24,9 @@ export const metadata = buildMetadata({
 export default async function HomePage() {
   const homeData = await fetchHomeData();
 
-  const banners = homeData?.banners ?? [];
+  const banners = (homeData?.banners ?? []).filter(
+    (b) => resolveMediaUrl(b.desktopImageUrl) !== ""
+  );
   const heroBanners = banners.filter((b) => b.position === "HERO");
   const inlineBanners = banners.filter((b) => b.position !== "HERO");
   const flashSale = homeData?.flashSale ?? null;
@@ -149,14 +152,14 @@ export default async function HomePage() {
             const imgNode = (
               <div className="relative w-full aspect-[21/9] sm:aspect-[1440/360] overflow-hidden bg-surface-muted">
                 <Image
-                  src={banner.desktopImageUrl}
+                  src={resolveMediaUrl(banner.desktopImageUrl)}
                   alt={banner.altText || banner.title}
                   fill
                   sizes="100vw"
                   className="hidden sm:block object-cover"
                 />
                 <Image
-                  src={banner.mobileImageUrl || banner.desktopImageUrl}
+                  src={resolveMediaUrl(banner.mobileImageUrl || banner.desktopImageUrl)}
                   alt={banner.altText || banner.title}
                   fill
                   sizes="100vw"

@@ -17,16 +17,10 @@ import WebAuditLogsTab from "./web/WebAuditLogsTab";
 import {
   BarChart3,
   LayoutTemplate,
-  Image as ImageIcon,
-  FolderTree,
   Package,
-  FileText,
-  Tag,
-  MessageSquare,
-  SearchCheck,
+  Megaphone,
   Settings,
   ShoppingBag,
-  History,
   RefreshCw,
   Globe,
   ShieldAlert,
@@ -34,56 +28,88 @@ import {
   AlertCircle,
 } from "lucide-react";
 
-type WebSubTabId =
-  | "dashboard"
-  | "home-sections"
-  | "banners"
-  | "menus"
-  | "catalog"
-  | "content"
-  | "promotions"
-  | "reviews"
-  | "seo-redirect"
-  | "settings"
-  | "orders"
-  | "audit-logs";
+type PrimaryNavId = "dashboard" | "orders" | "appearance" | "catalog" | "marketing" | "system";
+type AppearanceSubId = "banners" | "home-sections" | "menus";
+type MarketingSubId = "content" | "promotions" | "reviews";
+type SystemSubId = "settings" | "seo-redirect" | "audit-logs";
 
-interface SubTabDef {
-  id: WebSubTabId;
+interface NavItemDef {
+  id: PrimaryNavId;
   label: string;
-  group: "OVERVIEW" | "CONTENT" | "SYSTEM";
+  desc: string;
   icon: React.ComponentType<{ className?: string }>;
 }
 
-const SUB_TABS: SubTabDef[] = [
-  { id: "dashboard", label: "Dashboard CEO", group: "OVERVIEW", icon: BarChart3 },
-  { id: "orders", label: "Đơn hàng Online", group: "OVERVIEW", icon: ShoppingBag },
-  { id: "audit-logs", label: "Nhật ký thao tác", group: "OVERVIEW", icon: History },
-
-  { id: "home-sections", label: "Bố cục trang chủ", group: "CONTENT", icon: LayoutTemplate },
-  { id: "banners", label: "Banner & Slider", group: "CONTENT", icon: ImageIcon },
-  { id: "menus", label: "Mega Menu", group: "CONTENT", icon: FolderTree },
-  { id: "catalog", label: "SP, DM & Thương hiệu", group: "CONTENT", icon: Package },
-  { id: "content", label: "Bài viết & Trang tĩnh", group: "CONTENT", icon: FileText },
-  { id: "reviews", label: "Duyệt Đánh giá", group: "CONTENT", icon: MessageSquare },
-
-  { id: "promotions", label: "Khuyến mãi Online", group: "SYSTEM", icon: Tag },
-  { id: "seo-redirect", label: "SEO & 301 Redirect", group: "SYSTEM", icon: SearchCheck },
-  { id: "settings", label: "Cài đặt Site", group: "SYSTEM", icon: Settings },
+const PRIMARY_NAV: NavItemDef[] = [
+  {
+    id: "dashboard",
+    label: "Tổng quan",
+    desc: "Doanh thu Online, đơn hàng & đánh giá chờ duyệt",
+    icon: BarChart3,
+  },
+  {
+    id: "orders",
+    label: "Đơn hàng Online",
+    desc: "Xử lý đơn đặt từ Website & mã vận đơn",
+    icon: ShoppingBag,
+  },
+  {
+    id: "appearance",
+    label: "Giao diện & Menu",
+    desc: "Banner trang chủ, sắp xếp khối & Mega Menu",
+    icon: LayoutTemplate,
+  },
+  {
+    id: "catalog",
+    label: "Sản phẩm & Danh mục",
+    desc: "Bật/tắt hiển thị web, ảnh, giá & thương hiệu",
+    icon: Package,
+  },
+  {
+    id: "marketing",
+    label: "Tin tức & Khuyến mãi",
+    desc: "Bài viết blog, trang chính sách, mã giảm giá & đánh giá",
+    icon: Megaphone,
+  },
+  {
+    id: "system",
+    label: "Cài đặt & Hệ thống",
+    desc: "Thông tin shop, SEO 301 Redirect & nhật ký thao tác",
+    icon: Settings,
+  },
 ];
 
-const GROUP_LABELS: Record<SubTabDef["group"], string> = {
-  OVERVIEW: "Tổng quan & Báo cáo",
-  CONTENT: "Giao diện & Nội dung",
-  SYSTEM: "Tăng trưởng & Hệ thống",
-};
-
 export default function WebManagementModule({ currentUser }: { currentUser: StaffUser }) {
-  const [activeTab, setActiveTab] = useState<WebSubTabId>("dashboard");
+  const [activeNav, setActiveNav] = useState<PrimaryNavId>("dashboard");
+  const [appearanceSub, setAppearanceSub] = useState<AppearanceSubId>("banners");
+  const [marketingSub, setMarketingSub] = useState<MarketingSubId>("content");
+  const [systemSub, setSystemSub] = useState<SystemSubId>("settings");
+
   const [revalidating, setRevalidating] = useState(false);
   const [revalMsg, setRevalMsg] = useState<{ type: "ok" | "warn"; text: string } | null>(null);
 
   const isAllowed = currentUser.role === "ADMIN" || currentUser.role === "CEO";
+
+  const handleJump = useCallback((target: string) => {
+    if (target === "dashboard" || target === "orders" || target === "catalog") {
+      setActiveNav(target);
+      return;
+    }
+    if (target === "banners" || target === "home-sections" || target === "menus") {
+      setActiveNav("appearance");
+      setAppearanceSub(target);
+      return;
+    }
+    if (target === "content" || target === "promotions" || target === "reviews") {
+      setActiveNav("marketing");
+      setMarketingSub(target);
+      return;
+    }
+    if (target === "settings" || target === "seo-redirect" || target === "audit-logs") {
+      setActiveNav("system");
+      setSystemSub(target);
+    }
+  }, []);
 
   const handleRevalidate = useCallback(async () => {
     setRevalidating(true);
@@ -98,7 +124,7 @@ export default function WebManagementModule({ currentUser }: { currentUser: Staf
         body: JSON.stringify({ paths: ["/", "/tin-tuc"], tags: ["home", "menu"] }),
       });
       if (res.data?.shopNotified) {
-        setRevalMsg({ type: "ok", text: "Đã làm mới cache & đồng bộ lên Website shop/!" });
+        setRevalMsg({ type: "ok", text: "Đã làm mới cache & đồng bộ lên Website!" });
       } else {
         setRevalMsg({
           type: "ok",
@@ -128,28 +154,25 @@ export default function WebManagementModule({ currentUser }: { currentUser: Staf
     );
   }
 
-  const activeDef = SUB_TABS.find((t) => t.id === activeTab) || SUB_TABS[0];
+  const activeDef = PRIMARY_NAV.find((t) => t.id === activeNav) || PRIMARY_NAV[0];
 
   return (
     <div className="space-y-4">
-      {/* Top Action Bar */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-4 flex flex-wrap items-center justify-between gap-3 shadow-2xs">
+      <div className="bg-white rounded-2xl border border-slate-200 px-4 py-3 flex flex-wrap items-center justify-between gap-3 shadow-2xs">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 shrink-0">
-            <Globe className="w-5 h-5" />
+          <div className="w-9 h-9 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 shrink-0">
+            <Globe className="w-4 h-4" />
           </div>
           <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="font-extrabold text-base sm:text-lg text-slate-900">
+            <div className="flex items-center gap-2">
+              <h1 className="font-extrabold text-sm sm:text-base text-slate-900">
                 Quản lý Website — {activeDef.label}
               </h1>
               <span className="font-mono text-[11px] px-2 py-0.5 rounded bg-teal-600 text-white font-bold">
                 {currentUser.role}
               </span>
             </div>
-            <p className="text-xs text-slate-500">
-              Điều phối toàn bộ giao diện, sản phẩm, nội dung SEO và đơn hàng Online của 11 Sport.
-            </p>
+            <p className="text-xs text-slate-500">{activeDef.desc}</p>
           </div>
         </div>
 
@@ -157,10 +180,10 @@ export default function WebManagementModule({ currentUser }: { currentUser: Staf
           type="button"
           onClick={handleRevalidate}
           disabled={revalidating}
-          className="min-h-[44px] px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 disabled:opacity-60 text-white text-xs font-bold flex items-center gap-2 shadow-xs transition cursor-pointer"
+          className="min-h-[40px] px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 disabled:opacity-60 text-white text-xs font-bold flex items-center gap-2 shadow-xs transition cursor-pointer"
         >
-          <RefreshCw className={`w-4 h-4 ${revalidating ? "animate-spin" : ""}`} />
-          <span>{revalidating ? "Đang đồng bộ..." : "Làm mới Cache Website (Revalidate)"}</span>
+          <RefreshCw className={`w-3.5 h-3.5 ${revalidating ? "animate-spin" : ""}`} />
+          <span>{revalidating ? "Đang đồng bộ..." : "Đồng bộ Website"}</span>
         </button>
       </div>
 
@@ -181,17 +204,13 @@ export default function WebManagementModule({ currentUser }: { currentUser: Staf
         </div>
       )}
 
-      {/* Mobile Sub-tab Selector */}
       <div className="lg:hidden">
-        <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
-          Chọn chức năng Website
-        </label>
         <select
-          value={activeTab}
-          onChange={(e) => setActiveTab(e.target.value as WebSubTabId)}
+          value={activeNav}
+          onChange={(e) => setActiveNav(e.target.value as PrimaryNavId)}
           className="w-full min-h-[44px] px-3 py-2 rounded-xl border border-slate-300 bg-white text-sm font-bold text-slate-900"
         >
-          {SUB_TABS.map((t) => (
+          {PRIMARY_NAV.map((t) => (
             <option key={t.id} value={t.id}>
               {t.label}
             </option>
@@ -199,56 +218,121 @@ export default function WebManagementModule({ currentUser }: { currentUser: Staf
         </select>
       </div>
 
-      {/* Main 2-column Layout */}
       <div className="flex flex-col lg:flex-row gap-4 items-start">
-        <aside className="hidden lg:block w-64 shrink-0 bg-white rounded-2xl border border-slate-200 p-3 space-y-4 sticky top-20">
-          {(["OVERVIEW", "CONTENT", "SYSTEM"] as SubTabDef["group"][]).map((grp) => (
-            <div key={grp} className="space-y-1">
-              <div className="px-2.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
-                {GROUP_LABELS[grp]}
-              </div>
-              {SUB_TABS.filter((t) => t.group === grp).map((tab) => {
-                const Icon = tab.icon;
-                const active = activeTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2.5 transition cursor-pointer ${
-                      active
-                        ? "bg-teal-600 text-white shadow-xs"
-                        : "text-slate-700 hover:bg-teal-50 hover:text-teal-800"
-                    }`}
-                  >
-                    <Icon className={`w-4 h-4 shrink-0 ${active ? "text-white" : "text-teal-600"}`} />
-                    <span className="truncate">{tab.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          ))}
+        <aside className="hidden lg:block w-56 shrink-0 bg-white rounded-2xl border border-slate-200 p-2.5 space-y-1 sticky top-20">
+          {PRIMARY_NAV.map((item) => {
+            const Icon = item.icon;
+            const active = activeNav === item.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setActiveNav(item.id)}
+                className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2.5 transition cursor-pointer ${
+                  active
+                    ? "bg-teal-600 text-white shadow-xs"
+                    : "text-slate-700 hover:bg-teal-50 hover:text-teal-800"
+                }`}
+              >
+                <Icon className={`w-4 h-4 shrink-0 ${active ? "text-white" : "text-teal-600"}`} />
+                <span className="truncate">{item.label}</span>
+              </button>
+            );
+          })}
         </aside>
 
-        <section className="flex-1 min-w-0 w-full bg-white rounded-2xl border border-slate-200 p-4 sm:p-5">
-          {activeTab === "dashboard" && (
-            <WebDashboardTab onJumpTab={(id) => setActiveTab(id as WebSubTabId)} />
+        <section className="flex-1 min-w-0 w-full bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 space-y-4">
+          {activeNav === "dashboard" && <WebDashboardTab onJumpTab={handleJump} />}
+          {activeNav === "orders" && <WebOrdersTab />}
+
+          {activeNav === "appearance" && (
+            <>
+              <SubPillBar
+                items={[
+                  { id: "banners", label: "Banner & Slider" },
+                  { id: "home-sections", label: "Bố cục trang chủ" },
+                  { id: "menus", label: "Mega Menu" },
+                ]}
+                activeId={appearanceSub}
+                onSelect={(id) => setAppearanceSub(id as AppearanceSubId)}
+              />
+              {appearanceSub === "banners" && <WebBannersTab />}
+              {appearanceSub === "home-sections" && (
+                <WebHomeSectionsTab onRevalidate={handleRevalidate} />
+              )}
+              {appearanceSub === "menus" && <WebMenusTab />}
+            </>
           )}
-          {activeTab === "home-sections" && (
-            <WebHomeSectionsTab onRevalidate={handleRevalidate} />
+
+          {activeNav === "catalog" && <WebCatalogTab />}
+
+          {activeNav === "marketing" && (
+            <>
+              <SubPillBar
+                items={[
+                  { id: "content", label: "Bài viết & Trang chính sách" },
+                  { id: "promotions", label: "Khuyến mãi Online" },
+                  { id: "reviews", label: "Duyệt Đánh giá" },
+                ]}
+                activeId={marketingSub}
+                onSelect={(id) => setMarketingSub(id as MarketingSubId)}
+              />
+              {marketingSub === "content" && <WebContentTab />}
+              {marketingSub === "promotions" && <WebPromotionsTab />}
+              {marketingSub === "reviews" && <WebReviewsTab />}
+            </>
           )}
-          {activeTab === "banners" && <WebBannersTab />}
-          {activeTab === "menus" && <WebMenusTab />}
-          {activeTab === "catalog" && <WebCatalogTab />}
-          {activeTab === "content" && <WebContentTab />}
-          {activeTab === "promotions" && <WebPromotionsTab />}
-          {activeTab === "reviews" && <WebReviewsTab />}
-          {activeTab === "seo-redirect" && <WebSeoRedirectTab role={currentUser.role} />}
-          {activeTab === "settings" && <WebSettingsTab role={currentUser.role} />}
-          {activeTab === "orders" && <WebOrdersTab />}
-          {activeTab === "audit-logs" && <WebAuditLogsTab />}
+
+          {activeNav === "system" && (
+            <>
+              <SubPillBar
+                items={[
+                  { id: "settings", label: "Cài đặt Website" },
+                  { id: "seo-redirect", label: "SEO & 301 Redirect" },
+                  { id: "audit-logs", label: "Nhật ký thao tác" },
+                ]}
+                activeId={systemSub}
+                onSelect={(id) => setSystemSub(id as SystemSubId)}
+              />
+              {systemSub === "settings" && <WebSettingsTab role={currentUser.role} />}
+              {systemSub === "seo-redirect" && <WebSeoRedirectTab role={currentUser.role} />}
+              {systemSub === "audit-logs" && <WebAuditLogsTab />}
+            </>
+          )}
         </section>
       </div>
+    </div>
+  );
+}
+
+function SubPillBar({
+  items,
+  activeId,
+  onSelect,
+}: {
+  items: { id: string; label: string }[];
+  activeId: string;
+  onSelect: (id: string) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-1.5 border-b border-slate-200 pb-3">
+      {items.map((item) => {
+        const active = item.id === activeId;
+        return (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => onSelect(item.id)}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+              active
+                ? "bg-teal-600 text-white shadow-2xs"
+                : "bg-slate-100 text-slate-600 hover:bg-teal-50 hover:text-teal-700"
+            }`}
+          >
+            {item.label}
+          </button>
+        );
+      })}
     </div>
   );
 }

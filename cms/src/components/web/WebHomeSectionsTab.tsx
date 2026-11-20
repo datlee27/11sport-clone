@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from "react";
 import { apiRequest } from "@/lib/api";
-import { WebHomeSectionItem } from "@/lib/webApi";
+import { WebCategoryItem, WebHomeSectionItem } from "@/lib/webApi";
 import { TabEmptyState, TabFeedbackBanner, TabLoadingState } from "./WebShared";
 import {
   ArrowDown,
@@ -17,13 +17,14 @@ import {
 } from "lucide-react";
 
 const SECTION_TYPES = [
-  { value: "HERO_SLIDER", label: "Hero Slider" },
-  { value: "USP_BAR", label: "4 USP Cam kết" },
-  { value: "FLASH_SALE", label: "Flash Sale" },
-  { value: "CATEGORY_PRODUCTS", label: "Khối Sản phẩm theo Danh mục" },
-  { value: "MID_BANNER", label: "Banner xen kẽ Full-Width" },
-  { value: "BRAND_SHOWCASE", label: "Thương hiệu đối tác" },
-  { value: "BLOG_LATEST", label: "Tin tức & Hướng dẫn" },
+  { value: "HERO", label: "Banner chính đầu trang (Hero Slider)" },
+  { value: "USP", label: "4 Cam kết dịch vụ (USP)" },
+  { value: "FLASH_SALE", label: "Khối Flash Sale + Đếm ngược" },
+  { value: "CATEGORY_GRID", label: "Khối Sản phẩm dạng Lưới (5 cột)" },
+  { value: "CATEGORY_CAROUSEL", label: "Khối Sản phẩm dạng Trượt ngang (Carousel)" },
+  { value: "CUSTOM_BANNER", label: "Banner quảng bá xen kẽ" },
+  { value: "BRANDS", label: "Thương hiệu đối tác" },
+  { value: "BLOG", label: "Tin tức & Kiến thức" },
 ];
 
 export default function WebHomeSectionsTab({
@@ -32,27 +33,34 @@ export default function WebHomeSectionsTab({
   onRevalidate: () => Promise<void>;
 }) {
   const [sections, setSections] = useState<WebHomeSectionItem[]>([]);
+  const [categories, setCategories] = useState<WebCategoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [modalError, setModalError] = useState("");
   const [success, setSuccess] = useState("");
   const [dragIdx, setDragIdx] = useState<number | null>(null);
 
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<WebHomeSectionItem | null>(null);
-  const [type, setType] = useState("CATEGORY_PRODUCTS");
+  const [type, setType] = useState("CATEGORY_GRID");
   const [title, setTitle] = useState("");
   const [subtitle, setSubtitle] = useState("");
   const [viewAllUrl, setViewAllUrl] = useState("");
-  const [configText, setConfigText] = useState("{}");
+  const [selectedCatSlug, setSelectedCatSlug] = useState("");
+  const [limitCount, setLimitCount] = useState(10);
   const [isActive, setIsActive] = useState(true);
 
   const loadSections = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      const res = await apiRequest<WebHomeSectionItem[]>("/cms/web/home-sections");
-      setSections(Array.isArray(res.data) ? res.data : []);
+      const [secRes, catRes] = await Promise.all([
+        apiRequest<WebHomeSectionItem[]>("/cms/web/home-sections"),
+        apiRequest<WebCategoryItem[]>("/cms/web/categories").catch(() => ({ data: [] as WebCategoryItem[] })),
+      ]);
+      setSections(Array.isArray(secRes.data) ? secRes.data : []);
+      setCategories(Array.isArray(catRes.data) ? catRes.data : []);
     } catch (e: any) {
       setError(e?.message || "Không tải được danh sách khối trang chủ");
     } finally {
@@ -117,36 +125,44 @@ export default function WebHomeSectionsTab({
 
   const openCreate = () => {
     setEditing(null);
-    setType("CATEGORY_PRODUCTS");
+    setModalError("");
+    setType("CATEGORY_GRID");
     setTitle("");
     setSubtitle("");
     setViewAllUrl("");
-    setConfigText('{\n  "layout": "GRID",\n  "limit": 10\n}');
+    setSelectedCatSlug("");
+    setLimitCount(10);
     setIsActive(true);
     setShowModal(true);
   };
 
   const openEdit = (sec: WebHomeSectionItem) => {
     setEditing(sec);
+    setModalError("");
     setType(sec.type);
     setTitle(sec.title);
     setSubtitle(sec.subtitle || "");
     setViewAllUrl(sec.viewAllUrl || "");
-    setConfigText(JSON.stringify(sec.configJson || {}, null, 2));
+    setSelectedCatSlug(String(sec.configJson?.categorySlug || ""));
+    setLimitCount(Number(sec.configJson?.limit || 10));
     setIsActive(sec.isActive);
     setShowModal(true);
   };
 
+  const isCategoryBlock = type === "CATEGORY_GRID" || type === "CATEGORY_CAROUSEL";
+
   const handleSubmitModal = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
-    let parsedConfig: Record<string, any> = {};
-    try {
-      parsedConfig = configText.trim() ? JSON.parse(configText) : {};
-    } catch {
-      setError("JSON cấu hình không hợp lệ, vui lòng kiểm tra lại cú pháp.");
-      return;
-    }
+    setModalError("");
+
+    const prevConfig = editing?.configJson ? { ...editing.configJson } : {};
+    const nextConfig: Record<string, unknown> = isCategoryBlock
+      ? {
+          ...prevConfig,
+          categorySlug: selectedCatSlug,
+          limit: Number(limitCount || 10),
+        }
+      : prevConfig;
 
     setSaving(true);
     try {
@@ -158,7 +174,7 @@ export default function WebHomeSectionsTab({
             title,
             subtitle,
             viewAllUrl,
-            configJson: parsedConfig,
+            configJson: nextConfig,
             isActive,
           }),
         });
@@ -171,7 +187,7 @@ export default function WebHomeSectionsTab({
             title,
             subtitle,
             viewAllUrl,
-            configJson: parsedConfig,
+            configJson: nextConfig,
             isActive,
             sortOrder: sections.length + 1,
           }),
@@ -181,7 +197,7 @@ export default function WebHomeSectionsTab({
       setShowModal(false);
       await loadSections();
     } catch (err: any) {
-      setError(err?.message || "Không thể lưu khối trang chủ");
+      setModalError(err?.message || "Không thể lưu khối trang chủ");
     } finally {
       setSaving(false);
     }
@@ -204,10 +220,10 @@ export default function WebHomeSectionsTab({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h3 className="font-extrabold text-sm text-slate-900">
-            Sắp xếp các khối hiển thị trên Trang chủ (`shop/`)
+            Bố cục Trang chủ Website
           </h3>
           <p className="text-xs text-slate-500">
-            Kéo thả hoặc bấm mũi tên để đổi thứ tự, bật/tắt hiển thị rồi bấm &quot;Lưu &amp; Đồng bộ Website&quot;.
+            Kéo thả hoặc bấm mũi tên để đổi thứ tự hiển thị, bật/tắt rồi bấm &quot;Lưu &amp; Đồng bộ&quot;.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -217,7 +233,7 @@ export default function WebHomeSectionsTab({
             className="min-h-[40px] px-3.5 py-2 rounded-xl border border-teal-600 text-teal-700 hover:bg-teal-50 text-xs font-bold flex items-center gap-1.5"
           >
             <Plus className="w-4 h-4" />
-            <span>Thêm khối mới</span>
+            <span>Thêm khối</span>
           </button>
           <button
             type="button"
@@ -226,7 +242,7 @@ export default function WebHomeSectionsTab({
             className="min-h-[40px] px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs"
           >
             {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            <span>Lưu &amp; Đồng bộ Website</span>
+            <span>Lưu &amp; Đồng bộ</span>
           </button>
         </div>
       </div>
@@ -245,88 +261,86 @@ export default function WebHomeSectionsTab({
       ) : sections.length === 0 ? (
         <TabEmptyState
           title="Chưa có khối trang chủ nào"
-          desc="Bấm 'Thêm khối mới' để khởi tạo Hero Slider, Flash Sale, Khối danh mục..."
+          desc="Bấm 'Thêm khối' để khởi tạo Banner, Flash Sale, Khối sản phẩm..."
         />
       ) : (
         <div className="space-y-2">
-          {sections.map((sec, idx) => (
-            <div
-              key={sec._id}
-              draggable
-              onDragStart={() => setDragIdx(idx)}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={() => handleDrop(idx)}
-              className={`p-3.5 rounded-2xl border bg-white flex flex-wrap items-center justify-between gap-3 transition ${
-                dragIdx === idx ? "border-teal-500 bg-teal-50/40" : "border-slate-200 hover:border-slate-300"
-              }`}
-            >
-              <div className="flex items-center gap-3 min-w-0 flex-1">
-                <span className="cursor-grab text-slate-400 hover:text-slate-600" title="Kéo để sắp xếp">
-                  <GripVertical className="w-5 h-5" />
-                </span>
-                <span className="w-7 h-7 rounded-lg bg-slate-100 text-slate-700 font-mono text-xs font-extrabold flex items-center justify-center shrink-0">
-                  {idx + 1}
-                </span>
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-extrabold text-sm text-slate-900 truncate">{sec.title}</span>
-                    <span className="font-mono text-[10px] px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-bold">
-                      {sec.type}
-                    </span>
+          {sections.map((sec, idx) => {
+            const typeLabel = SECTION_TYPES.find((t) => t.value === sec.type)?.label || sec.type;
+            return (
+              <div
+                key={sec._id}
+                draggable
+                onDragStart={() => setDragIdx(idx)}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={() => handleDrop(idx)}
+                className={`flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl border transition ${
+                  sec.isActive
+                    ? "bg-white border-slate-200 hover:border-teal-300"
+                    : "bg-slate-50 border-slate-200 opacity-65"
+                }`}
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <GripVertical className="w-4 h-4 text-slate-400 cursor-grab shrink-0" />
+                  <span className="font-mono text-xs font-extrabold w-6 h-6 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center shrink-0">
+                    {idx + 1}
+                  </span>
+                  <div className="min-w-0">
+                    <div className="font-bold text-sm text-slate-900 truncate">{sec.title}</div>
+                    <div className="text-[11px] text-slate-500">{typeLabel}</div>
                   </div>
-                  {sec.subtitle && <p className="text-xs text-slate-500 truncate">{sec.subtitle}</p>}
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => toggleActive(sec._id)}
+                    className={`px-2.5 py-1.5 rounded-xl text-xs font-bold border transition ${
+                      sec.isActive
+                        ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                        : "bg-slate-100 border-slate-300 text-slate-600"
+                    }`}
+                  >
+                    {sec.isActive ? "Đang bật" : "Đang ẩn"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => moveItem(idx, -1)}
+                    disabled={idx === 0}
+                    title="Đưa lên"
+                    className="p-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-30"
+                  >
+                    <ArrowUp className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => moveItem(idx, 1)}
+                    disabled={idx === sections.length - 1}
+                    title="Đưa xuống"
+                    className="p-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-30"
+                  >
+                    <ArrowDown className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openEdit(sec)}
+                    title="Chỉnh sửa khối"
+                    className="p-2 rounded-xl border border-slate-200 text-teal-700 hover:bg-teal-50"
+                  >
+                    <Settings2 className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(sec)}
+                    title="Xóa khối"
+                    className="p-2 rounded-xl border border-slate-200 text-red-600 hover:bg-red-50"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => toggleActive(sec._id)}
-                  className={`min-h-[36px] px-3 py-1 rounded-xl text-xs font-bold border transition ${
-                    sec.isActive
-                      ? "bg-emerald-50 border-emerald-200 text-emerald-700"
-                      : "bg-slate-100 border-slate-200 text-slate-500"
-                  }`}
-                >
-                  {sec.isActive ? "Đang bật" : "Đang ẩn"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => moveItem(idx, -1)}
-                  disabled={idx === 0}
-                  title="Lên"
-                  className="p-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-30"
-                >
-                  <ArrowUp className="w-4 h-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => moveItem(idx, 1)}
-                  disabled={idx === sections.length - 1}
-                  title="Xuống"
-                  className="p-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-30"
-                >
-                  <ArrowDown className="w-4 h-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => openEdit(sec)}
-                  title="Cấu hình khối"
-                  className="p-2 rounded-xl border border-slate-200 text-teal-700 hover:bg-teal-50"
-                >
-                  <Settings2 className="w-4 h-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleDelete(sec)}
-                  title="Xóa khối"
-                  className="p-2 rounded-xl border border-slate-200 text-red-600 hover:bg-red-50"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -335,15 +349,16 @@ export default function WebHomeSectionsTab({
           <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
             <div className="bg-teal-600 text-white px-5 py-3.5 flex items-center justify-between">
               <h4 className="font-extrabold text-sm">
-                {editing ? `Cấu hình khối: ${editing.title}` : "Thêm khối trang chủ mới"}
+                {editing ? `Sửa khối: ${editing.title}` : "Thêm khối trang chủ"}
               </h4>
               <button type="button" onClick={() => setShowModal(false)} className="p-1 rounded hover:bg-teal-700">
                 <X className="w-4 h-4" />
               </button>
             </div>
             <form onSubmit={handleSubmitModal} className="p-5 space-y-3.5 max-h-[80vh] overflow-y-auto">
+              <TabFeedbackBanner error={modalError} onClear={() => setModalError("")} />
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Loại khối *</label>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Kiểu hiển thị *</label>
                 <select
                   value={type}
                   onChange={(e) => setType(e.target.value)}
@@ -351,19 +366,19 @@ export default function WebHomeSectionsTab({
                 >
                   {SECTION_TYPES.map((t) => (
                     <option key={t.value} value={t.value}>
-                      {t.label} ({t.value})
+                      {t.label}
                     </option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Tiêu đề hiển thị *</label>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Tiêu đề khối *</label>
                 <input
                   type="text"
                   required
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder="VD: Vợt Pickleball Chính Hãng"
+                  placeholder="VD: VỢT PICKLEBALL"
                   className="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:border-teal-600 focus:outline-none"
                 />
               </div>
@@ -373,9 +388,50 @@ export default function WebHomeSectionsTab({
                   type="text"
                   value={subtitle}
                   onChange={(e) => setSubtitle(e.target.value)}
+                  placeholder="VD: Tuyển chọn vợt Carbon T700 chính hãng"
                   className="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:border-teal-600 focus:outline-none"
                 />
               </div>
+
+              {isCategoryBlock && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 rounded-xl bg-slate-50 border border-slate-200">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Chọn Danh mục</label>
+                    <select
+                      value={selectedCatSlug}
+                      onChange={(e) => {
+                        const slug = e.target.value;
+                        setSelectedCatSlug(slug);
+                        if (slug && !viewAllUrl) setViewAllUrl(`/danh-muc/${slug}`);
+                      }}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-sm focus:border-teal-600 focus:outline-none"
+                    >
+                      <option value="">-- Chọn danh mục --</option>
+                      {categories
+                        .filter((c) => c.slug)
+                        .map((c) => (
+                          <option key={c._id} value={c.slug}>
+                            {c.name}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Số sản phẩm</label>
+                    <select
+                      value={limitCount}
+                      onChange={(e) => setLimitCount(Number(e.target.value))}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-sm focus:border-teal-600 focus:outline-none"
+                    >
+                      <option value={4}>4 sản phẩm</option>
+                      <option value={8}>8 sản phẩm</option>
+                      <option value={10}>10 sản phẩm</option>
+                      <option value={12}>12 sản phẩm</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Link &quot;Xem tất cả&quot;</label>
                 <input
@@ -386,15 +442,7 @@ export default function WebHomeSectionsTab({
                   className="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:border-teal-600 focus:outline-none"
                 />
               </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Cấu hình JSON</label>
-                <textarea
-                  rows={5}
-                  value={configText}
-                  onChange={(e) => setConfigText(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 font-mono text-xs focus:border-teal-600 focus:outline-none"
-                />
-              </div>
+
               <label className="flex items-center gap-2 text-xs font-bold text-slate-700">
                 <input
                   type="checkbox"

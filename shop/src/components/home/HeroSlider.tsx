@@ -6,6 +6,7 @@ import Image from "next/image";
 import useEmblaCarousel from "embla-carousel-react";
 import Autoplay from "embla-carousel-autoplay";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { resolveMediaUrl } from "@/lib/format";
 import type { BannerItem } from "@/types/storefront";
 
 interface HeroSliderProps {
@@ -93,7 +94,7 @@ export function HeroSlider({ banners }: HeroSliderProps) {
               <div className="relative w-full aspect-square sm:aspect-[16/6] lg:aspect-[1440/495]">
                 {/* Desktop Image */}
                 <Image
-                  src={banner.desktopImageUrl}
+                  src={resolveMediaUrl(banner.desktopImageUrl)}
                   alt={banner.altText || banner.title}
                   fill
                   priority={idx === 0}
@@ -102,7 +103,7 @@ export function HeroSlider({ banners }: HeroSliderProps) {
                 />
                 {/* Mobile Image */}
                 <Image
-                  src={banner.mobileImageUrl || banner.desktopImageUrl}
+                  src={resolveMediaUrl(banner.mobileImageUrl || banner.desktopImageUrl)}
                   alt={banner.altText || banner.title}
                   fill
                   priority={idx === 0}

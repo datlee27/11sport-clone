@@ -428,12 +428,22 @@ export default function WebCatalogTab() {
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Giá gạch ngang (VNĐ)</label>
-                  <input
-                    type="number"
-                    value={pCompareAt}
-                    onChange={(e) => setPCompareAt(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 font-mono text-sm"
-                  />
+                  <div className="relative">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={pCompareAt > 0 ? pCompareAt.toLocaleString("vi-VN") : ""}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/\D/g, "");
+                        setPCompareAt(raw ? Number(raw) : 0);
+                      }}
+                      placeholder="0"
+                      className="w-full pl-3 pr-12 py-2 rounded-xl border border-slate-300 font-mono text-sm text-right"
+                    />
+                    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+                      VND
+                    </span>
+                  </div>
                 </div>
               </div>
 

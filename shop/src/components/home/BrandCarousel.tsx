@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import useEmblaCarousel from "embla-carousel-react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { resolveMediaUrl } from "@/lib/format";
 import type { BrandSummary } from "@/types/storefront";
 
 interface BrandCarouselProps {
@@ -63,7 +64,7 @@ export function BrandCarousel({
                 {brand.logoUrl ? (
                   <div className="relative w-full h-12">
                     <Image
-                      src={brand.logoUrl}
+                      src={resolveMediaUrl(brand.logoUrl)}
                       alt={brand.name}
                       fill
                       sizes="160px"
