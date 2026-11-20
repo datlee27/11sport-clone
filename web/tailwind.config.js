@@ -30,9 +30,17 @@ module.exports = {
         }
       },
       fontFamily: {
-        sans: ["Inter", "system-ui", "sans-serif"],
-        mono: ["JetBrains Mono", "monospace"],
-      }
+        sans: ["var(--font-sans)", "Be Vietnam Pro", "system-ui", "sans-serif"],
+        mono: ["var(--font-mono)", "JetBrains Mono", "monospace"],
+      },
+      fontSize: {
+        xs: ["0.8125rem", { lineHeight: "1.25rem" }],
+        sm: ["0.9375rem", { lineHeight: "1.4rem" }],
+        base: ["1.0625rem", { lineHeight: "1.55rem" }],
+        lg: ["1.1875rem", { lineHeight: "1.75rem" }],
+        xl: ["1.3125rem", { lineHeight: "1.85rem" }],
+        "2xl": ["1.625rem", { lineHeight: "2.15rem" }],
+      },
     },
   },
   plugins: [],

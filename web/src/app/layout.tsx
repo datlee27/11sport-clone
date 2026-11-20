@@ -1,6 +1,21 @@
 import type { Metadata, Viewport } from "next";
+import { Be_Vietnam_Pro, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import VersionChecker from "@/components/VersionChecker";
+
+const beVietnamPro = Be_Vietnam_Pro({
+  subsets: ["vietnamese", "latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-sans",
+  display: "swap",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["vietnamese", "latin"],
+  weight: ["500", "600", "700", "800"],
+  variable: "--font-mono",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "11Sport POS & Kho Vận — Hệ thống Quản lý Bán hàng & Kiểm kho",
@@ -29,8 +44,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="vi">
-      <body className="min-h-screen antialiased font-sans overflow-x-hidden">
+    <html lang="vi" className={`${beVietnamPro.variable} ${jetbrainsMono.variable}`}>
+      <body className="min-h-screen antialiased font-sans font-medium text-base overflow-x-hidden">
         {children}
         <VersionChecker />
       </body>

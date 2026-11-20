@@ -22,7 +22,8 @@
   - `info`: `#3B82F6` (Nháp, tra cứu, in PDF)
 
 ## 3. Typography & Định dạng hiển thị
-- **Font chữ**: `Inter` / `System UI` cho giao diện; `JetBrains Mono` / `monospace` cho **Mã sản phẩm**, **Mã đơn hàng**, **Số điện thoại** và **Số tiền VND**.
+- **Font chữ**: `Be Vietnam Pro` (weights 400–800, tối ưu dấu tiếng Việt rõ nét, to & đậm hơn mặc định) cho giao diện; `JetBrains Mono` (weights 500–800) cho **Mã sản phẩm**, **Mã đơn hàng**, **Số điện thoại** và **Số tiền VND**.
+- **Scale & Độ đậm**: Tăng kích thước chuẩn (`xs: 13px`, `sm: 15px`, `base: 17px`, `lg: 19px`, `xl: 21px`), nền chữ mặc định `font-medium` (500), tiêu đề & cột bảng `800`, ô nhập `600`, nút bấm `700`.
 - **Định dạng tiền tệ**: Hiển thị phân cách hàng nghìn theo chuẩn Việt Nam (VD: `1.030.000 ₫`).
 - **Định dạng Mã sản phẩm**: Hiển thị badge monospace rõ ràng (VD: `AO_POLO_THE_THAO_UNISEX_V1_KMAP262510_DO_SIZE_L`).
 

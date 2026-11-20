@@ -1456,81 +1456,138 @@ function formatShortVND(n: number) {
   return `${sign}${abs}`;
 }
 
-/** Biểu đồ Tròn Donut (SVG) hiển thị tỷ trọng trực quan */
+/** Biểu đồ Tròn Donut (SVG) hiển thị tỷ trọng trực quan có hiệu ứng tương tác */
 function SvgDonutChart({
   items,
   centerLabel,
   centerValue,
+  stacked = false,
 }: {
   items: { label: string; value: number; sharePercent: number; color: string; sub?: string }[];
   centerLabel: string;
   centerValue: string;
+  stacked?: boolean;
 }) {
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(false);
+    const t = setTimeout(() => setMounted(true), 30);
+    return () => clearTimeout(t);
+  }, [items]);
+
   const activeItems = items.filter((i) => i.value > 0);
   const total = activeItems.reduce((s, i) => s + i.value, 0);
   const radius = 56;
   const circumference = 2 * Math.PI * radius;
   let cumulativePercent = 0;
 
+  const hoveredItem = hoveredIdx !== null ? items[hoveredIdx] : null;
+  const displayLabel = hoveredItem ? hoveredItem.label : centerLabel;
+  const displayValue = hoveredItem ? formatShortVND(hoveredItem.value) : centerValue;
+  const displaySub = hoveredItem ? `${hoveredItem.sharePercent}%` : null;
+
   return (
-    <div className="flex flex-col sm:flex-row items-center gap-4 bg-slate-50/80 border border-slate-200/80 rounded-xl p-3.5">
+    <div
+      className={`flex flex-col ${
+        stacked ? "" : "sm:flex-row"
+      } items-center gap-4 bg-slate-50/80 border border-slate-200/80 rounded-xl p-3.5 overflow-hidden`}
+    >
       <div className="relative w-36 h-36 shrink-0 flex items-center justify-center">
-        <svg viewBox="0 0 140 140" className="w-36 h-36 -rotate-90">
+        <svg viewBox="0 0 150 150" className="w-36 h-36 -rotate-90 overflow-visible">
           <circle
-            cx="70"
-            cy="70"
+            cx="75"
+            cy="75"
             r={radius}
             fill="transparent"
             stroke="#e2e8f0"
             strokeWidth="18"
           />
           {total > 0 &&
-            activeItems.map((item, idx) => {
+            activeItems.map((item) => {
+              const origIdx = items.indexOf(item);
               const pct = item.value / total;
-              const strokeDasharray = `${pct * circumference} ${circumference}`;
+              const targetArc = pct * circumference;
+              const strokeDasharray = `${mounted ? targetArc : 0} ${circumference}`;
               const strokeDashoffset = -cumulativePercent * circumference;
               cumulativePercent += pct;
+              const isHovered = hoveredIdx === origIdx;
+              const isDimmed = hoveredIdx !== null && hoveredIdx !== origIdx;
               return (
                 <circle
-                  key={idx}
-                  cx="70"
-                  cy="70"
+                  key={`${item.label}-${origIdx}`}
+                  cx="75"
+                  cy="75"
                   r={radius}
                   fill="transparent"
                   stroke={item.color}
-                  strokeWidth="18"
+                  strokeWidth={isHovered ? "23" : "18"}
                   strokeDasharray={strokeDasharray}
                   strokeDashoffset={strokeDashoffset}
-                  className="transition-all duration-500"
+                  onMouseEnter={() => setHoveredIdx(origIdx)}
+                  onMouseLeave={() => setHoveredIdx(null)}
+                  style={{
+                    opacity: isDimmed ? 0.35 : 1,
+                    filter: isHovered ? `drop-shadow(0 0 6px ${item.color}66)` : "none",
+                  }}
+                  className="transition-all duration-500 ease-out cursor-pointer"
                 />
               );
             })}
         </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-2">
-          <span className="text-[10px] font-bold uppercase text-slate-400">{centerLabel}</span>
-          <span className="text-xs font-black font-mono text-slate-900 mt-0.5">{centerValue}</span>
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-3 pointer-events-none">
+          <span className="text-[10px] font-bold uppercase text-slate-400 truncate max-w-[92px] transition-all">
+            {displayLabel}
+          </span>
+          <span className="text-xs font-black font-mono text-slate-900 mt-0.5 transition-all">
+            {displayValue}
+          </span>
+          {displaySub && (
+            <span className="text-[10px] font-mono font-extrabold text-teal-600">
+              ({displaySub})
+            </span>
+          )}
         </div>
       </div>
 
-      <div className="flex-1 w-full space-y-1.5">
-        {items.map((item, idx) => (
-          <div key={idx} className="flex items-center justify-between text-xs gap-2">
-            <div className="flex items-center gap-2 min-w-0">
-              <span
-                className="w-2.5 h-2.5 rounded-full shrink-0"
-                style={{ backgroundColor: item.color }}
-              />
-              <span className="font-bold text-slate-800 truncate">{item.label}</span>
-              {item.sub && <span className="text-[10px] text-slate-400 shrink-0">({item.sub})</span>}
+      <div className="flex-1 w-full min-w-0 space-y-1">
+        {items.map((item, idx) => {
+          const isHovered = hoveredIdx === idx;
+          return (
+            <div
+              key={`${item.label}-${idx}`}
+              onMouseEnter={() => setHoveredIdx(idx)}
+              onMouseLeave={() => setHoveredIdx(null)}
+              className={`flex items-center justify-between text-xs gap-2 px-2 py-1 rounded-lg transition-all duration-200 cursor-pointer min-w-0 ${
+                isHovered
+                  ? "bg-white shadow-xs ring-1 ring-teal-300 scale-[1.01]"
+                  : "hover:bg-white/70"
+              }`}
+            >
+              <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                <span
+                  className={`w-2.5 h-2.5 rounded-full shrink-0 transition-transform duration-200 ${
+                    isHovered ? "scale-125" : ""
+                  }`}
+                  style={{ backgroundColor: item.color }}
+                />
+                <span className="font-bold text-slate-800 truncate">{item.label}</span>
+                {item.sub && (
+                  <span className="text-[10px] text-slate-400 shrink-0 whitespace-nowrap">
+                    ({item.sub})
+                  </span>
+                )}
+              </div>
+              <div className="font-mono text-right shrink-0 whitespace-nowrap">
+                <span className="font-extrabold text-slate-900">{formatShortVND(item.value)}</span>
+                <span className="ml-1 text-[11px] font-bold text-slate-500">
+                  ({item.sharePercent}%)
+                </span>
+              </div>
             </div>
-            <div className="font-mono text-right shrink-0">
-              <span className="font-extrabold text-slate-900">{formatShortVND(item.value)}</span>
-              <span className="ml-1.5 text-[11px] font-bold text-slate-500">
-                ({item.sharePercent}%)
-              </span>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -1582,6 +1639,13 @@ export default function RevenueDashboardModule({
   >("HAS_DEBT");
   const [debtSearch, setDebtSearch] = useState("");
   const [expandedCustomerPhone, setExpandedCustomerPhone] = useState<string | null>(null);
+
+  // Bố cục tab gọn gàng cho Dashboard Doanh thu (tránh trải dài nhiều khu cùng lúc)
+  const [dashboardView, setDashboardView] = useState<
+    "OVERVIEW" | "PRODUCTS" | "SERVICES" | "DEBTS"
+  >("OVERVIEW");
+  const [structureView, setStructureView] = useState<"PAYMENT" | "CATEGORY">("PAYMENT");
+  const [showDailyTable, setShowDailyTable] = useState(false);
 
   const toDateInput = (d: Date) => {
     const yyyy = d.getFullYear();
@@ -1916,21 +1980,56 @@ export default function RevenueDashboardModule({
   const dm = data?.debtManagement;
 
   return (
-    <div className="space-y-6">
-      {/* BANNER & BỘ LỌC KỲ DOANH THU */}
-      <div className="bg-white text-slate-900 rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <div className="text-[11px] font-bold uppercase text-teal-600 flex items-center gap-1.5">
-              <TrendingUp className="w-3.5 h-3.5" />
-              Báo cáo Quản trị & Phân tích Kinh doanh — 11Sport
+    <div className="space-y-4">
+      {/* BANNER & BỘ LỌC KỲ DOANH THU (GỌN 2 HÀNG) */}
+      <div className="bg-white text-slate-900 rounded-2xl border border-slate-200 p-4 shadow-sm space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="p-2 rounded-xl bg-teal-50 text-teal-600 border border-teal-200 shrink-0">
+              <TrendingUp className="w-5 h-5" />
             </div>
-            <h2 className="text-lg font-extrabold mt-0.5 text-slate-900">
-              Dashboard Doanh Thu Chi Tiết · Sản Phẩm Bán Chạy
-            </h2>
+            <div>
+              <h2 className="text-lg font-extrabold text-slate-900 leading-tight">
+                Dashboard Doanh Thu &amp; Phân Tích Kinh Doanh
+              </h2>
+              <div className="text-xs text-slate-500 mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                <span className="font-bold text-teal-700">
+                  {fromDate || toDate
+                    ? `${fromDate ? fromDate.split("-").reverse().join("/") : "Đầu kỳ"} → ${
+                        toDate ? toDate.split("-").reverse().join("/") : "Hiện tại"
+                      }`
+                    : "Toàn thời gian"}
+                </span>
+                <span>·</span>
+                <span>
+                  <strong className="text-slate-900 font-mono">{s?.totalOrders || 0}</strong> đơn
+                </span>
+                <span>·</span>
+                <span>
+                  DT thuần: <strong className="text-teal-700 font-mono">{formatVND(s?.netRevenue || 0)}</strong>
+                </span>
+                <span>·</span>
+                <span>
+                  Lãi gộp: <strong className="text-teal-700 font-mono">{formatVND(s?.grossProfit || 0)}</strong>
+                </span>
+              </div>
+            </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            {(fromDate || toDate || categoryId || paymentMethod) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setCategoryId("");
+                  setPaymentMethod("");
+                  handleSelectQuickRange("ALL");
+                }}
+                className="px-2.5 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-bold"
+              >
+                Xóa bộ lọc
+              </button>
+            )}
             <button
               type="button"
               onClick={loadDashboard}
@@ -1942,198 +2041,128 @@ export default function RevenueDashboardModule({
             </button>
             {data && (
               <ExportExcelButton
-                label="Xuất Excel Doanh thu & SP"
+                label="Xuất Excel"
                 onExport={() => exportRevenueDashboard(data, fromDate, toDate)}
               />
             )}
           </div>
         </div>
 
-        {/* Bộ lọc thời gian, Category & Hình thức thanh toán */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 pt-3 border-t border-slate-200 items-end">
-          <div className="lg:col-span-5">
-            <label className="block text-[11px] font-bold uppercase text-slate-500 mb-1.5">
-              Chọn nhanh kỳ thống kê
-            </label>
-            <div className="flex flex-wrap gap-1.5">
-              {(
-                [
-                  { id: "ALL", label: "Toàn thời gian" },
-                  { id: "TODAY", label: "Hôm nay" },
-                  { id: "YESTERDAY", label: "Hôm qua" },
-                  { id: "7D", label: "7 ngày qua" },
-                  { id: "30D", label: "30 ngày qua" },
-                  { id: "MONTH", label: "Tháng này" },
-                ] as const
-              ).map((btn) => (
-                <button
-                  key={btn.id}
-                  type="button"
-                  onClick={() => handleSelectQuickRange(btn.id)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
-                    quickRange === btn.id
-                      ? "bg-teal-600 text-white shadow-xs"
-                      : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                  }`}
-                >
-                  {btn.label}
-                </button>
-              ))}
-            </div>
+        {/* Bộ lọc thời gian, Category & Hình thức thanh toán trên 1 hàng gọn */}
+        <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2.5">
+          <div className="flex flex-wrap items-center gap-1.5">
+            {(
+              [
+                { id: "ALL", label: "Toàn bộ" },
+                { id: "TODAY", label: "Hôm nay" },
+                { id: "YESTERDAY", label: "Hôm qua" },
+                { id: "7D", label: "7 ngày" },
+                { id: "30D", label: "30 ngày" },
+                { id: "MONTH", label: "Tháng này" },
+              ] as const
+            ).map((btn) => (
+              <button
+                key={btn.id}
+                type="button"
+                onClick={() => handleSelectQuickRange(btn.id)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                  quickRange === btn.id
+                    ? "bg-teal-600 text-white shadow-xs"
+                    : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                }`}
+              >
+                {btn.label}
+              </button>
+            ))}
           </div>
 
-          <div className="lg:col-span-3 grid grid-cols-2 gap-2">
-            <div>
-              <label className="block text-[11px] font-bold uppercase text-slate-500 mb-1">
-                Từ ngày
-              </label>
-              <input
-                type="date"
-                value={fromDate}
-                onChange={(e) => {
-                  const nextFrom = e.target.value;
-                  setQuickRange("ALL");
-                  setFromDate(nextFrom);
-                  if (nextFrom && nextFrom === toDate) {
-                    setChartGroupBy("HOUR");
-                  } else {
-                    setChartGroupBy("DAY");
-                  }
-                }}
-                className="w-full px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-300 text-slate-900 text-xs focus:border-teal-500 focus:outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-[11px] font-bold uppercase text-slate-500 mb-1">
-                Đến ngày
-              </label>
-              <input
-                type="date"
-                value={toDate}
-                onChange={(e) => {
-                  const nextTo = e.target.value;
-                  setQuickRange("ALL");
-                  setToDate(nextTo);
-                  if (nextTo && fromDate === nextTo) {
-                    setChartGroupBy("HOUR");
-                  } else {
-                    setChartGroupBy("DAY");
-                  }
-                }}
-                className="w-full px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-300 text-slate-900 text-xs focus:border-teal-500 focus:outline-none"
-              />
-            </div>
-          </div>
-
-          <div className="lg:col-span-2">
-            <label className="block text-[11px] font-bold uppercase text-slate-500 mb-1">
-              Lọc theo Category
-            </label>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="date"
+              aria-label="Từ ngày"
+              value={fromDate}
+              onChange={(e) => {
+                const nextFrom = e.target.value;
+                setQuickRange("ALL");
+                setFromDate(nextFrom);
+                if (nextFrom && nextFrom === toDate) {
+                  setChartGroupBy("HOUR");
+                } else {
+                  setChartGroupBy("DAY");
+                }
+              }}
+              className="px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-300 text-slate-900 text-xs focus:border-teal-500 focus:outline-none"
+            />
+            <span className="text-xs text-slate-400">→</span>
+            <input
+              type="date"
+              aria-label="Đến ngày"
+              value={toDate}
+              onChange={(e) => {
+                const nextTo = e.target.value;
+                setQuickRange("ALL");
+                setToDate(nextTo);
+                if (nextTo && fromDate === nextTo) {
+                  setChartGroupBy("HOUR");
+                } else {
+                  setChartGroupBy("DAY");
+                }
+              }}
+              className="px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-300 text-slate-900 text-xs focus:border-teal-500 focus:outline-none"
+            />
             <select
+              aria-label="Lọc theo Category"
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
-              className="w-full px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-300 text-slate-900 text-xs font-semibold focus:border-teal-500 focus:outline-none"
+              className="px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-300 text-slate-900 text-xs font-semibold focus:border-teal-500 focus:outline-none"
             >
-              <option value="">Tất cả Category &amp; Dịch vụ</option>
-              <option value="SERVICE">🔧 Dịch vụ (Căng vợt / Sửa chữa)</option>
+              <option value="">Tất cả Danh mục</option>
+              <option value="SERVICE">🔧 Dịch vụ</option>
               {categories.map((c) => (
                 <option key={c._id} value={c._id}>
                   {c.name}
                 </option>
               ))}
             </select>
-          </div>
-
-          <div className="lg:col-span-2">
-            <label className="block text-[11px] font-bold uppercase text-slate-500 mb-1">
-              Hình thức thanh toán
-            </label>
             <select
+              aria-label="Hình thức thanh toán"
               value={paymentMethod}
               onChange={(e) => setPaymentMethod(e.target.value)}
-              className="w-full px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-300 text-slate-900 text-xs font-semibold focus:border-teal-500 focus:outline-none"
+              className="px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-300 text-slate-900 text-xs font-semibold focus:border-teal-500 focus:outline-none"
             >
               <option value="">Tất cả thanh toán</option>
-              <option value="CASH">Tiền mặt (CASH)</option>
-              <option value="BANKING">Chuyển khoản (BANKING)</option>
-              <option value="CARD">Quẹt thẻ (CARD)</option>
-              <option value="OTHER">Khác (OTHER)</option>
-              <option value="DEBT">Công nợ (Mua trước trả sau)</option>
+              <option value="CASH">Tiền mặt</option>
+              <option value="BANKING">Chuyển khoản</option>
+              <option value="CARD">Quẹt thẻ</option>
+              <option value="OTHER">Khác</option>
+              <option value="DEBT">Công nợ</option>
             </select>
           </div>
         </div>
-
-        {/* Thanh hiển thị trạng thái kỳ thống kê đang áp dụng */}
-        <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-teal-50 border border-teal-200 text-teal-700 font-bold">
-              <Calendar className="w-3.5 h-3.5" />
-              Kỳ đang xem:{" "}
-              {fromDate || toDate
-                ? `${fromDate ? fromDate.split("-").reverse().join("/") : "Đầu kỳ"} → ${
-                    toDate ? toDate.split("-").reverse().join("/") : "Hiện tại"
-                  }`
-                : "Toàn thời gian"}
-            </span>
-            <span className="text-slate-600">
-              Tìm thấy <strong className="text-slate-900 font-mono">{s?.totalOrders || 0}</strong> đơn hàng hợp lệ · Doanh thu thuần:{" "}
-              <strong className="text-teal-700 font-mono">{formatVND(s?.netRevenue || 0)}</strong> · Lãi gộp:{" "}
-              <strong className="text-teal-700 font-mono">{formatVND(s?.grossProfit || 0)}</strong>
-            </span>
-          </div>
-          {(fromDate || toDate || categoryId || paymentMethod) && (
-            <button
-              type="button"
-              onClick={() => {
-                setCategoryId("");
-                setPaymentMethod("");
-                handleSelectQuickRange("ALL");
-              }}
-              className="text-[11px] font-bold text-teal-600 hover:text-teal-700 underline"
-            >
-              Xóa bộ lọc (Xem toàn bộ)
-            </button>
-          )}
-        </div>
       </div>
 
-      {/* HÀNG 1: 4 THẺ KPI DOANH THU & LỢI NHUẬN TRỌNG TÂM */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-extrabold uppercase text-slate-500">
-              1. Doanh thu thuần &amp; Thực thu
-            </span>
-            <span className="p-2 rounded-xl bg-teal-100 text-teal-700">
-              <DollarSign className="w-4 h-4" />
-            </span>
-          </div>
-          <div className="text-2xl font-black font-mono text-teal-700 mt-2">
-            {formatVND(s?.netRevenue || 0)}
-          </div>
-          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] font-semibold">
-            <span className="text-slate-600">
-              Bán SP:{" "}
-              <strong className="font-mono text-slate-900">
-                {formatVND(
-                  s?.productNetRevenue ??
-                    Math.max(0, (s?.netRevenue || 0) - (s?.serviceRevenue || 0))
-                )}
-              </strong>
-            </span>
-            <span className="text-indigo-700">
-              • Dịch vụ:{" "}
-              <strong className="font-mono">{formatVND(s?.serviceRevenue || 0)}</strong>
-            </span>
-          </div>
-          <div className="mt-2.5 pt-2.5 border-t border-slate-100 space-y-1 text-[11px] text-slate-600">
-            <div className="flex justify-between">
-              <span className="font-semibold text-teal-700">
-                Thực thu vào quỹ (cashCollected):
+      {/* HÀNG 1: 4 THẺ KPI TỔNG QUAN GỌN GÀNG */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5">
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-extrabold uppercase text-slate-500">
+                1. Doanh thu thuần
               </span>
+              <span className="p-1.5 rounded-lg bg-teal-50 text-teal-700">
+                <DollarSign className="w-4 h-4" />
+              </span>
+            </div>
+            <div className="text-2xl font-black font-mono text-teal-700 mt-1.5">
+              {formatVND(s?.netRevenue || 0)}
+            </div>
+          </div>
+          <div className="mt-2.5 pt-2 border-t border-slate-100 space-y-1 text-xs text-slate-600">
+            <div className="flex justify-between">
+              <span className="font-semibold text-teal-700">Thực thu quỹ:</span>
               <span className="font-mono font-extrabold text-teal-700">
                 {s?.cashCollected === null
-                  ? "— (Theo danh mục)"
+                  ? "— (Theo DM)"
                   : formatVND(
                       s?.cashCollected ??
                         s?.collectedRevenue ??
@@ -2141,132 +2170,49 @@ export default function RevenueDashboardModule({
                     )}
               </span>
             </div>
-            {s?.cashCollected !== null && (
-              <div className="pl-2 border-l-2 border-teal-200 space-y-0.5 text-[10px] text-slate-500">
-                <div className="flex justify-between">
-                  <span>• Thu lúc mua SP (cashAtPurchase):</span>
-                  <span className="font-mono font-bold text-slate-700">
-                    {formatVND(s?.cashAtPurchase ?? s?.collectedRevenue ?? 0)}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span>• Thực thu Dịch vụ (đã hoàn thành):</span>
-                  <span className="font-mono font-bold text-indigo-700">
-                    +{formatVND(s?.serviceCashCollected || 0)}
-                  </span>
-                </div>
-                {(s?.servicePendingCollection || 0) > 0 && (
-                  <div className="flex justify-between text-amber-700">
-                    <span>• Dịch vụ chờ hoàn thành (chưa tính thực thu):</span>
-                    <span className="font-mono font-bold">
-                      {formatVND(s?.servicePendingCollection || 0)}
-                    </span>
-                  </div>
-                )}
-                <div className="flex justify-between">
-                  <span>• Thu nợ trong kỳ:</span>
-                  <span className="font-mono font-bold text-teal-700">
-                    +{formatVND(s?.debtCollectedInPeriod || 0)}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span>• Hoàn tiền thực tế (cashRefunded):</span>
-                  <span className="font-mono font-bold text-red-600">
-                    -{formatVND(s?.cashRefunded || 0)}
-                  </span>
-                </div>
-                {(s?.debtReducedByReturnInPeriod || 0) > 0 && (
-                  <div className="flex justify-between text-purple-700">
-                    <span>• Giảm nợ do trả hàng (không chi tiền):</span>
-                    <span className="font-mono font-bold">
-                      {formatVND(s?.debtReducedByReturnInPeriod || 0)}
-                    </span>
-                  </div>
-                )}
-              </div>
-            )}
-            <div className="flex justify-between">
-              <span className="font-semibold text-amber-700">Đang công nợ (Chưa thu):</span>
-              <span className="font-mono font-extrabold text-amber-700">
-                {formatVND(s?.outstandingDebtInPeriod || 0)}
+            <div className="flex justify-between text-[11px]">
+              <span>SP: {formatShortVND(s?.productNetRevenue ?? Math.max(0, (s?.netRevenue || 0) - (s?.serviceRevenue || 0)))} · DV: {formatShortVND(s?.serviceRevenue || 0)}</span>
+              <span className="font-mono text-amber-700 font-bold">
+                Nợ: {formatShortVND(s?.outstandingDebtInPeriod || 0)}
               </span>
             </div>
-            <div className="flex justify-between pt-1 border-t border-slate-100">
-              <span>Tiền hàng &amp; DV niêm yết:</span>
-              <span className="font-mono font-bold text-slate-800">
-                {formatVND(s?.grossRevenue || 0)}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span>Tổng giảm giá (SP + DV + Bill):</span>
-              <span className="font-mono font-bold text-amber-700">
-                -{formatVND(s?.totalDiscount || 0)}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span>Doanh thu đơn bán &amp; DV (không gồm phí thẻ):</span>
-              <span className="font-mono font-bold text-slate-800">
-                {formatVND(s?.orderRevenue || 0)}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span>Trả hàng (-{formatVND(s?.returnGoodsTotal || 0)}) / Đổi (+{formatVND(s?.exchangeGoodsTotal || 0)}):</span>
-              <span
-                className={`font-mono font-bold ${
-                  (s?.netReturnImpact || 0) < 0 ? "text-red-600" : "text-slate-700"
-                }`}
-              >
-                {(s?.netReturnImpact || 0) >= 0 ? "+" : ""}
-                {formatVND(s?.netReturnImpact || 0)}
-              </span>
-            </div>
-            {(s?.returnFromPriorPeriods || 0) > 0 && (
-              <div className="text-[10px] font-semibold text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-1 mt-1">
-                Ghi chú: Bao gồm hoàn trả từ đơn kỳ trước:{" "}
-                <strong className="font-mono">-{formatVND(s?.returnFromPriorPeriods || 0)}</strong>
+            {(s?.totalDiscount || 0) > 0 && (
+              <div className="flex justify-between text-[11px] text-slate-500">
+                <span>Giảm giá: -{formatShortVND(s?.totalDiscount || 0)}</span>
+                <span>Hoàn tiền: -{formatShortVND(s?.cashRefunded || 0)}</span>
               </div>
             )}
           </div>
         </div>
 
-        <div className="bg-white border-2 border-teal-200 text-slate-900 rounded-2xl p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-extrabold uppercase text-teal-700">
-              2. Lãi gộp thực tế (Gross Profit)
-            </span>
-            <span className="px-2.5 py-1 rounded-full text-xs font-mono font-extrabold bg-teal-50 text-teal-700 border border-teal-200">
-              Biên lãi: {s?.grossMarginPercent || 0}%
-            </span>
+        <div className="bg-white border-2 border-teal-200 text-slate-900 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-extrabold uppercase text-teal-700">
+                2. Lãi gộp thực tế
+              </span>
+              <span className="px-2 py-0.5 rounded-full text-[11px] font-mono font-extrabold bg-teal-50 text-teal-700 border border-teal-200">
+                Biên: {s?.grossMarginPercent || 0}%
+              </span>
+            </div>
+            <div
+              className={`text-2xl font-black font-mono mt-1.5 ${
+                (s?.grossProfit || 0) >= 0 ? "text-teal-600" : "text-red-600"
+              }`}
+            >
+              {formatVND(s?.grossProfit || 0)}
+            </div>
           </div>
-          <div
-            className={`text-2xl font-black font-mono mt-2 ${
-              (s?.grossProfit || 0) >= 0 ? "text-teal-600" : "text-red-600"
-            }`}
-          >
-            {formatVND(s?.grossProfit || 0)}
-          </div>
-          <div className="mt-3 pt-2.5 border-t border-slate-200 space-y-1 text-[11px] text-slate-600">
+          <div className="mt-2.5 pt-2 border-t border-slate-100 space-y-1 text-xs text-slate-600">
             <div className="flex justify-between">
-              <span>Doanh thu thuần (SP + Dịch vụ):</span>
-              <span className="font-mono font-bold text-slate-900">
-                {formatVND(s?.netRevenue || 0)}
-              </span>
-            </div>
-            <div className="flex justify-between text-[10px] text-indigo-700">
-              <span>• Lãi gộp mảng Dịch vụ (Giá vốn 0đ):</span>
-              <span className="font-mono font-bold">
-                +{formatVND(s?.serviceRevenue || 0)}
-              </span>
-            </div>
-            <div className="flex justify-between items-center gap-1">
-              <span className="flex items-center gap-1 flex-wrap">
-                Tổng Giá vốn trừ vào Lãi gộp:
+              <span className="flex items-center gap-1">
+                Tổng giá vốn:
                 {s?.cogsEstimated && (
                   <span
-                    title="Có đơn hàng cũ chưa lưu unitCost tại thời điểm bán, được ước tính theo giá vốn hiện tại của sản phẩm"
-                    className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 text-[9px] font-bold"
+                    title="Có đơn cũ ước tính theo giá vốn hiện tại"
+                    className="px-1 py-0.2 rounded bg-amber-50 text-amber-700 border border-amber-200 text-[9px] font-bold"
                   >
-                    Có ước tính đơn cũ
+                    Ước tính
                   </span>
                 )}
               </span>
@@ -2274,146 +2220,159 @@ export default function RevenueDashboardModule({
                 {formatVND(s?.estimatedCogs || 0)}
               </span>
             </div>
-            <div className="pl-2 border-l-2 border-slate-200 space-y-0.5 text-[10px] text-slate-600">
-              <div className="flex justify-between">
-                <span>• Giá vốn hàng bán:</span>
-                <span className="font-mono font-bold text-amber-700">
-                  {formatVND(
-                    s?.salesCogs ??
-                      Math.max(0, (s?.estimatedCogs || 0) - (s?.giftCogs || 0))
-                  )}
-                </span>
-              </div>
-              <div className="flex justify-between text-purple-700">
-                <span>• Chi phí giá vốn quà tặng (0đ):</span>
-                <span className="font-mono font-bold">
-                  {formatVND(s?.giftCogs || 0)}
-                </span>
-              </div>
-              {((s?.giftRetailValue || 0) > 0 || (s?.totalGiftUnits || 0) > 0) && (
-                <div className="flex justify-between text-slate-500">
-                  <span>• Tổng trị giá niêm yết quà tặng:</span>
-                  <span className="font-mono font-semibold">
-                    {formatVND(s?.giftRetailValue || 0)}
-                  </span>
-                </div>
-              )}
-            </div>
-            <div className="pt-1 border-t border-slate-200 space-y-0.5">
-              <div className="flex justify-between">
-                <span>Phí thẻ thu hộ NH (Không tính DT &amp; Thực thu):</span>
-                <span className="font-mono font-bold text-slate-800">
-                  {formatVND(s?.cardFeeNet ?? s?.cardFeeTotal ?? 0)}
-                </span>
-              </div>
-              <div className="flex justify-between text-[10px] text-slate-500">
-                <span>• Thu hộ: +{formatVND(s?.cardFeeCollected ?? s?.cardFeeTotal ?? 0)}</span>
-                <span>• Hoàn trả: -{formatVND(s?.cardFeeRefunded || 0)}</span>
-              </div>
+            <div className="flex justify-between text-[11px] text-slate-500">
+              <span>Vốn bán: {formatShortVND(s?.salesCogs ?? Math.max(0, (s?.estimatedCogs || 0) - (s?.giftCogs || 0)))}</span>
+              <span>Phí thẻ NH: {formatShortVND(s?.cardFeeNet ?? s?.cardFeeTotal ?? 0)}</span>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-extrabold uppercase text-slate-500">
-              3. Tổng số đơn &amp; Trung bình đơn
-            </span>
-            <span className="p-2 rounded-xl bg-teal-100 text-teal-700">
-              <ShoppingBag className="w-4 h-4" />
-            </span>
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-extrabold uppercase text-slate-500">
+                3. Đơn hàng &amp; AOV
+              </span>
+              <span className="p-1.5 rounded-lg bg-teal-50 text-teal-700">
+                <ShoppingBag className="w-4 h-4" />
+              </span>
+            </div>
+            <div className="text-2xl font-black font-mono text-slate-900 mt-1.5">
+              {(s?.totalOrders || 0).toLocaleString("vi-VN")} đơn
+            </div>
           </div>
-          <div className="text-2xl font-black font-mono text-slate-900 mt-2">
-            {(s?.totalOrders || 0).toLocaleString("vi-VN")} đơn
-          </div>
-          <div className="mt-3 pt-2.5 border-t border-slate-100 space-y-1 text-[11px] text-slate-600">
+          <div className="mt-2.5 pt-2 border-t border-slate-100 space-y-1 text-xs text-slate-600">
             <div className="flex justify-between">
-              <span>Giá trị đơn TB (AOV):</span>
+              <span>TB mỗi đơn (AOV):</span>
               <span className="font-mono font-extrabold text-teal-700">
                 {formatVND(s?.avgOrderValue || 0)}
               </span>
             </div>
-            <div className="flex justify-between">
-              <span>• Đơn bán hàng SP:</span>
-              <span className="font-mono font-bold text-slate-800">
-                {s?.productOrdersCount ??
-                  Math.max(0, (s?.totalOrders || 0) - (s?.serviceOrdersCount || 0))}{" "}
-                đơn
+            <div className="flex justify-between text-[11px]">
+              <span>
+                Bán SP: <strong>{s?.productOrdersCount ?? Math.max(0, (s?.totalOrders || 0) - (s?.serviceOrdersCount || 0))}</strong> · DV: <strong>{s?.serviceOrdersCount || 0}</strong>
               </span>
-            </div>
-            <div className="flex justify-between">
-              <span>• Đơn làm dịch vụ:</span>
-              <span className="font-mono font-bold text-indigo-700">
-                {s?.serviceOrdersCount || 0} đơn ({s?.completedServiceOrdersCount || 0} hoàn thành)
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span>Đơn có phát sinh trả/đổi:</span>
-              <span className="font-mono font-bold text-amber-700">
-                {s?.returnedOrders || 0} đơn
+              <span className="text-amber-700 font-bold">
+                Trả/Đổi: {s?.returnedOrders || 0}
               </span>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-extrabold uppercase text-slate-500">
-              4. Sản lượng bán &amp; Dịch vụ
-            </span>
-            <span className="p-2 rounded-xl bg-purple-100 text-purple-700">
-              <PackageCheck className="w-4 h-4" />
-            </span>
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-extrabold uppercase text-slate-500">
+                4. Sản lượng &amp; Tổng nợ
+              </span>
+              <span className="p-1.5 rounded-lg bg-purple-50 text-purple-700">
+                <PackageCheck className="w-4 h-4" />
+              </span>
+            </div>
+            <div className="text-2xl font-black font-mono text-slate-900 mt-1.5">
+              {(s?.totalUnitsSold || 0).toLocaleString("vi-VN")} SP bán
+            </div>
           </div>
-          <div className="text-2xl font-black font-mono text-slate-900 mt-2">
-            {(s?.totalUnitsSold || 0).toLocaleString("vi-VN")} SP bán
-          </div>
-          <div className="mt-3 pt-2.5 border-t border-slate-100 space-y-1 text-[11px] text-slate-600">
+          <div className="mt-2.5 pt-2 border-t border-slate-100 space-y-1 text-xs text-slate-600">
             <div className="flex justify-between">
-              <span>Lượt thực hiện dịch vụ:</span>
+              <span>Tặng: <strong className="text-purple-700">{s?.totalGiftUnits || 0}</strong> · Trả: <strong className="text-red-600">{s?.totalUnitsReturned || 0}</strong></span>
               <span className="font-mono font-bold text-indigo-700">
-                {s?.totalServiceUnits || 0} lượt
+                DV: {s?.totalServiceUnits || 0} lượt
               </span>
             </div>
-            <div className="flex justify-between">
-              <span>Hàng tặng khuyến mãi (0đ):</span>
-              <span className="font-mono font-bold text-purple-700">
-                {s?.totalGiftUnits || 0} SP
-              </span>
-            </div>
-            {((s?.totalGiftUnits || 0) > 0 || (s?.giftCogs || 0) > 0) && (
-              <div className="pl-2 border-l-2 border-purple-200 space-y-0.5 text-[10px] text-slate-500">
-                <div className="flex justify-between">
-                  <span>• Chi phí giá vốn quà tặng:</span>
-                  <span className="font-mono font-bold text-purple-700">
-                    {formatVND(s?.giftCogs || 0)}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span>• Trị giá niêm yết quà tặng:</span>
-                  <span className="font-mono font-bold text-slate-700">
-                    {formatVND(s?.giftRetailValue || 0)}
-                  </span>
-                </div>
-              </div>
-            )}
-            <div className="flex justify-between">
-              <span>Hàng khách trả lại:</span>
-              <span className="font-mono font-bold text-red-600">
-                {s?.totalUnitsReturned || 0} SP
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span>Mặt hàng có doanh số:</span>
-              <span className="font-mono font-bold text-teal-700">
-                {data?.topSellingProducts.length || 0} mã SP
-              </span>
+            <div className="flex justify-between items-center text-[11px]">
+              <span className="text-slate-500">Dư nợ toàn cửa hàng:</span>
+              <button
+                type="button"
+                onClick={() => setDashboardView("DEBTS")}
+                className="font-mono font-extrabold text-amber-700 hover:underline"
+              >
+                {formatShortVND(dm?.summary?.totalOutstandingDebt || 0)} ({dm?.summary?.activeDebtOrdersCount || 0} đơn)
+              </button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* KHỐI THỐNG KÊ RIÊNG MẢNG LÀM DỊCH VỤ (CĂNG VỢT / SỬA CHỮA) */}
+      {/* THANH CHUYỂN GÓC NHÌN GỌN GÀNG (TRÁNH XÉ THÀNH QUÁ NHIỀU KHU TRÊN 1 MÀN HÌNH) */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-1.5 shadow-sm flex flex-wrap items-center gap-1.5">
+        <button
+          type="button"
+          onClick={() => setDashboardView("OVERVIEW")}
+          className={`px-4 py-2 rounded-xl text-xs font-extrabold flex items-center gap-2 transition ${
+            dashboardView === "OVERVIEW"
+              ? "bg-teal-600 text-white shadow-xs"
+              : "text-slate-700 hover:bg-slate-100"
+          }`}
+        >
+          <BarChart3 className="w-4 h-4" />
+          <span>1. Tổng quan &amp; Biểu đồ</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setDashboardView("PRODUCTS")}
+          className={`px-4 py-2 rounded-xl text-xs font-extrabold flex items-center gap-2 transition ${
+            dashboardView === "PRODUCTS"
+              ? "bg-teal-600 text-white shadow-xs"
+              : "text-slate-700 hover:bg-slate-100"
+          }`}
+        >
+          <Flame className="w-4 h-4" />
+          <span>2. Sản phẩm Bán chạy ({sortedTopProducts.length})</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setDashboardView("SERVICES")}
+          className={`px-4 py-2 rounded-xl text-xs font-extrabold flex items-center gap-2 transition ${
+            dashboardView === "SERVICES"
+              ? "bg-teal-600 text-white shadow-xs"
+              : "text-slate-700 hover:bg-slate-100"
+          }`}
+        >
+          <Wrench className="w-4 h-4" />
+          <span>3. Mảng Dịch vụ</span>
+          {(s?.serviceOrdersCount || 0) > 0 && (
+            <span
+              className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${
+                dashboardView === "SERVICES"
+                  ? "bg-white/20 text-white"
+                  : "bg-indigo-100 text-indigo-700"
+              }`}
+            >
+              {s?.serviceOrdersCount} phiếu
+            </span>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setDashboardView("DEBTS")}
+          className={`px-4 py-2 rounded-xl text-xs font-extrabold flex items-center gap-2 transition ${
+            dashboardView === "DEBTS"
+              ? "bg-teal-600 text-white shadow-xs"
+              : "text-slate-700 hover:bg-slate-100"
+          }`}
+        >
+          <Wallet className="w-4 h-4" />
+          <span>4. Thống kê Công nợ</span>
+          {(dm?.summary?.activeDebtOrdersCount || 0) > 0 && (
+            <span
+              className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${
+                dashboardView === "DEBTS"
+                  ? "bg-white/20 text-white"
+                  : "bg-amber-100 text-amber-800"
+              }`}
+            >
+              {dm?.summary?.activeDebtOrdersCount} đơn
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* TAB 3: KHỐI THỐNG KÊ RIÊNG MẢNG LÀM DỊCH VỤ (CĂNG VỢT / SỬA CHỮA) */}
+      {dashboardView === "SERVICES" && (
       <div className="bg-white rounded-2xl border border-indigo-200 p-5 shadow-sm space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -2524,8 +2483,10 @@ export default function RevenueDashboardModule({
           </div>
         )}
       </div>
+      )}
 
-      {/* KHU VỰC THỐNG KÊ CÔNG NỢ KHÁCH HÀNG (CHỈ HIỂN THỊ THÔNG TIN TRÊN DASHBOARD) */}
+      {/* TAB 4: KHU VỰC THỐNG KÊ CÔNG NỢ KHÁCH HÀNG (CHỈ HIỂN THỊ THÔNG TIN TRÊN DASHBOARD) */}
+      {dashboardView === "DEBTS" && (
       <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -2979,11 +2940,13 @@ export default function RevenueDashboardModule({
           </div>
         )}
       </div>
+      )}
 
-      {/* HÀNG 2: CÁC BIỂU ĐỒ DOANH THU TRỰC QUAN & CƠ CẤU THANH TOÁN / CATEGORY */}
+      {/* TAB 1: TỔNG QUAN & BIỂU ĐỒ DOANH THU TRỰC QUAN + CƠ CẤU THANH TOÁN / CATEGORY */}
+      {dashboardView === "OVERVIEW" && (
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
         {/* Cột trái: Biểu đồ Doanh thu (Cột đứng / Đường miền / Thanh ngang) & Bảng diễn biến */}
-        <div className="xl:col-span-7 bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
+        <div className="xl:col-span-8 bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h3 className="font-extrabold text-slate-900 text-base flex items-center gap-2">
@@ -3098,7 +3061,7 @@ export default function RevenueDashboardModule({
 
               {/* CHẾ ĐỘ 1: BIỂU ĐỒ CỘT ĐỨNG ĐÔI (COLUMN CHART) */}
               {chartType === "COLUMN" && (
-                <div className="pt-3 pb-1 overflow-hidden">
+                <div className="pt-4 pb-1">
                   <div className="flex items-stretch gap-2">
                     {/* Cột nhãn trục Y cố định bên trái */}
                     <div className="w-11 shrink-0 h-56 flex flex-col justify-between text-right pr-1 pb-1 select-none">
@@ -3112,7 +3075,7 @@ export default function RevenueDashboardModule({
                       ))}
                     </div>
 
-                    {/* Vùng vẽ các cột tràn đều 100% chiều ngang, không tràn khung */}
+                    {/* Vùng vẽ các cột tràn đều 100% chiều ngang */}
                     <div className="flex-1 min-w-0">
                       <div
                         className={`relative h-56 flex items-end border-b border-slate-300 pb-1 ${
@@ -3133,7 +3096,7 @@ export default function RevenueDashboardModule({
                           ))}
                         </div>
 
-                        {chartSeries.map((d) => {
+                        {chartSeries.map((d, barIdx) => {
                           const hasRev = d.netRevenue > 0;
                           const hasProf = d.grossProfit > 0;
                           const revH = hasRev
@@ -3148,27 +3111,37 @@ export default function RevenueDashboardModule({
                                 Math.max(4, Math.round((d.grossProfit / maxSeriesRevenue) * 100))
                               )
                             : 0;
+                          const edgePosClass =
+                            barIdx <= 1
+                              ? "left-0"
+                              : barIdx >= chartSeries.length - 2
+                              ? "right-0"
+                              : "left-1/2 -translate-x-1/2";
+                          const vertPosClass =
+                            revH > 62 ? "top-1" : "bottom-[58%]";
                           return (
                             <div
                               key={d.key}
-                              className="flex-1 min-w-0 h-full flex flex-col justify-end items-center group relative z-10"
+                              className="flex-1 min-w-0 h-full flex flex-col justify-end items-center group relative z-10 hover:z-30 rounded-t-lg hover:bg-teal-500/5 transition-colors duration-200"
                             >
-                              {/* Tooltip chi tiết khi di chuột */}
-                              <div className="opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity absolute bottom-full mb-2 z-30 bg-slate-900 text-white text-[11px] rounded-xl px-3 py-2 shadow-xl whitespace-nowrap border border-slate-700 left-1/2 -translate-x-1/2">
-                                <div className="font-extrabold text-teal-300 border-b border-slate-700 pb-1 mb-1">
-                                  {d.fullLabel} ({d.orders} đơn · {d.unitsSold} SP)
+                              {/* Tooltip chi tiết gọn gàng khi di chuột */}
+                              <div
+                                className={`invisible opacity-0 translate-y-1 group-hover:visible group-hover:opacity-100 group-hover:translate-y-0 pointer-events-none transition-all duration-150 absolute ${vertPosClass} ${edgePosClass} z-40 w-max min-w-[165px] max-w-[215px] bg-slate-900/95 text-white text-[11px] rounded-xl px-2.5 py-2 shadow-xl border border-slate-700`}
+                              >
+                                <div className="font-extrabold text-teal-300 border-b border-slate-700 pb-1 mb-1 truncate">
+                                  {d.fullLabel} · {d.orders} đơn
                                 </div>
-                                <div className="font-mono flex justify-between gap-3">
+                                <div className="font-mono flex justify-between gap-2.5 text-[10px]">
                                   <span className="text-slate-300">Doanh thu:</span>
                                   <strong className="text-teal-400">
                                     {formatVND(d.netRevenue)}
                                   </strong>
                                 </div>
-                                <div className="font-mono flex justify-between gap-3">
+                                <div className="font-mono flex justify-between gap-2.5 text-[10px]">
                                   <span className="text-slate-300">Giá vốn:</span>
                                   <span className="text-amber-300">{formatVND(d.cogs)}</span>
                                 </div>
-                                <div className="font-mono flex justify-between gap-3">
+                                <div className="font-mono flex justify-between gap-2.5 text-[10px]">
                                   <span className="text-slate-300">Lãi gộp:</span>
                                   <strong className="text-indigo-300">
                                     {formatVND(d.grossProfit)}
@@ -3184,7 +3157,7 @@ export default function RevenueDashboardModule({
                                     className="
                                       absolute left-1/2 -translate-x-1/2 mb-1
                                       text-[9px] sm:text-[10px] font-mono font-extrabold text-teal-800
-                                      whitespace-nowrap pointer-events-none
+                                      whitespace-nowrap pointer-events-none transition-transform duration-200 group-hover:-translate-y-0.5
                                     "
                                     style={{ bottom: `${Math.max(revH, profH)}%` }}
                                   >
@@ -3193,21 +3166,27 @@ export default function RevenueDashboardModule({
                                 )}
 
                                 <div
-                                  className={`flex-1 rounded-t-sm sm:rounded-t-md transition-all ${
+                                  className={`flex-1 rounded-t-sm sm:rounded-t-md animate-chart-grow-y transition-all duration-300 ${
                                     hasRev
-                                      ? "bg-gradient-to-t from-teal-600 to-teal-400 group-hover:from-teal-500 group-hover:to-teal-300 shadow-sm"
+                                      ? "bg-gradient-to-t from-teal-600 to-teal-400 group-hover:from-teal-500 group-hover:to-teal-300 group-hover:scale-x-110 group-hover:shadow-md shadow-sm"
                                       : "bg-slate-200/80"
                                   }`}
-                                  style={{ height: `${revH}%` }}
+                                  style={{
+                                    height: `${revH}%`,
+                                    animationDelay: `${Math.min(barIdx * 25, 350)}ms`,
+                                  }}
                                 />
-                                { (hasProf || chartSeries.length <= 16) && (
+                                {(hasProf || chartSeries.length <= 16) && (
                                   <div
-                                    className={`flex-1 rounded-t-sm sm:rounded-t-md transition-all ${
+                                    className={`flex-1 rounded-t-sm sm:rounded-t-md animate-chart-grow-y transition-all duration-300 ${
                                       hasProf
-                                        ? "bg-gradient-to-t from-indigo-600 to-indigo-400 group-hover:from-indigo-500 group-hover:to-indigo-300 shadow-sm"
+                                        ? "bg-gradient-to-t from-indigo-600 to-indigo-400 group-hover:from-indigo-500 group-hover:to-indigo-300 group-hover:scale-x-110 group-hover:shadow-md shadow-sm"
                                         : "bg-transparent"
                                     }`}
-                                    style={{ height: `${profH}%` }}
+                                    style={{
+                                      height: `${profH}%`,
+                                      animationDelay: `${Math.min(barIdx * 25 + 60, 410)}ms`,
+                                    }}
                                   />
                                 )}
                               </div>
@@ -3287,7 +3266,7 @@ export default function RevenueDashboardModule({
                         <svg
                           viewBox="0 0 1000 200"
                           preserveAspectRatio="none"
-                          className="w-full h-full block overflow-visible"
+                          className="w-full h-full block overflow-visible animate-chart-reveal-x"
                         >
                           <defs>
                             <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
@@ -3378,21 +3357,29 @@ export default function RevenueDashboardModule({
                                 <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-teal-500/50" />
 
                                 {/* Tooltip chi tiết khi hover */}
-                                <div className="opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity absolute bottom-full mb-2 left-1/2 -translate-x-1/2 z-30 bg-slate-900 text-white text-[11px] rounded-xl px-3 py-2 shadow-xl whitespace-nowrap border border-slate-700">
-                                  <div className="font-extrabold text-teal-300 border-b border-slate-700 pb-1 mb-1">
-                                    {d.fullLabel} ({d.orders} đơn · {d.unitsSold} SP)
+                                <div
+                                  className={`invisible opacity-0 group-hover:visible group-hover:opacity-100 pointer-events-none transition-all duration-150 absolute top-1 ${
+                                    i <= 1
+                                      ? "left-0"
+                                      : i >= n - 2
+                                      ? "right-0"
+                                      : "left-1/2 -translate-x-1/2"
+                                  } z-40 w-max min-w-[165px] max-w-[215px] bg-slate-900/95 text-white text-[11px] rounded-xl px-2.5 py-2 shadow-xl border border-slate-700`}
+                                >
+                                  <div className="font-extrabold text-teal-300 border-b border-slate-700 pb-1 mb-1 truncate">
+                                    {d.fullLabel} · {d.orders} đơn
                                   </div>
-                                  <div className="font-mono flex justify-between gap-3">
+                                  <div className="font-mono flex justify-between gap-2.5 text-[10px]">
                                     <span className="text-slate-300">Doanh thu:</span>
                                     <strong className="text-teal-400">
                                       {formatVND(d.netRevenue)}
                                     </strong>
                                   </div>
-                                  <div className="font-mono flex justify-between gap-3">
+                                  <div className="font-mono flex justify-between gap-2.5 text-[10px]">
                                     <span className="text-slate-300">Giá vốn:</span>
                                     <span className="text-amber-300">{formatVND(d.cogs)}</span>
                                   </div>
-                                  <div className="font-mono flex justify-between gap-3">
+                                  <div className="font-mono flex justify-between gap-2.5 text-[10px]">
                                     <span className="text-slate-300">Lãi gộp:</span>
                                     <strong className="text-indigo-300">
                                       {formatVND(d.grossProfit)}
@@ -3473,7 +3460,7 @@ export default function RevenueDashboardModule({
               {/* CHẾ ĐỘ 3: BIỂU ĐỒ THANH NGANG (BẢN CŨ QUEN THUỘC) */}
               {chartType === "HORIZONTAL" && (
                 <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
-                  {[...chartSeries].reverse().map((d) => {
+                  {[...chartSeries].reverse().map((d, barIdx) => {
                     const revPct = Math.min(
                       100,
                       Math.max(2, Math.round((Math.max(0, d.netRevenue) / maxSeriesRevenue) * 100))
@@ -3486,16 +3473,19 @@ export default function RevenueDashboardModule({
                       )
                     );
                     return (
-                      <div key={d.key} className="text-xs space-y-1.5 bg-white p-2.5 rounded-lg border border-slate-200/80">
-                        <div className="flex items-center justify-between font-mono">
-                          <span className="font-bold text-slate-800 flex items-center gap-1.5">
-                            <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                            {d.fullLabel}
-                            <span className="text-[10px] font-sans font-semibold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700">
+                      <div
+                        key={d.key}
+                        className="text-xs space-y-1.5 bg-white p-2.5 rounded-lg border border-slate-200/80 hover:border-teal-300 hover:shadow-sm transition-all duration-200"
+                      >
+                        <div className="flex items-center justify-between gap-2 font-mono">
+                          <span className="font-bold text-slate-800 flex items-center gap-1.5 min-w-0 truncate">
+                            <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                            <span className="truncate">{d.fullLabel}</span>
+                            <span className="text-[10px] font-sans font-semibold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 shrink-0">
                               {d.orders} đơn · {d.unitsSold} SP
                             </span>
                           </span>
-                          <span className="text-right">
+                          <span className="text-right shrink-0 whitespace-nowrap">
                             <strong className="text-teal-700">{formatVND(d.netRevenue)}</strong>
                             <span className="text-slate-400 mx-1">·</span>
                             <span className={`font-bold ${d.grossProfit >= 0 ? "text-teal-600" : "text-red-600"}`}>
@@ -3506,16 +3496,22 @@ export default function RevenueDashboardModule({
                         <div className="space-y-1">
                           <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
                             <div
-                              className="h-full bg-teal-500 rounded-full transition-all"
-                              style={{ width: `${revPct}%` }}
+                              className="h-full bg-teal-500 rounded-full animate-chart-grow-x transition-all duration-500"
+                              style={{
+                                width: `${revPct}%`,
+                                animationDelay: `${Math.min(barIdx * 35, 350)}ms`,
+                              }}
                             />
                           </div>
                           <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
                             <div
-                              className={`h-full rounded-full transition-all ${
+                              className={`h-full rounded-full animate-chart-grow-x transition-all duration-500 ${
                                 d.grossProfit >= 0 ? "bg-teal-600" : "bg-red-500"
                               }`}
-                              style={{ width: `${profPct}%` }}
+                              style={{
+                                width: `${profPct}%`,
+                                animationDelay: `${Math.min(barIdx * 35 + 70, 420)}ms`,
+                              }}
                             />
                           </div>
                         </div>
@@ -3531,24 +3527,41 @@ export default function RevenueDashboardModule({
             </div>
           )}
 
-          {/* Bảng chi tiết theo ngày */}
+          {/* Bảng chi tiết theo ngày (Thu gọn mặc định để Overview vừa 1 màn hình) */}
           {reversedDaily.length > 0 && (
             <div className="space-y-3">
-              <div className="overflow-x-auto border border-slate-200 rounded-xl">
-                <table className="w-full text-xs text-left">
-                  <thead className="bg-slate-100 text-slate-700 border-b border-slate-200 uppercase">
-                    <tr>
-                      <th className="py-2.5 px-3">Ngày</th>
-                      <th className="py-2.5 px-2.5 text-right">Số đơn</th>
-                      <th className="py-2.5 px-2.5 text-right">SL bán</th>
-                      <th className="py-2.5 px-3 text-right">Tiền hàng</th>
-                      <th className="py-2.5 px-3 text-right text-amber-300">Giảm giá</th>
-                      <th className="py-2.5 px-3 text-right text-teal-300">Doanh thu thuần</th>
-                      <th className="py-2.5 px-3 text-right text-teal-300">Thực thu</th>
-                      <th className="py-2.5 px-3 text-right">Giá vốn</th>
-                      <th className="py-2.5 px-3 text-right text-indigo-300">Lãi gộp</th>
-                    </tr>
-                  </thead>
+              <div className="flex items-center justify-between pt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowDailyTable((v) => !v)}
+                  className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold inline-flex items-center gap-1.5 transition"
+                >
+                  <Calendar className="w-3.5 h-3.5 text-teal-600" />
+                  <span>
+                    {showDailyTable
+                      ? `Ẩn bảng chi tiết theo ngày (${reversedDaily.length} ngày)`
+                      : `Xem bảng chi tiết theo ngày (${reversedDaily.length} ngày)`}
+                  </span>
+                </button>
+              </div>
+
+              {showDailyTable && (
+                <>
+                  <div className="overflow-x-auto border border-slate-200 rounded-xl">
+                    <table className="w-full text-xs text-left">
+                      <thead className="bg-slate-100 text-slate-700 border-b border-slate-200 uppercase">
+                        <tr>
+                          <th className="py-2.5 px-3">Ngày</th>
+                          <th className="py-2.5 px-2.5 text-right">Số đơn</th>
+                          <th className="py-2.5 px-2.5 text-right">SL bán</th>
+                          <th className="py-2.5 px-3 text-right">Tiền hàng</th>
+                          <th className="py-2.5 px-3 text-right text-amber-700">Giảm giá</th>
+                          <th className="py-2.5 px-3 text-right text-teal-700">Doanh thu thuần</th>
+                          <th className="py-2.5 px-3 text-right text-teal-700">Thực thu</th>
+                          <th className="py-2.5 px-3 text-right">Giá vốn</th>
+                          <th className="py-2.5 px-3 text-right text-indigo-700">Lãi gộp</th>
+                        </tr>
+                      </thead>
                   <tbody className="divide-y divide-slate-200">
                     {pagedDaily.map((d) => (
                       <tr key={d.date} className="hover:bg-slate-50 font-mono">
@@ -3610,20 +3623,60 @@ export default function RevenueDashboardModule({
                   </div>
                 </div>
               )}
+                </>
+              )}
             </div>
           )}
         </div>
 
-        {/* Cột phải: Biểu đồ Tròn Donut & Cơ cấu Thanh toán / Category */}
-        <div className="xl:col-span-5 space-y-5">
-          {/* Biểu đồ Tròn & Chi tiết theo phương thức thanh toán */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-3">
+        {/* Cột phải: Cơ cấu Thanh toán & Danh mục gộp gọn 1 Card có nút chuyển */}
+        <div className="xl:col-span-4 bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
-              <CreditCard className="w-4 h-4 text-teal-600" />
-              Biểu đồ Doanh thu theo Hình thức Thanh toán
+              {structureView === "PAYMENT" ? (
+                <>
+                  <CreditCard className="w-4 h-4 text-teal-600" />
+                  Cơ cấu Thanh toán
+                </>
+              ) : (
+                <>
+                  <Layers className="w-4 h-4 text-teal-600" />
+                  Tỷ trọng Danh mục
+                </>
+              )}
             </h3>
 
+            <div className="inline-flex rounded-lg bg-slate-100 p-0.5 border border-slate-200 text-[11px] font-bold">
+              <button
+                type="button"
+                onClick={() => setStructureView("PAYMENT")}
+                className={`px-2.5 py-1 rounded-md transition ${
+                  structureView === "PAYMENT"
+                    ? "bg-teal-600 text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                Thanh toán
+              </button>
+              <button
+                type="button"
+                onClick={() => setStructureView("CATEGORY")}
+                className={`px-2.5 py-1 rounded-md transition ${
+                  structureView === "CATEGORY"
+                    ? "bg-teal-600 text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                Danh mục
+              </button>
+            </div>
+          </div>
+
+          {structureView === "PAYMENT" ? (
+            <div className="space-y-3">
+
             <SvgDonutChart
+              stacked
               centerLabel="Tổng đơn thu"
               centerValue={formatShortVND(s?.orderRevenue || 0)}
               items={(data?.byPaymentMethod || []).map((pm, idx) => ({
@@ -3635,36 +3688,32 @@ export default function RevenueDashboardModule({
               }))}
             />
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
               {(data?.byPaymentMethod || []).map((pm) => (
                 <div
                   key={pm.method}
-                  className="p-3 rounded-xl border border-slate-200 bg-slate-50/70 space-y-1"
+                  className="p-3 rounded-xl border border-slate-200 bg-slate-50/70 hover:bg-white hover:border-teal-300 hover:shadow-xs transition-all space-y-1 min-w-0"
                 >
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-bold text-slate-800">{pm.label}</span>
-                    <span className="font-mono text-[11px] px-2 py-0.5 rounded-full bg-teal-100 text-teal-800 font-bold">
+                  <div className="flex items-center justify-between gap-1.5 text-xs">
+                    <span className="font-bold text-slate-800 truncate">{pm.label}</span>
+                    <span className="font-mono text-[11px] px-2 py-0.5 rounded-full bg-teal-100 text-teal-800 font-bold shrink-0">
                       {pm.sharePercent}%
                     </span>
                   </div>
-                  <div className="font-mono font-extrabold text-sm text-slate-900">
+                  <div className="font-mono font-extrabold text-sm text-slate-900 truncate">
                     {formatVND(pm.revenue)}
                   </div>
                   <div className="text-[11px] text-slate-500">{pm.orders} đơn hàng</div>
                 </div>
               ))}
             </div>
-          </div>
-
-          {/* Biểu đồ Tròn & Tỷ trọng theo Category */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-3">
-            <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
-              <Layers className="w-4 h-4 text-teal-600" />
-              Biểu đồ Tỷ trọng Doanh thu & Lãi gộp theo Danh mục (Category)
-            </h3>
+            </div>
+          ) : (
+            <div className="space-y-3">
             {data?.byCategory && data.byCategory.length > 0 ? (
               <>
                 <SvgDonutChart
+                  stacked
                   centerLabel="Danh mục"
                   centerValue={`${data.byCategory.length} nhóm`}
                   items={data.byCategory.map((c, idx) => ({
@@ -3676,37 +3725,38 @@ export default function RevenueDashboardModule({
                   }))}
                 />
 
-                <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1 pt-1">
+                <div className="space-y-2 max-h-64 overflow-y-auto pr-1 pt-1">
                   {data.byCategory.map((c, idx) => (
                     <div
                       key={c.categoryId}
-                      className="p-3 rounded-xl border border-slate-200 space-y-1.5"
+                      className="p-3 rounded-xl border border-slate-200 hover:border-teal-300 hover:shadow-xs transition-all space-y-1.5 min-w-0"
                     >
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="font-extrabold text-slate-900 flex items-center gap-1.5">
+                      <div className="flex items-center justify-between gap-2 text-xs min-w-0">
+                        <span className="font-extrabold text-slate-900 flex items-center gap-1.5 min-w-0">
                           <span
-                            className="w-2.5 h-2.5 rounded-full inline-block"
+                            className="w-2.5 h-2.5 rounded-full shrink-0"
                             style={{ backgroundColor: CHART_COLORS[idx % CHART_COLORS.length] }}
                           />
-                          {c.categoryName}{" "}
-                          <span className="font-mono text-slate-500 font-normal">
+                          <span className="truncate">{c.categoryName}</span>
+                          <span className="font-mono text-slate-500 font-normal shrink-0 whitespace-nowrap">
                             ({c.unitsSold} SP)
                           </span>
                         </span>
-                        <span className="font-mono font-bold text-teal-700">
-                          {formatVND(c.revenue)} ({c.sharePercent}%)
+                        <span className="font-mono font-bold text-teal-700 shrink-0 whitespace-nowrap">
+                          {formatShortVND(c.revenue)} ({c.sharePercent}%)
                         </span>
                       </div>
                       <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
                         <div
-                          className="h-full rounded-full"
+                          className="h-full rounded-full animate-chart-grow-x"
                           style={{
                             width: `${Math.min(100, Math.max(3, c.sharePercent))}%`,
                             backgroundColor: CHART_COLORS[idx % CHART_COLORS.length],
+                            animationDelay: `${Math.min(idx * 45, 360)}ms`,
                           }}
                         />
                       </div>
-                      <div className="flex justify-between text-[11px] text-slate-500 font-mono">
+                      <div className="flex flex-wrap justify-between gap-x-3 gap-y-0.5 text-[11px] text-slate-500 font-mono">
                         <span>Giá vốn: {formatVND(c.cogs)}</span>
                         <span className="font-bold text-indigo-700">
                           Lãi gộp: {formatVND(c.grossProfit)}
@@ -3721,10 +3771,15 @@ export default function RevenueDashboardModule({
                 Chưa có doanh thu theo danh mục trong kỳ này.
               </div>
             )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
+      )}
 
+      {/* TAB 2: PHÂN TÍCH SẢN PHẨM BÁN CHẠY & ĐÓNG GÓP DOANH THU */}
+      {dashboardView === "PRODUCTS" && (
+      <div className="space-y-5">
       {/* HÀNG 2.5: BIỂU ĐỒ TOP 8 SẢN PHẨM MANG LẠI DOANH THU & LÃI GỘP CAO NHẤT */}
       {top8RevenueProducts.length > 0 && (
         <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
@@ -3761,17 +3816,17 @@ export default function RevenueDashboardModule({
               return (
                 <div
                   key={p.productId || p.productCode}
-                  className="bg-white p-3 rounded-xl border border-slate-200/80 space-y-2 text-xs shadow-sm"
+                  className="bg-white p-3 rounded-xl border border-slate-200/80 hover:border-teal-300 hover:shadow-md transition-all duration-200 space-y-2 text-xs shadow-sm"
                 >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-bold text-slate-900 truncate">
+                  <div className="flex items-center justify-between gap-2 min-w-0">
+                    <span className="font-bold text-slate-900 truncate min-w-0">
                       <span className="font-mono text-teal-700 mr-1.5">#{idx + 1}</span>
                       {p.productName}{" "}
                       <span className="font-mono text-[11px] text-slate-500 font-normal">
                         ({p.netSoldQty} {p.unit})
                       </span>
                     </span>
-                    <span className="font-mono shrink-0">
+                    <span className="font-mono shrink-0 whitespace-nowrap">
                       <strong className="text-teal-700">{formatShortVND(p.revenue)}</strong>
                       <span className="text-slate-300 mx-1.5">|</span>
                       <strong className={p.grossProfit >= 0 ? "text-teal-600" : "text-red-600"}>
@@ -3780,29 +3835,35 @@ export default function RevenueDashboardModule({
                     </span>
                   </div>
 
-                  {/* 2 Thanh riêng biệt đồng nhất chiều cao (h-2.5): Thanh 1 (Doanh thu - Xanh lá) & Thanh 2 (Lãi gộp - Xanh lam / Đỏ) */}
+                  {/* 2 Thanh riêng biệt đồng nhất chiều cao (h-2.5): Thanh 1 (Doanh thu) & Thanh 2 (Lãi gộp) */}
                   <div className="space-y-1.5">
                     <div className="flex items-center gap-2">
-                      <span className="w-14 text-[10px] font-semibold text-slate-500 shrink-0">
+                      <span className="w-16 text-[10px] font-semibold text-slate-500 shrink-0">
                         Doanh thu
                       </span>
                       <div className="flex-1 h-2.5 bg-slate-100 rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-teal-500 rounded-full transition-all"
-                          style={{ width: `${revPct}%` }}
+                          className="h-full bg-teal-500 rounded-full animate-chart-grow-x transition-all duration-500"
+                          style={{
+                            width: `${revPct}%`,
+                            animationDelay: `${Math.min(idx * 45, 360)}ms`,
+                          }}
                         />
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="w-14 text-[10px] font-semibold text-slate-500 shrink-0">
+                      <span className="w-16 text-[10px] font-semibold text-slate-500 shrink-0">
                         Lãi gộp
                       </span>
                       <div className="flex-1 h-2.5 bg-slate-100 rounded-full overflow-hidden">
                         <div
-                          className={`h-full rounded-full transition-all ${
+                          className={`h-full rounded-full animate-chart-grow-x transition-all duration-500 ${
                             p.grossProfit >= 0 ? "bg-teal-600" : "bg-red-500"
                           }`}
-                          style={{ width: `${profPct}%` }}
+                          style={{
+                            width: `${profPct}%`,
+                            animationDelay: `${Math.min(idx * 45 + 70, 430)}ms`,
+                          }}
                         />
                       </div>
                     </div>
@@ -4009,6 +4070,8 @@ export default function RevenueDashboardModule({
           </div>
         )}
       </div>
+      </div>
+      )}
     </div>
   );
 }
