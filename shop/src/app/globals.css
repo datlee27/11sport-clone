@@ -1,0 +1,59 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-brand-primary: #065f46;
+  --color-brand-primary-hover: #064e3b;
+  --color-brand-primary-light: #047857;
+  --color-brand-tint: #ecfdf5;
+  --color-brand-border: #a7f3d0;
+
+  --color-accent-volt: #bef264;
+  --color-accent-hot: #dc2626;
+  --color-accent-hot-tint: #fef2f2;
+
+  --color-bg-page: #ffffff;
+  --color-bg-subtle: #f8fafc;
+  --color-bg-muted: #f1f5f9;
+  --color-border: #e2e8f0;
+
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #334155;
+  --color-text-muted: #64748b;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    color: var(--color-text-primary);
+    background-color: var(--color-bg-page);
+  }
+
+  body {
+    font-family: var(--font-sans), "Be Vietnam Pro", system-ui, sans-serif;
+    color: var(--color-text-primary);
+    background-color: var(--color-bg-page);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Tabular numerals for prices, SKUs, order codes, countdowns */
+  .font-mono {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
