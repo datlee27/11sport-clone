@@ -125,16 +125,9 @@ export default function WebSettingsTab({ role }: { role: UserRole }) {
         method: "PUT",
         body: JSON.stringify({
           onlineStockMode: form.onlineStockMode,
-          ga4Id: form.ga4Id,
-          gtmId: form.gtmId,
-          payosClientId: form.payosClientId,
-          payosApiKey: form.payosApiKey,
-          payosChecksumKey: form.payosChecksumKey,
-          webhookSecret: form.webhookSecret,
-          revalidateSecret: form.revalidateSecret,
         }),
       });
-      setSuccess("Đã lưu cấu hình kỹ thuật & thanh toán!");
+      setSuccess("Đã lưu chế độ kho Online!");
       await loadSettings();
     } catch (err: any) {
       setError(err?.message || "Lưu cấu hình kỹ thuật thất bại");
@@ -319,7 +312,7 @@ export default function WebSettingsTab({ role }: { role: UserRole }) {
         </div>
       </form>
 
-      {/* Phần 2: Cấu hình kỹ thuật (ADMIN ONLY) */}
+      {/* Phần 2: Chế độ kho Online (ADMIN ONLY) */}
       <form
         onSubmit={handleSaveTechnical}
         className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4"
@@ -327,110 +320,36 @@ export default function WebSettingsTab({ role }: { role: UserRole }) {
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="font-extrabold text-sm text-slate-900">
-              Cấu hình Kỹ thuật, Kho Online &amp; PayOS Keys
+              Cấu hình Kho Online
             </h3>
-            {!isAdmin && <AdminOnlyBadge text="Chỉ ADMIN được sửa cấu hình kỹ thuật" />}
+            {!isAdmin && <AdminOnlyBadge text="Chỉ ADMIN được sửa cấu hình kho Online" />}
           </div>
           <button
             type="submit"
             disabled={!isAdmin || savingTech}
-            title={!isAdmin ? "Chỉ ADMIN được sửa cấu hình kỹ thuật" : "Lưu cấu hình kỹ thuật"}
-            className={`min-h-[40px] px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 ${
-              isAdmin
+            title={!isAdmin ? "Chỉ ADMIN được sửa cấu hình kho Online" : "Lưu chế độ kho Online"}
+            className={`min-h-[40px] px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 ${isAdmin
                 ? "bg-teal-600 hover:bg-teal-700 text-white"
                 : "bg-slate-200 text-slate-500 cursor-not-allowed"
-            }`}
+              }`}
           >
             {!isAdmin ? <Lock className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-            <span>{savingTech ? "Đang lưu..." : "Lưu cấu hình kỹ thuật"}</span>
+            <span>{savingTech ? "Đang lưu..." : "Lưu chế độ kho"}</span>
           </button>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-          <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Chế độ kho Online</label>
-            <select
-              disabled={!isAdmin}
-              value={form.onlineStockMode || "FLOOR_1"}
-              onChange={(e) => setForm({ ...form, onlineStockMode: e.target.value as any })}
-              className="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm disabled:bg-slate-100 disabled:text-slate-500"
-            >
-              <option value="FLOOR_1">FLOOR_1 (Chỉ bán tồn kho Tầng 1)</option>
-              <option value="ALL">ALL (Gộp Tầng 1 + Tầng 2)</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Google Analytics 4 (GA4 ID)</label>
-            <input
-              type="text"
-              disabled={!isAdmin}
-              value={form.ga4Id || ""}
-              onChange={(e) => setForm({ ...form, ga4Id: e.target.value })}
-              placeholder="G-XXXXXXXXXX"
-              className="w-full px-3 py-2 rounded-xl border border-slate-300 font-mono text-sm disabled:bg-slate-100"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Google Tag Manager (GTM ID)</label>
-            <input
-              type="text"
-              disabled={!isAdmin}
-              value={form.gtmId || ""}
-              onChange={(e) => setForm({ ...form, gtmId: e.target.value })}
-              placeholder="GTM-XXXXXXX"
-              className="w-full px-3 py-2 rounded-xl border border-slate-300 font-mono text-sm disabled:bg-slate-100"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase mb-1">PayOS Client ID</label>
-            <input
-              type="text"
-              disabled={!isAdmin}
-              value={form.payosClientId || ""}
-              onChange={(e) => setForm({ ...form, payosClientId: e.target.value })}
-              className="w-full px-3 py-2 rounded-xl border border-slate-300 font-mono text-sm disabled:bg-slate-100"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase mb-1">PayOS API Key</label>
-            <input
-              type="password"
-              disabled={!isAdmin}
-              value={form.payosApiKey || ""}
-              onChange={(e) => setForm({ ...form, payosApiKey: e.target.value })}
-              className="w-full px-3 py-2 rounded-xl border border-slate-300 font-mono text-sm disabled:bg-slate-100"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase mb-1">PayOS Checksum Key</label>
-            <input
-              type="password"
-              disabled={!isAdmin}
-              value={form.payosChecksumKey || ""}
-              onChange={(e) => setForm({ ...form, payosChecksumKey: e.target.value })}
-              className="w-full px-3 py-2 rounded-xl border border-slate-300 font-mono text-sm disabled:bg-slate-100"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Webhook Secret</label>
-            <input
-              type="password"
-              disabled={!isAdmin}
-              value={form.webhookSecret || ""}
-              onChange={(e) => setForm({ ...form, webhookSecret: e.target.value })}
-              className="w-full px-3 py-2 rounded-xl border border-slate-300 font-mono text-sm disabled:bg-slate-100"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Revalidate Secret</label>
-            <input
-              type="password"
-              disabled={!isAdmin}
-              value={form.revalidateSecret || ""}
-              onChange={(e) => setForm({ ...form, revalidateSecret: e.target.value })}
-              className="w-full px-3 py-2 rounded-xl border border-slate-300 font-mono text-sm disabled:bg-slate-100"
-            />
-          </div>
+        <div className="max-w-md space-y-2">
+          <label className="block text-xs font-bold text-slate-700 uppercase">Chế độ kho Online</label>
+          <select
+            disabled={!isAdmin}
+            value={form.onlineStockMode || "FLOOR_1"}
+            onChange={(e) => setForm({ ...form, onlineStockMode: e.target.value as any })}
+            className="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm disabled:bg-slate-100 disabled:text-slate-500"
+          >
+            <option value="FLOOR_1">FLOOR_1 (Chỉ bán tồn kho Tầng 1)</option>
+            <option value="ALL">ALL (Gộp Tầng 1 + Tầng 2)</option>
+          </select>
+
         </div>
       </form>
     </div>
