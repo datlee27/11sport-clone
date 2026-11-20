@@ -144,7 +144,16 @@ function toPublicSiteSettings(setting: any) {
     facebookUrl: setting.facebookUrl || '',
     tiktokUrl: setting.tiktokUrl || '',
     youtubeUrl: setting.youtubeUrl || '',
-    showrooms: Array.isArray(setting.showrooms) ? setting.showrooms : [],
+    showrooms: Array.isArray(setting.showrooms)
+      ? setting.showrooms.map((s: any) => ({
+          name: s?.name || '',
+          address: s?.address || '',
+          phone: s?.phone || s?.hotline || '',
+          hours: s?.hours || '',
+          mapUrl: s?.mapUrl || '',
+          embedUrl: s?.embedUrl || '',
+        }))
+      : [],
     uspItems: Array.isArray(setting.uspItems) ? setting.uspItems : [],
     shipping: {
       defaultFee: Number(setting.defaultShippingFee ?? 30000),

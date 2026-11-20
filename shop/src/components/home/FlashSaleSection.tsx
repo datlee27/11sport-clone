@@ -24,11 +24,12 @@ function getTimeLeft(endAt: string) {
 }
 
 export function FlashSaleSection({ flashSale }: FlashSaleSectionProps) {
-  const [timeLeft, setTimeLeft] = useState(() =>
-    flashSale?.endAt
-      ? getTimeLeft(flashSale.endAt)
-      : { expired: true, hours: "00", minutes: "00", seconds: "00" }
-  );
+  const [timeLeft, setTimeLeft] = useState({
+    expired: !flashSale?.endAt,
+    hours: "00",
+    minutes: "00",
+    seconds: "00",
+  });
 
   useEffect(() => {
     if (!flashSale?.endAt) return;

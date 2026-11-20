@@ -14,6 +14,8 @@ import {
   X,
 } from "lucide-react";
 import { useCartStore } from "@/store/cartStore";
+import { formatVND, resolveMediaUrl } from "@/lib/format";
+import type { SiteSettingsData } from "@/lib/storefront";
 
 interface NavSubItem {
   label: string;
@@ -110,8 +112,18 @@ const NAV_ITEMS: NavGroup[] = [
   },
 ];
 
-export function Header() {
+export function Header({ settings }: { settings?: SiteSettingsData | null }) {
   const router = useRouter();
+  const siteName = settings?.siteName || "11 SPORT";
+  const hotline = settings?.hotline || "0900 000 011";
+  const hotlineDigits = hotline.replace(/\D/g, "") || "0900000011";
+  const freeShipThreshold = settings?.shipping?.freeShipThreshold ?? 500000;
+  const topBarText =
+    settings?.topBarText ||
+    (freeShipThreshold > 0
+      ? `Freeship toàn quốc đơn từ ${formatVND(freeShipThreshold)} • Chính hãng 100%`
+      : "Freeship toàn quốc • Chính hãng 100%");
+  const logoSrc = resolveMediaUrl(settings?.logoUrl);
   const items = useCartStore((s) => s.items);
   const openDrawer = useCartStore((s) => s.openDrawer);
 
@@ -190,15 +202,13 @@ export function Header() {
       {/* Top Announcement Bar */}
       <div className="bg-brand-primary-hover text-white text-xs h-8 flex items-center">
         <div className="max-w-7xl w-full mx-auto px-4 lg:px-6 flex items-center justify-between gap-4">
-          <p className="truncate font-medium">
-            Freeship toàn quốc đơn từ 500.000₫ • Chính hãng 100%
-          </p>
+          <p className="truncate font-medium">{topBarText}</p>
           <a
-            href="tel:0900000011"
+            href={`tel:${hotlineDigits}`}
             className="hidden sm:inline-flex items-center gap-1.5 font-mono font-semibold hover:text-accent-volt transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-volt rounded"
           >
             <Phone className="w-3.5 h-3.5" aria-hidden="true" />
-            <span>Hotline: 0900.000.011</span>
+            <span>Hotline: {hotline}</span>
           </a>
         </div>
       </div>
@@ -225,11 +235,19 @@ export function Header() {
             href="/"
             className="inline-flex items-center gap-2 shrink-0 min-h-[44px] px-1 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
           >
-            <span className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-brand-primary text-white font-mono font-bold text-sm tracking-tight">
-              11
-            </span>
+            {logoSrc ? (
+              <img
+                src={logoSrc}
+                alt={siteName}
+                className="h-9 w-auto max-w-[140px] object-contain"
+              />
+            ) : (
+              <span className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-brand-primary text-white font-mono font-bold text-sm tracking-tight">
+                11
+              </span>
+            )}
             <span className="font-extrabold text-lg lg:text-xl tracking-tight text-ink-primary">
-              11 SPORT
+              {siteName}
             </span>
           </Link>
 

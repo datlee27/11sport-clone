@@ -9,12 +9,10 @@ import {
   TabFeedbackBanner,
   TabLoadingState,
 } from "./WebShared";
-import { Lock, Save } from "lucide-react";
+import { Lock, Plus, Save, Trash2 } from "lucide-react";
 
 const DEFAULT_SHOWROOMS: WebShowroomItem[] = [
   { name: "Showroom 1", address: "", hotline: "", hours: "08:30 - 21:30" },
-  { name: "Showroom 2", address: "", hotline: "", hours: "08:30 - 21:30" },
-  { name: "Showroom 3", address: "", hotline: "", hours: "08:30 - 21:30" },
 ];
 
 export default function WebSettingsTab({ role }: { role: UserRole }) {
@@ -59,6 +57,28 @@ export default function WebSettingsTab({ role }: { role: UserRole }) {
     setForm((prev) => {
       const list = [...(prev.showrooms || DEFAULT_SHOWROOMS)];
       list[idx] = { ...list[idx], [field]: value };
+      return { ...prev, showrooms: list };
+    });
+  };
+
+  const addShowroom = () => {
+    setForm((prev) => {
+      const list = [...(prev.showrooms || DEFAULT_SHOWROOMS)];
+      list.push({
+        name: `Showroom ${list.length + 1}`,
+        address: "",
+        hotline: "",
+        hours: "08:30 - 21:30",
+      });
+      return { ...prev, showrooms: list };
+    });
+  };
+
+  const removeShowroom = (idx: number) => {
+    setForm((prev) => {
+      const list = [...(prev.showrooms || DEFAULT_SHOWROOMS)];
+      if (list.length <= 1) return prev;
+      list.splice(idx, 1);
       return { ...prev, showrooms: list };
     });
   };
@@ -235,17 +255,41 @@ export default function WebSettingsTab({ role }: { role: UserRole }) {
         />
 
         <div className="space-y-2.5 pt-2">
-          <div className="text-xs font-extrabold text-slate-800 uppercase">Hệ thống 3 Showroom</div>
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-xs font-extrabold text-slate-800 uppercase">
+              Hệ thống Showroom ({(form.showrooms || DEFAULT_SHOWROOMS).length})
+            </div>
+            <button
+              type="button"
+              onClick={addShowroom}
+              className="px-3 py-1.5 rounded-xl border border-teal-600 text-teal-700 hover:bg-teal-50 text-xs font-bold inline-flex items-center gap-1 transition cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Thêm showroom</span>
+            </button>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {(form.showrooms || DEFAULT_SHOWROOMS).slice(0, 3).map((sr, idx) => (
+            {(form.showrooms || DEFAULT_SHOWROOMS).map((sr, idx, arr) => (
               <div key={idx} className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
-                <input
-                  type="text"
-                  value={sr.name}
-                  onChange={(e) => updateShowroom(idx, "name", e.target.value)}
-                  placeholder={`Showroom ${idx + 1}`}
-                  className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-bold bg-white"
-                />
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="text"
+                    value={sr.name}
+                    onChange={(e) => updateShowroom(idx, "name", e.target.value)}
+                    placeholder={`Showroom ${idx + 1}`}
+                    className="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-bold bg-white"
+                  />
+                  {arr.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeShowroom(idx)}
+                      title="Xóa showroom này"
+                      className="p-1.5 rounded-lg border border-slate-200 bg-white text-red-600 hover:bg-red-50 shrink-0"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
                 <input
                   type="text"
                   value={sr.address}

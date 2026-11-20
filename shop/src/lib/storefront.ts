@@ -12,6 +12,41 @@ import type {
   StaticPageDetail,
 } from "@/types/storefront";
 
+export interface SiteShowroomData {
+  name: string;
+  address: string;
+  phone?: string;
+  hours?: string;
+  mapUrl?: string;
+  embedUrl?: string;
+}
+
+export interface SiteSettingsData {
+  siteName?: string;
+  logoUrl?: string;
+  topBarText?: string;
+  hotline?: string;
+  email?: string;
+  zaloUrl?: string;
+  messengerUrl?: string;
+  showrooms?: SiteShowroomData[];
+  shipping?: {
+    defaultFee?: number;
+    freeShipThreshold?: number;
+  };
+}
+
+export async function fetchSiteSettings(): Promise<SiteSettingsData | null> {
+  try {
+    const res = await apiFetch<{ data: SiteSettingsData }>("/public/settings", {
+      next: { revalidate: 60, tags: ["settings", "home"] },
+    });
+    return res?.data ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export async function fetchHomeData(): Promise<HomeDataResponse | null> {
   try {
     const res = await apiFetch<{ data: HomeDataResponse }>("/public/home", {

@@ -6,6 +6,7 @@ import { Footer } from "@/components/layout/Footer";
 import { MiniCartDrawer } from "@/components/layout/MiniCartDrawer";
 import { FloatingContactWidget } from "@/components/layout/FloatingContactWidget";
 import { JsonLd } from "@/components/seo/JsonLd";
+import { fetchSiteSettings } from "@/lib/storefront";
 import {
   buildOrganizationJsonLd,
   buildWebSiteJsonLd,
@@ -48,11 +49,13 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const settings = await fetchSiteSettings();
+
   return (
     <html
       lang="vi"
@@ -67,14 +70,14 @@ export default function RootLayout({
           Chuyển đến nội dung chính
         </a>
 
-        <Header />
+        <Header settings={settings} />
         <main id="main-content" className="flex-1">
           {children}
         </main>
-        <Footer />
+        <Footer settings={settings} />
 
         <MiniCartDrawer />
-        <FloatingContactWidget />
+        <FloatingContactWidget settings={settings} />
       </body>
     </html>
   );

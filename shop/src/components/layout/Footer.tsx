@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowUp, ChevronDown, MapPin, Phone, ShieldCheck } from "lucide-react";
+import { ArrowUp, ChevronDown, Clock, MapPin, Phone, ShieldCheck } from "lucide-react";
+import type { SiteShowroomData, SiteSettingsData } from "@/lib/storefront";
 
 interface FooterColumn {
   id: string;
@@ -39,13 +40,13 @@ const FOOTER_COLUMNS: FooterColumn[] = [
     links: [
       { label: "Giới thiệu 11 Sport", href: "/gioi-thieu" },
       { label: "Tin tức & Hướng dẫn chọn đồ", href: "/tin-tuc" },
-      { label: "Hệ thống 3 Showroom", href: "/lien-he" },
+      { label: "Hệ thống Showroom", href: "/lien-he" },
       { label: "Tra cứu đơn hàng", href: "/tai-khoan" },
     ],
   },
 ];
 
-const SHOWROOMS = [
+const SHOWROOMS: SiteShowroomData[] = [
   {
     name: "Chi nhánh Quận 1 (Flagship)",
     address: "112 Nguyễn Trãi, P. Bến Thành, Q.1, TP.HCM",
@@ -63,8 +64,14 @@ const SHOWROOMS = [
   },
 ];
 
-export function Footer() {
+export function Footer({ settings }: { settings?: SiteSettingsData | null }) {
   const [openCol, setOpenCol] = useState<string | null>("showrooms");
+  const siteName = settings?.siteName || "11 Sport";
+  const defaultHotline = settings?.hotline || "0900 000 011";
+  const showrooms =
+    settings?.showrooms && settings.showrooms.length > 0
+      ? settings.showrooms
+      : SHOWROOMS;
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -85,40 +92,52 @@ export function Footer() {
               className="w-full md:pointer-events-none flex items-center justify-between min-h-[44px] md:min-h-0 text-left"
             >
               <span className="text-sm font-bold uppercase tracking-wider text-ink-primary">
-                Hệ thống Showroom 11 Sport
+                Hệ thống Showroom {siteName}
               </span>
               <ChevronDown
-                className={`w-5 h-5 text-ink-secondary md:hidden transition-transform ${
-                  openCol === "showrooms" ? "rotate-180" : ""
-                }`}
+                className={`w-5 h-5 text-ink-secondary md:hidden transition-transform ${openCol === "showrooms" ? "rotate-180" : ""
+                  }`}
                 aria-hidden="true"
               />
             </button>
 
             <div
-              className={`mt-3 space-y-3 ${
-                openCol === "showrooms" ? "block" : "hidden md:block"
-              }`}
+              className={`mt-3 space-y-3 ${openCol === "showrooms" ? "block" : "hidden md:block"
+                }`}
             >
-              {SHOWROOMS.map((branch) => (
-                <div key={branch.name} className="text-sm text-ink-secondary">
-                  <p className="font-semibold text-ink-primary">{branch.name}</p>
-                  <p className="flex items-start gap-1.5 mt-0.5">
-                    <MapPin
-                      className="w-4 h-4 text-brand-primary shrink-0 mt-0.5"
-                      aria-hidden="true"
-                    />
-                    <span>{branch.address}</span>
-                  </p>
-                  <a
-                    href={`tel:${branch.phone.replace(/\./g, "")}`}
-                    className="inline-flex items-center gap-1.5 mt-0.5 font-mono text-xs font-semibold text-brand-primary hover:underline"
-                  >
-                    <Phone className="w-3.5 h-3.5" aria-hidden="true" />
-                    <span>{branch.phone}</span>
-                  </a>
-                </div>
-              ))}
+              {showrooms.map((branch, idx) => {
+                const branchPhone = branch.phone || defaultHotline;
+                const branchDigits = branchPhone.replace(/\D/g, "") || "0900000011";
+                return (
+                  <div key={`${branch.name}-${idx}`} className="text-sm text-ink-secondary">
+                    <p className="font-semibold text-ink-primary">{branch.name}</p>
+                    {branch.address && (
+                      <p className="flex items-start gap-1.5 mt-0.5">
+                        <MapPin
+                          className="w-4 h-4 text-brand-primary shrink-0 mt-0.5"
+                          aria-hidden="true"
+                        />
+                        <span>{branch.address}</span>
+                      </p>
+                    )}
+                    {branch.hours && (
+                      <p className="flex items-center gap-1.5 mt-0.5 text-xs text-ink-muted">
+                        <Clock className="w-3.5 h-3.5 text-brand-primary shrink-0" aria-hidden="true" />
+                        <span>{branch.hours}</span>
+                      </p>
+                    )}
+                    {branchPhone && (
+                      <a
+                        href={`tel:${branchDigits}`}
+                        className="inline-flex items-center gap-1.5 mt-0.5 font-mono text-xs font-semibold text-brand-primary hover:underline"
+                      >
+                        <Phone className="w-3.5 h-3.5" aria-hidden="true" />
+                        <span>{branchPhone}</span>
+                      </a>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
 
@@ -140,17 +159,15 @@ export function Footer() {
                     {col.title}
                   </span>
                   <ChevronDown
-                    className={`w-5 h-5 text-ink-secondary md:hidden transition-transform ${
-                      isOpen ? "rotate-180" : ""
-                    }`}
+                    className={`w-5 h-5 text-ink-secondary md:hidden transition-transform ${isOpen ? "rotate-180" : ""
+                      }`}
                     aria-hidden="true"
                   />
                 </button>
 
                 <ul
-                  className={`mt-3 space-y-2 ${
-                    isOpen ? "block" : "hidden md:block"
-                  }`}
+                  className={`mt-3 space-y-2 ${isOpen ? "block" : "hidden md:block"
+                    }`}
                 >
                   {col.links.map((link) => (
                     <li key={link.href}>

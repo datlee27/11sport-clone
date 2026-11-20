@@ -74,7 +74,7 @@ export function HeroSlider({ banners }: HeroSliderProps) {
               href="/lien-he"
               className="inline-flex items-center justify-center min-h-[48px] px-6 rounded-lg border border-white/40 text-white font-semibold text-sm hover:bg-white/10 transition-colors"
             >
-              Hệ thống 3 Showroom
+              Hệ thống Showroom
             </Link>
           </div>
         </div>
