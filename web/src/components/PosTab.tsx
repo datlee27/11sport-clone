@@ -3283,7 +3283,7 @@ export default function PosTab({ onOpenInvoice }: PosTabProps) {
                 {totalCartUnits}
               </span>
             </div>
-            <span className="font-mono font-bold text-slate-900">
+            <span className="font-mono font-black text-base text-slate-900">
               {formatNumberDots(rawSubtotal)}
             </span>
           </div>
@@ -3473,10 +3473,10 @@ export default function PosTab({ onOpenInvoice }: PosTabProps) {
             </div>
           )}
 
-          {/* KHÁCH CẦN TRẢ (Nổi bật màu xanh lá đậm chủ đạo của 11 Sport) */}
+          {/* KHÁCH CẦN TRẢ (Số liệu đen bự dễ đọc) */}
           <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-            <span className="font-extrabold text-slate-900">Khách cần trả</span>
-            <span className="font-mono font-extrabold text-lg sm:text-xl text-blue-600">
+            <span className="font-extrabold text-sm text-slate-900">Khách cần trả</span>
+            <span className="font-mono font-black text-2xl text-slate-900">
               {formatNumberDots(totalAmount)}
             </span>
           </div>
@@ -4799,38 +4799,38 @@ export default function PosTab({ onOpenInvoice }: PosTabProps) {
 
         return (
           <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
-            <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden flex flex-col max-h-[88vh]">
+            <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-3xl overflow-hidden flex flex-col max-h-[88vh]">
               <div className="px-5 py-3.5 bg-blue-600 text-white flex items-center justify-between gap-3 shrink-0">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-[11px] font-mono text-blue-400 font-bold">
+                    <span className="text-xs font-mono text-blue-100 font-bold">
                       Mã SP chung: {variantPickerProduct.code}
                     </span>
-                    <span className="text-[10px] font-mono bg-white/15 px-2 py-0.5 rounded text-slate-200">
+                    <span className="text-[11px] font-mono bg-white/15 px-2 py-0.5 rounded text-white font-semibold">
                       {allVars.length} mã con · {colorTabs.length} màu
                     </span>
                   </div>
-                  <h3 className="font-extrabold text-base mt-0.5 break-words">
+                  <h3 className="font-extrabold text-lg mt-0.5 break-words">
                     {variantPickerProduct.name}
                   </h3>
                 </div>
                 <button
                   type="button"
                   onClick={() => setVariantPickerProduct(null)}
-                  className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white shrink-0"
+                  className="w-8 h-8 rounded-lg bg-white/15 hover:bg-white/25 flex items-center justify-center text-white shrink-0 cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
               <div className="px-4 sm:px-5 py-3 bg-slate-50 border-b border-slate-200 space-y-2.5 shrink-0">
-                <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600">
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-700">
                   <span>
                     Bấm trực tiếp vào <strong>ô Size</strong> bên dưới từng màu để thêm vào giỏ:
                   </span>
-                  <span className="font-mono font-extrabold text-blue-700 text-sm">
+                  <span className="font-mono font-black text-slate-900 text-base">
                     Giá: {formatVND(productDisplayPrice(variantPickerProduct).price)}
-                    {productDisplayPrice(variantPickerProduct).hasVariantPrices ? " (giá riêng từng biến thể bên dưới)" : ""}
+                    {productDisplayPrice(variantPickerProduct).hasVariantPrices ? " (theo biến thể)" : ""}
                   </span>
                 </div>
 
@@ -4841,9 +4841,9 @@ export default function PosTab({ onOpenInvoice }: PosTabProps) {
                       <button
                         type="button"
                         onClick={() => setPickerColorFilter("ALL")}
-                        className={`px-2.5 py-1 rounded-lg text-[11px] font-extrabold border transition ${pickerColorFilter === "ALL"
-                          ? "bg-blue-600 text-white border-slate-900 shadow-xs"
-                          : "bg-white text-slate-700 border-slate-300 hover:bg-slate-100"
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition cursor-pointer ${pickerColorFilter === "ALL"
+                          ? "bg-blue-600 text-white border-blue-600 shadow-xs"
+                          : "bg-white text-slate-800 border-slate-300 hover:bg-slate-100"
                           }`}
                       >
                         Tất cả màu ({allVars.length})
@@ -4862,26 +4862,21 @@ export default function PosTab({ onOpenInvoice }: PosTabProps) {
                             key={cName}
                             type="button"
                             onClick={() => setPickerColorFilter(cName)}
-                            style={
-                              !isSelectedTab
-                                ? getColorBoxBorderStyle(cHexes, "#ffffff", 2)
-                                : undefined
-                            }
-                            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition flex items-center gap-1.5 ${isSelectedTab
-                              ? "bg-indigo-600 text-white border-indigo-700 shadow-xs"
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition flex items-center gap-1.5 cursor-pointer ${isSelectedTab
+                              ? "bg-blue-600 text-white border-blue-600 shadow-xs"
                               : cStock > 0
-                                ? "bg-white text-slate-800 border-slate-300 hover:bg-indigo-50"
+                                ? "bg-white text-slate-900 border-slate-300 hover:bg-blue-50 hover:border-blue-400"
                                 : "bg-white text-slate-400 border-slate-200 opacity-70"
                               }`}
                           >
                             <ColorSwatchBadge hexes={cHexes} colorName={cName} size="xs" />
                             <span>{cName}</span>
                             <span
-                              className={`font-mono text-[10px] px-1 rounded ${isSelectedTab
+                              className={`font-mono text-xs px-1.5 py-0.2 rounded font-black ${isSelectedTab
                                 ? "bg-white/20 text-white"
                                 : cStock > 0
-                                  ? "bg-blue-50 text-blue-700 font-extrabold"
-                                  : "bg-slate-200 text-slate-500"
+                                  ? "bg-slate-100 text-slate-900"
+                                  : "bg-slate-100 text-slate-400"
                                 }`}
                             >
                               {cStock}
@@ -4891,14 +4886,14 @@ export default function PosTab({ onOpenInvoice }: PosTabProps) {
                       })}
                     </div>
 
-                    <div className="relative w-full sm:w-48 shrink-0">
-                      <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2" />
+                    <div className="relative w-full sm:w-52 shrink-0">
+                      <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
                       <input
                         type="text"
                         value={pickerSearch}
                         onChange={(e) => setPickerSearch(e.target.value)}
                         placeholder="Lọc size, màu, mã con..."
-                        className="w-full pl-8 pr-2.5 py-1 rounded-lg border border-slate-300 bg-white text-xs focus:border-blue-600 focus:outline-none"
+                        className="w-full pl-8 pr-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-xs focus:border-blue-600 focus:outline-none"
                       />
                     </div>
                   </div>
@@ -4907,7 +4902,7 @@ export default function PosTab({ onOpenInvoice }: PosTabProps) {
 
               <div className="p-4 sm:p-5 overflow-y-auto flex-1 space-y-3.5">
                 {groupedModalColors.length === 0 ? (
-                  <div className="py-8 text-center text-xs text-slate-400">
+                  <div className="py-8 text-center text-sm text-slate-400">
                     Không có phân loại nào khớp bộ lọc.
                   </div>
                 ) : (
@@ -4915,37 +4910,30 @@ export default function PosTab({ onOpenInvoice }: PosTabProps) {
                     return (
                       <div
                         key={colorName}
-                        style={getColorBoxBorderStyle(colorHexes, "#ffffff", 3)}
-                        className={`rounded-xl border border-slate-200 bg-white p-3 space-y-2.5 ${
+                        className={`rounded-xl border border-slate-200 bg-white p-3.5 space-y-3 ${
                           totalStock <= 0 ? "opacity-55" : ""
                         }`}
                       >
-                        {/* Tiêu đề Nhóm Màu — hiển thị 1 lần duy nhất, tên màu dài tự xuống dòng, không bao giờ che Size */}
-                        <div className="flex flex-wrap items-center justify-between gap-2 pb-1.5 border-b border-slate-200/80">
+                        {/* Tiêu đề Nhóm Màu */}
+                        <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-100">
                           <div className="flex items-center gap-2 min-w-0">
                             <ColorSwatchBadge hexes={colorHexes} colorName={colorName} size="sm" />
-                            <span className="font-extrabold text-sm text-slate-900 break-words">
+                            <span className="font-extrabold text-base text-slate-900 break-words">
                               {colorName}
                             </span>
                             {items.some((x) => Boolean(x.v.size?.trim())) && (
-                              <span className="text-[11px] font-medium text-slate-500 shrink-0">
+                              <span className="text-xs font-medium text-slate-500 shrink-0">
                                 ({items.filter((x) => Boolean(x.v.size?.trim())).length} size)
                               </span>
                             )}
                           </div>
-                          <span
-                            className={`text-xs font-mono font-extrabold px-2 py-0.5 rounded-md border shrink-0 ${
-                              totalStock > 0
-                                ? "bg-blue-50 text-blue-700 border-blue-200"
-                                : "bg-slate-100 text-slate-500 border-slate-200"
-                            }`}
-                          >
+                          <span className="text-sm font-mono font-black text-slate-900 px-2.5 py-1 rounded-lg bg-slate-100 shrink-0 whitespace-nowrap">
                             Tồn T1: {totalStock} {variantPickerProduct.unit}
                           </span>
                         </div>
 
-                        {/* Lưới các ô chọn Size: Số Size cực to, rõ nét, nhìn thấy ngay lập tức */}
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                        {/* Lưới các ô chọn Size rộng rãi, không bị rớt chữ */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
                           {items.map(({ v, originalIdx }) => {
                             const vFloor1 = Math.max(0, Number(v.stockFloor1 ?? v.stock) || 0);
                             const inCartQty = getCartVariantQty(
@@ -4960,6 +4948,7 @@ export default function PosTab({ onOpenInvoice }: PosTabProps) {
                                 v.color,
                                 v.size
                               );
+                            const displayPrice = variantEffectiveSellingPrice(variantPickerProduct, v);
 
                             return (
                               <button
@@ -4985,22 +4974,22 @@ export default function PosTab({ onOpenInvoice }: PosTabProps) {
                                     setVariantPickerProduct(null);
                                   }
                                 }}
-                                className={`relative p-2.5 rounded-xl border text-left transition flex flex-col justify-between gap-1.5 ${
+                                className={`relative p-3 rounded-xl border text-left transition flex flex-col justify-between gap-2 ${
                                   canPick
                                     ? inCartQty > 0
-                                      ? "border-indigo-500 bg-indigo-50/40 hover:bg-indigo-50 cursor-pointer shadow-2xs"
-                                      : "border-slate-200 hover:border-blue-500 hover:bg-blue-50/50 bg-white cursor-pointer shadow-2xs"
+                                      ? "border-blue-600 bg-blue-50/60 hover:bg-blue-100/80 hover:shadow-md cursor-pointer shadow-2xs"
+                                      : "border-slate-200 hover:border-blue-600 hover:bg-blue-50/80 hover:shadow-md bg-white cursor-pointer shadow-2xs"
                                     : "border-slate-200 bg-slate-100/70 opacity-55 cursor-not-allowed"
                                 }`}
                               >
-                                <div className="flex items-baseline justify-between gap-1">
+                                <div className="flex items-center justify-between gap-2">
                                   {Boolean(v.size?.trim()) ? (
-                                    <div className="flex items-baseline gap-1 shrink-0">
-                                      <span className="text-[10px] font-bold uppercase text-slate-400">
+                                    <div className="flex items-baseline gap-1.5 min-w-0">
+                                      <span className="text-[11px] font-bold uppercase text-slate-500 shrink-0">
                                         Size
                                       </span>
                                       <span
-                                        className={`font-mono text-base sm:text-lg font-black leading-none ${
+                                        className={`font-mono text-xl font-black leading-none ${
                                           vFloor1 <= 0
                                             ? "text-slate-400 line-through"
                                             : "text-slate-900"
@@ -5010,48 +4999,45 @@ export default function PosTab({ onOpenInvoice }: PosTabProps) {
                                       </span>
                                     </div>
                                   ) : (
-                                    <div className="flex items-baseline gap-1 shrink-0">
-                                      <span
-                                        className={`text-sm font-extrabold leading-none ${
-                                          vFloor1 <= 0
-                                            ? "text-slate-400 line-through"
-                                            : "text-slate-900"
-                                        }`}
-                                      >
-                                        {v.color || colorName}
-                                      </span>
-                                    </div>
+                                    <span
+                                      className={`text-base font-black leading-none ${
+                                        vFloor1 <= 0
+                                          ? "text-slate-400 line-through"
+                                          : "text-slate-900"
+                                      }`}
+                                    >
+                                      {v.color || colorName}
+                                    </span>
                                   )}
-                                </div>
 
-                                <div className="flex items-center justify-between gap-1 pt-1 border-t border-slate-100">
                                   <span
-                                    className={`text-[11px] font-mono font-bold ${
-                                      vFloor1 > 0 ? "text-blue-700" : "text-slate-400"
+                                    className={`text-xs font-mono font-bold whitespace-nowrap shrink-0 ${
+                                      vFloor1 > 0 ? "text-slate-900" : "text-slate-400"
                                     }`}
                                   >
                                     {vFloor1 > 0
                                       ? `Còn ${vFloor1} ${variantPickerProduct.unit}`
                                       : "Hết hàng"}
                                   </span>
-                                  {Number(v.sellingPrice || 0) > 0 && (
-                                    <span className="text-[10px] font-mono font-extrabold text-amber-700 shrink-0">
-                                      {formatVND(variantEffectiveSellingPrice(variantPickerProduct, v))}
-                                    </span>
-                                  )}
+                                </div>
+
+                                <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
+                                  <span className="text-sm font-mono font-black text-slate-900 whitespace-nowrap">
+                                    {formatVND(displayPrice)}
+                                  </span>
 
                                   {inCartQty > 0 ? (
-                                    <span className="text-[10px] font-mono font-extrabold text-white bg-indigo-600 px-1.5 py-0.5 rounded shrink-0">
+                                    <span className="text-xs font-mono font-bold text-white bg-blue-600 px-2.5 py-1 rounded-lg shrink-0 whitespace-nowrap">
                                       Đã chọn: {inCartQty}
                                     </span>
                                   ) : canPick ? (
-                                    <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md bg-blue-600 text-white text-[10px] font-bold shrink-0">
-                                      <Plus className="w-2.5 h-2.5" /> Chọn
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-600 text-white text-xs font-bold shrink-0 whitespace-nowrap">
+                                      <Plus className="w-3 h-3" /> Chọn
                                     </span>
                                   ) : null}
                                 </div>
 
-                                <div className="font-mono text-[9px] text-slate-400 truncate">
+                                <div className="font-mono text-[10px] text-slate-500 truncate">
                                   {childCode}
                                 </div>
                               </button>

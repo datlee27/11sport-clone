@@ -2991,62 +2991,6 @@ export default function InventoryModule() {
       {/* SUB-TAB 1: SẢN PHẨM, SỐ LƯỢNG, GIÁ GỐC & GIÁ BÁN LẺ */}
       {subTab === "PRODUCTS" && (
         <div className="space-y-6">
-          {/* 4 Thẻ KPI Tổng hợp Số lượng, Giá gốc, Giá bán theo Kho đang chọn */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
-              <div className="text-[11px] font-bold uppercase text-slate-500">
-                Tổng tồn {activeWarehouseLabel} ({displayedProducts.length} mã SP)
-              </div>
-              <div className="text-2xl font-extrabold font-mono text-slate-900 mt-1">
-                {totalStockQty.toLocaleString("vi-VN")}
-              </div>
-              <div className="text-[11px] text-slate-500 mt-0.5">
-                {activeWarehouse === "ALL"
-                  ? `Tầng 1: ${totalFloor1Qty.toLocaleString("vi-VN")} · Tầng 2: ${totalFloor2Qty.toLocaleString("vi-VN")}`
-                  : `Đơn vị sản phẩm đang có tại ${activeWarehouseLabel}`}
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
-              <div className="text-[11px] font-bold uppercase text-slate-500">
-                Giá trị {activeWarehouseLabel} (Theo Giá vốn)
-              </div>
-              <div className="text-2xl font-extrabold font-mono text-amber-700 mt-1">
-                {formatVND(totalCostInventoryValue)}
-              </div>
-              <div className="text-[11px] text-slate-500 mt-0.5">
-                Chỉ hiển thị cho Quản lý/Admin (ẩn với Saler)
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
-              <div className="text-[11px] font-bold uppercase text-slate-500">
-                Giá trị {activeWarehouseLabel} (Theo Giá niêm yết)
-              </div>
-              <div className="text-2xl font-extrabold font-mono text-teal-700 mt-1">
-                {formatVND(totalSellInventoryValue)}
-              </div>
-              <div className="text-[11px] text-slate-500 mt-0.5">
-                Doanh thu dự kiến của {activeWarehouseLabel}
-              </div>
-            </div>
-
-            <div className="bg-white border-2 border-teal-200 text-slate-900 rounded-xl p-4 shadow-sm">
-              <div className="text-[11px] font-bold uppercase text-teal-600">
-                Lãi gộp dự kiến ({activeWarehouseLabel})
-              </div>
-              <div
-                className={`text-2xl font-extrabold font-mono mt-1 ${totalExpectedMargin >= 0 ? "text-teal-700" : "text-red-600"
-                  }`}
-              >
-                {formatVND(totalExpectedMargin)}
-              </div>
-              <div className="text-[11px] text-slate-500 mt-0.5">
-                = Tổng giá niêm yết − Tổng giá vốn
-              </div>
-            </div>
-          </div>
-
           {/* Bảng danh sách sản phẩm: Chia rõ Kho Tầng 1 & Kho Tầng 2 */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 space-y-4">
             {/* Hàng 1: Tiêu đề + Cụm nút tác vụ chính */}
@@ -3450,7 +3394,7 @@ export default function InventoryModule() {
                     return (
                       <React.Fragment key={p._id}>
                         <tr
-                          className={`bg-white hover:bg-slate-50/70 transition-colors ${lastScannedProdId === p._id
+                          className={`bg-white hover:bg-teal-50/70 transition-colors ${lastScannedProdId === p._id
                             ? "bg-teal-50/90 ring-2 ring-inset ring-teal-500"
                             : scannedQty > 0
                               ? "bg-teal-50/40"
@@ -3530,7 +3474,7 @@ export default function InventoryModule() {
                                       title={`Mã con: ${childCode} · Bấm để quản lý Size/Màu`}
                                       className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[11px] font-semibold transition cursor-pointer ${lastScannedVariantCode === childCode
                                         ? "bg-teal-600 text-white border-teal-700"
-                                        : "bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200"
+                                        : "bg-slate-50 hover:bg-teal-50 hover:border-teal-400 text-slate-700 hover:text-teal-900 border-slate-200"
                                         }`}
                                     >
                                       <ColorSwatchBadge
@@ -3574,7 +3518,7 @@ export default function InventoryModule() {
                                 }
                                 className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-dashed text-[11px] font-semibold transition cursor-pointer ${isVarExpanded
                                   ? "bg-teal-600 text-white border-teal-700"
-                                  : "bg-white hover:bg-slate-50 text-slate-600 border-slate-300"
+                                  : "bg-white hover:bg-teal-50 hover:border-teal-500 hover:text-teal-800 text-slate-600 border-slate-300"
                                   }`}
                               >
                                 + Thêm
@@ -3586,7 +3530,7 @@ export default function InventoryModule() {
                                   (Array.isArray(p.linkedRetailProducts) &&
                                     p.linkedRetailProducts.length > 0)
                                   ? "bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-300"
-                                  : "bg-white hover:bg-slate-50 text-slate-600 border-slate-200"
+                                  : "bg-white hover:bg-teal-50 hover:border-teal-400 hover:text-teal-800 text-slate-600 border-slate-200"
                                   }`}
                                 title="Cấu hình liên kết tự động tách từ Sản phẩm Bộ/Hộp sang Sản phẩm Lẻ"
                               >
@@ -3678,12 +3622,12 @@ export default function InventoryModule() {
                           {/* 3. TỒN TẦNG 1 */}
                           {(activeWarehouse === "FLOOR_1" || activeWarehouse === "ALL") && (
                             <td className="py-3.5 px-3 text-center align-top">
-                              <div className="text-base font-extrabold text-slate-900 tabular-nums">
+                              <div className="text-lg font-black text-slate-900 tabular-nums">
                                 {formatNumberDots(f1Val)}
                               </div>
                               <span
                                 className={`inline-block mt-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap ${f1Val > 0
-                                  ? "bg-emerald-50 text-emerald-700"
+                                  ? "bg-teal-50 text-teal-700"
                                   : "bg-slate-100 text-slate-500"
                                   }`}
                               >
@@ -3695,12 +3639,12 @@ export default function InventoryModule() {
                           {/* 4. TỒN TẦNG 2 */}
                           {(activeWarehouse === "FLOOR_2" || activeWarehouse === "ALL") && (
                             <td className="py-3.5 px-3 text-center align-top">
-                              <div className="text-base font-extrabold text-slate-900 tabular-nums">
+                              <div className="text-lg font-black text-slate-900 tabular-nums">
                                 {formatNumberDots(f2Val)}
                               </div>
                               <span
                                 className={`inline-block mt-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap ${f2Val > 0
-                                  ? "bg-emerald-50 text-emerald-700"
+                                  ? "bg-teal-50 text-teal-700"
                                   : "bg-slate-100 text-slate-500"
                                   }`}
                               >
@@ -3712,7 +3656,7 @@ export default function InventoryModule() {
                           {/* TỔNG 2 KHO (khi chọn Gộp 2 kho) */}
                           {activeWarehouse === "ALL" && (
                             <td className="py-3.5 px-3 text-center align-top">
-                              <div className="text-base font-extrabold text-slate-900 tabular-nums">
+                              <div className="text-lg font-black text-slate-900 tabular-nums">
                                 {formatNumberDots(f1Val + f2Val)}
                               </div>
                               <span
@@ -3728,20 +3672,20 @@ export default function InventoryModule() {
 
                           {/* 5. GIÁ VỐN (VND) */}
                           <td className="py-3.5 px-3 text-right align-top">
-                            <div className="text-sm font-extrabold text-slate-900 tabular-nums">
+                            <div className="text-[15px] font-black text-slate-900 tabular-nums">
                               {formatNumberDots(costVal)}
                             </div>
-                            <div className="mt-0.5 text-[11px] text-slate-500 whitespace-nowrap tabular-nums">
-                              Tổng: {formatNumberDots(activeQty * costVal)}
+                            <div className="mt-0.5 text-xs text-slate-500 whitespace-nowrap tabular-nums">
+                              Tổng: <strong className="text-slate-900">{formatNumberDots(activeQty * costVal)}</strong>
                             </div>
                           </td>
 
                           {/* 6. GIÁ NIÊM YẾT (VND) */}
                           <td className="py-3.5 px-3 text-right align-top">
-                            <div className="text-sm font-extrabold text-slate-900 tabular-nums">
+                            <div className="text-[15px] font-black text-slate-900 tabular-nums">
                               {formatNumberDots(sellVal)}
                             </div>
-                            <div className="mt-0.5 text-[11px] text-slate-500 whitespace-nowrap">
+                            <div className="mt-0.5 text-xs text-slate-500 whitespace-nowrap">
                               Niêm yết
                             </div>
                           </td>
@@ -3751,14 +3695,14 @@ export default function InventoryModule() {
                             {sellVal > 0 ? (
                               <>
                                 <div
-                                  className={`text-sm font-extrabold tabular-nums whitespace-nowrap ${margin < 0 ? "text-red-600" : "text-emerald-600"
+                                  className={`text-[15px] font-black tabular-nums whitespace-nowrap ${margin < 0 ? "text-red-600" : "text-slate-900"
                                     }`}
                                 >
                                   {margin >= 0
                                     ? `+${formatNumberDots(margin)}`
                                     : `-${formatNumberDots(Math.abs(margin))}`}
                                 </div>
-                                <div className="mt-0.5 text-[11px] text-slate-500 whitespace-nowrap">
+                                <div className="mt-0.5 text-xs text-slate-500 whitespace-nowrap">
                                   {costVal > 0 ? `${marginPct}% / SP` : "Chưa có vốn"}
                                 </div>
                               </>
@@ -3795,7 +3739,7 @@ export default function InventoryModule() {
                               <button
                                 type="button"
                                 onClick={() => setEditingProductModal(p)}
-                                className="w-8 h-8 rounded-lg border border-slate-200 bg-white hover:bg-teal-50 hover:border-teal-300 text-teal-700 inline-flex items-center justify-center transition cursor-pointer"
+                                className="w-8 h-8 rounded-lg border border-slate-200 bg-white hover:bg-teal-100 hover:border-teal-400 text-teal-700 inline-flex items-center justify-center transition cursor-pointer"
                                 title="Sửa thông tin sản phẩm, giá và biến thể"
                               >
                                 <Pencil className="w-3.5 h-3.5" />
@@ -3811,7 +3755,7 @@ export default function InventoryModule() {
                                   }
                                   setSubTab("TRANSFER");
                                 }}
-                                className="w-8 h-8 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 inline-flex items-center justify-center transition cursor-pointer"
+                                className="w-8 h-8 rounded-lg border border-slate-200 bg-white hover:bg-slate-200 hover:border-slate-400 text-slate-700 inline-flex items-center justify-center transition cursor-pointer"
                                 title="Chuyển tầng (T1 ↔ T2)"
                               >
                                 <ArrowLeftRight className="w-3.5 h-3.5" />
@@ -3819,7 +3763,7 @@ export default function InventoryModule() {
                               <button
                                 type="button"
                                 onClick={() => handleDeleteProduct(p)}
-                                className="w-8 h-8 rounded-lg border border-slate-200 bg-white hover:bg-red-50 hover:border-red-200 text-red-500 inline-flex items-center justify-center transition cursor-pointer"
+                                className="w-8 h-8 rounded-lg border border-slate-200 bg-white hover:bg-red-100 hover:border-red-300 text-red-500 hover:text-red-700 inline-flex items-center justify-center transition cursor-pointer"
                                 title="Xóa sản phẩm"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />

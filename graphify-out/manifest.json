@@ -78,15 +78,15 @@
     "semantic_hash": ""
   },
   "cms/src/components/InventoryModule.tsx": {
-    "mtime": 1795234681.0962687,
-    "seen": 1795234716.993419,
-    "ast_hash": "da859b85d1dd387064e059710057313b",
+    "mtime": 1795256143.9554994,
+    "seen": 1795256182.226675,
+    "ast_hash": "629889445efea67ad0b3680e5d306b1a",
     "semantic_hash": ""
   },
   "cms/src/components/InvoicePdfModal.tsx": {
-    "mtime": 1795081491.2766044,
-    "seen": 1795081605.566706,
-    "ast_hash": "fa5e2b5bfc4e9e4811e7ee891aaff1c8",
+    "mtime": 1795256409.657945,
+    "seen": 1795256655.178865,
+    "ast_hash": "811fdaac0b8762a8f98832a970d15329",
     "semantic_hash": ""
   },
   "cms/src/components/OrdersReturnsModule.tsx": {
@@ -102,9 +102,9 @@
     "semantic_hash": ""
   },
   "cms/src/components/RevenueDashboardModule.tsx": {
-    "mtime": 1795254046.2379255,
-    "seen": 1795254081.615223,
-    "ast_hash": "0b9c8e2ebad56fa0dc8aa023a579ffe8",
+    "mtime": 1795257189.0399868,
+    "seen": 1795257227.5406249,
+    "ast_hash": "0bc0ec55474a53c4d8e6e4312120ed85",
     "semantic_hash": ""
   },
   "cms/src/components/StaffActivityModule.tsx": {
@@ -336,9 +336,9 @@
     "semantic_hash": ""
   },
   "server/src/scripts/seedDevData.ts": {
-    "mtime": 1793855318.0740812,
-    "seen": 1793855658.4452631,
-    "ast_hash": "b73d66b10e4631cc64a957396af60b97",
+    "mtime": 1795256457.1703455,
+    "seen": 1795256655.178991,
+    "ast_hash": "9233ed1138463ea175cfd33db94bc7cc",
     "semantic_hash": ""
   },
   "server/src/utils/auth.ts": {
@@ -564,15 +564,15 @@
     "semantic_hash": ""
   },
   "web/src/components/InvoicePdfModal.tsx": {
-    "mtime": 1795144325.1667037,
-    "seen": 1795144365.57109,
-    "ast_hash": "e074ca4b8942eef7f74ed7cf9302f15d",
+    "mtime": 1795256462.157966,
+    "seen": 1795256655.179085,
+    "ast_hash": "1982ec733746e7c0bde4e35abee9cfe3",
     "semantic_hash": ""
   },
   "web/src/components/PosTab.tsx": {
-    "mtime": 1795139734.1280918,
-    "seen": 1795139925.8138502,
-    "ast_hash": "e25fe490d1da0d5a4262b245d0346616",
+    "mtime": 1795255649.8413045,
+    "seen": 1795255691.691782,
+    "ast_hash": "75e4be1eb14e2824d4fde54a197482f3",
     "semantic_hash": ""
   },
   "web/src/components/ReturnExchangeTab.tsx": {
@@ -642,9 +642,9 @@
     "semantic_hash": ""
   },
   "docs/api-contract.md": {
-    "mtime": 1795157899.2776089,
-    "seen": 1795231952.481129,
-    "ast_hash": "48d07b53b9df722dfed1cc29925c379f",
+    "mtime": 1795256426.6483424,
+    "seen": 1795256655.1791182,
+    "ast_hash": "97f2c3e288d00be077cccda380b3fce5",
     "semantic_hash": ""
   },
   "docs/design/design-system.md": {
@@ -672,9 +672,9 @@
     "semantic_hash": ""
   },
   "docs/requirements/he-thong-pos-kho-v1.md": {
-    "mtime": 1795064452.6080148,
-    "seen": 1795079436.094074,
-    "ast_hash": "fb380c915b7e1d685142d2ca4d30c2c4",
+    "mtime": 1795256432.1866648,
+    "seen": 1795256655.179132,
+    "ast_hash": "c68fddda457ef48df87b436908eaca81",
     "semantic_hash": ""
   },
   "docs/status.md": {
@@ -1050,9 +1050,9 @@
     "semantic_hash": ""
   },
   "docs/test/baseline-2026-11-12.md": {
-    "mtime": 1795064452.609292,
-    "seen": 1795079436.094078,
-    "ast_hash": "82c8ee85b3452261912fedb23f365735",
+    "mtime": 1795256437.944567,
+    "seen": 1795256655.179137,
+    "ast_hash": "b0696f6e294a69c5c4fb8b2eb40d1101",
     "semantic_hash": ""
   },
   "server/vitest.config.ts": {

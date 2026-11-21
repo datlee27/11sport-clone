@@ -284,8 +284,8 @@
 - `GET /api/v1/orders` — Danh sách đơn hàng (lọc theo `search`, `phone`, `status`, `paymentMethod`, `shiftCode`, `date`, `forReturn`; `search` hỗ trợ tìm không dấu/đa từ khóa trên mã đơn, tên/SĐT khách, mã/tên sản phẩm trong đơn, nhân viên bán, ghi chú).
   - *(Cập nhật v4.3)* **Phân quyền xem đơn trong ngày (tối đa 3 ngày, bỏ ràng buộc ca) đối với `SALES`**:
     - Mặc định (khi không truyền `forReturn=true`), tài khoản `SALES` gọi `GET /api/v1/orders` nhận được toàn bộ đơn hàng trong ngày (mọi ca `SHIFT_1`, `SHIFT_2`, `BOTH`) trong phạm vi **tối đa 3 ngày gần nhất** (`allowedDates`). Có thể lọc theo `?date=YYYY-MM-DD` (nằm trong 3 ngày gần nhất; nếu truyền ngày cũ hơn 3 ngày sẽ trả `403 ORDER_SHIFT_RESTRICTED`) và `?shiftCode=SHIFT_1|SHIFT_2`.
-    - Khi truyền `forReturn=true` kèm từ khóa tra cứu (`search` hoặc `phone` từ 2 ký tự trở lên, dùng riêng tại tab **Trả / Đổi hàng**), hệ thống cho phép `SALES` tìm đơn gốc (kể cả đơn cũ hơn 3 ngày) để phục vụ đổi/trả hàng cho khách.
-- `GET /api/v1/orders/:id` — Chi tiết đơn hàng (với `SALES`, cho phép xem mọi đơn hàng trong ngày của mọi ca trong phạm vi tối đa **3 ngày gần nhất** trừ khi truyền `?forReturn=true`; đơn cũ hơn 3 ngày trả `403 ORDER_SHIFT_RESTRICTED`). Tra cứu theo mã đơn cho nghiệp vụ đổi/trả qua `GET /api/v1/orders/by-code/:code`.
+    - Khi truyền `forReturn=true` kèm từ khóa tra cứu (`search` hoặc `phone` từ 2 ký tự trở lên, dùng riêng tại tab **Trả / Đổi hàng**), hệ thống cho phép `SALES` tìm đơn gốc (kể cả đơn cũ hơn 3 ngày) để phục vụ đổi hàng cho khách.
+- `GET /api/v1/orders/:id` — Chi tiết đơn hàng (với `SALES`, cho phép xem mọi đơn hàng trong ngày của mọi ca trong phạm vi tối đa **3 ngày gần nhất** trừ khi truyền `?forReturn=true`; đơn cũ hơn 3 ngày trả `403 ORDER_SHIFT_RESTRICTED`). Tra cứu theo mã đơn cho nghiệp vụ đổi qua `GET /api/v1/orders/by-code/:code`.
 - `POST /api/v1/orders` *(Cập nhật v2.2 — Chỉ bán tồn Kho Tầng 1 + Giảm giá Sản phẩm, Tặng hàng 0đ & Giảm giá Bill)*
   - Body:
     ```json
