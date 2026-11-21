@@ -70,6 +70,51 @@ importsRouter.use(
   )
 );
 
+// Khóa tuần tự theo khóa (mã tạo phiếu hoặc receiptId) chống ghi đè mã phiếu và chống hoàn thành/ghi sổ 2 lần khi click đúp hoặc request song song
+const importLockQueues = new Map<string, Promise<unknown>>();
+async function withImportLock<T>(key: string, fn: () => Promise<T>): Promise<T> {
+  const prev = importLockQueues.get(key) || Promise.resolve();
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const chained = prev.then(() => gate);
+  importLockQueues.set(key, chained);
+  await prev;
+  try {
+    return await fn();
+  } finally {
+    release();
+    if (importLockQueues.get(key) === chained) {
+      importLockQueues.delete(key);
+    }
+  }
+}
+
+async function generateUniqueImportReceiptCode(): Promise<string> {
+  const existingReceipts = await importReceiptRepo.find({});
+  let maxSeq = 0;
+  const usedCodes = new Set<string>();
+  for (const r of existingReceipts) {
+    const rawCode = String(r.code || '').trim().toUpperCase();
+    if (rawCode) usedCodes.add(rawCode);
+    const m = /^PN-(\d+)$/.exec(rawCode);
+    if (m) {
+      const n = parseInt(m[1], 10);
+      if (!isNaN(n) && n > maxSeq) maxSeq = n;
+    }
+  }
+  let seq = Math.max(maxSeq, existingReceipts.length) + 1;
+  while (true) {
+    const candidate = `PN-${String(seq).padStart(4, '0')}`;
+    if (!usedCodes.has(candidate)) {
+      const dup = await importReceiptRepo.findOne({ code: candidate });
+      if (!dup) return candidate;
+    }
+    seq += 1;
+  }
+}
+
 function inferRole(
   explicitRole?: string,
   userId?: string,
@@ -1053,9 +1098,6 @@ importsRouter.post('/imports', async (req, res, next) => {
       await loadImportSchemeContext()
     );
 
-    const count = await importReceiptRepo.countDocuments({});
-    const code = `PN-${String(count + 1).padStart(4, '0')}`;
-
     const initialStatus = status === 'CHECKING' ? 'CHECKING' : 'DRAFT';
     const warehouseFloor = normalizeFloor(targetWarehouse);
     const createdBy = req.user?.userId || 'ACCOUNTANT';
@@ -1075,16 +1117,19 @@ importsRouter.post('/imports', async (req, res, next) => {
       return it;
     });
 
-    const created = await importReceiptRepo.create({
-      code,
-      status: initialStatus,
-      targetWarehouse: warehouseFloor,
-      defaultCategoryId: fallbackCatId,
-      note: note ? String(note).trim() : '',
-      items: itemsWithCreatorCheck,
-      createdBy,
-      createdByName,
-      createdByRole,
+    const created = await withImportLock('CREATE_IMPORT_RECEIPT', async () => {
+      const code = await generateUniqueImportReceiptCode();
+      return importReceiptRepo.create({
+        code,
+        status: initialStatus,
+        targetWarehouse: warehouseFloor,
+        defaultCategoryId: fallbackCatId,
+        note: note ? String(note).trim() : '',
+        items: itemsWithCreatorCheck,
+        createdBy,
+        createdByName,
+        createdByRole,
+      });
     });
 
     res.status(201).json({
@@ -1593,6 +1638,7 @@ importsRouter.post('/imports/:id/scan-tag', async (req, res, next) => {
 importsRouter.post('/imports/:id/complete', async (req, res, next) => {
   try {
     const { id } = req.params;
+    const result = await withImportLock(`RECEIPT:${id}`, async () => {
     const receipt = await importReceiptRepo.findById(id);
     if (!receipt) {
       throw new ApiError(404, 'IMPORT_RECEIPT_NOT_FOUND', 'Không tìm thấy phiếu nhập kho');
@@ -1603,6 +1649,20 @@ importsRouter.post('/imports/:id/complete', async (req, res, next) => {
         400,
         'IMPORT_RECEIPT_ALREADY_COMPLETED',
         'Phiếu nhập này đã được hoàn thành trước đó'
+      );
+    }
+
+    // Chống ghi lịch sử nhập kho 2 lần nếu phiếu đã từng phát sinh bút toán IMPORT_RECEIPT
+    const existingImportMovements = await stockMovementRepo.find({
+      referenceId: String(receipt._id),
+      referenceType: 'IMPORT_RECEIPT',
+    });
+    if (existingImportMovements.length > 0) {
+      await importReceiptRepo.updateById(id, { status: 'COMPLETED' });
+      throw new ApiError(
+        400,
+        'IMPORT_RECEIPT_ALREADY_COMPLETED',
+        'Phiếu nhập này đã được ghi nhận lịch sử nhập kho trước đó'
       );
     }
 
@@ -1906,7 +1966,7 @@ importsRouter.post('/imports/:id/complete', async (req, res, next) => {
       completedAt: new Date(),
     });
 
-    res.json({
+    return {
       data: {
         receipt: completedReceipt,
         movements: createdMovements,
@@ -1915,7 +1975,10 @@ importsRouter.post('/imports/:id/complete', async (req, res, next) => {
         confirmedCount: confirmedItems.length,
         totalItems: updatedItems.length,
       },
+    };
     });
+
+    res.json(result);
   } catch (err) {
     next(err);
   }

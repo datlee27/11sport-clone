@@ -54,7 +54,6 @@ import {
   Package,
   BarChart3,
   BookOpen,
-  Sliders,
   ClipboardList,
   Save,
   Pencil,
@@ -109,7 +108,8 @@ interface AdminImportRow {
   isConfirmed: boolean;
 }
 
-type SubTab = "PRODUCTS" | "REPORT" | "MOVEMENTS" | "IMPORTS" | "ADJUSTMENT" | "TRANSFER";
+type SubTab = "PRODUCTS" | "TRANSFER" | "HISTORY" | "REPORT";
+type HistoryView = "IMPORTS" | "MOVEMENTS" | "TRANSFERS";
 type ActiveWarehouseTab = "FLOOR_1" | "FLOOR_2" | "ALL";
 type QuickStockFilter = "ALL" | "IN_STOCK" | "ZERO_STOCK" | "MISSING_PRICE" | "CHANGED";
 
@@ -180,6 +180,7 @@ function CmsRoleBadge({ role, compact = false }: { role?: string; compact?: bool
 
 export default function InventoryModule() {
   const [subTab, setSubTab] = useState<SubTab>("PRODUCTS");
+  const [historyView, setHistoryView] = useState<HistoryView>("IMPORTS");
   const [activeWarehouse, setActiveWarehouse] = useState<ActiveWarehouseTab>("FLOOR_1");
   const [showZeroFloorItems, setShowZeroFloorItems] = useState(false);
   const [quickStockFilter, setQuickStockFilter] = useState<QuickStockFilter>("ALL");
@@ -250,6 +251,7 @@ export default function InventoryModule() {
   const [importFilterBrandId, setImportFilterBrandId] = useState<string>("");
   const [importingAdminFile, setImportingAdminFile] = useState(false);
   const [submittingAdminImport, setSubmittingAdminImport] = useState(false);
+  const submittingImportRef = useRef(false);
   const [adminFileImportMode, setAdminFileImportMode] = useState<"replace" | "append">("replace");
   const adminFileInputRef = useRef<HTMLInputElement>(null);
   const [allCatalogProducts, setAllCatalogProducts] = useState<Product[]>([]);
@@ -340,14 +342,6 @@ export default function InventoryModule() {
     time: string;
   } | null>(null);
 
-  // Lập phiếu điều chỉnh kho
-  const [adjProductId, setAdjProductId] = useState("");
-  const [adjColor, setAdjColor] = useState("");
-  const [adjSize, setAdjSize] = useState("");
-  const [adjWarehouse, setAdjWarehouse] = useState<WarehouseFloor>("FLOOR_1");
-  const [adjQuantityChange, setAdjQuantityChange] = useState<number>(0);
-  const [adjReason, setAdjReason] = useState("");
-
   // Lập phiếu xuất kho chuyển tầng (Kho Tầng 1 <-> Kho Tầng 2) — hỗ trợ nhiều sản phẩm / phiếu
   const [transfersList, setTransfersList] = useState<StockMovement[]>([]);
   const [transferDirection, setTransferDirection] = useState<"F1_TO_F2" | "F2_TO_F1">("F1_TO_F2");
@@ -356,6 +350,7 @@ export default function InventoryModule() {
   const [transferSize, setTransferSize] = useState("");
   const [transferQty, setTransferQty] = useState<number>(1);
   const [transferSearch, setTransferSearch] = useState("");
+  const [transferSuggestOpen, setTransferSuggestOpen] = useState(false);
   const [transferItems, setTransferItems] = useState<
     { productId: string; color?: string; size?: string; quantity: number }[]
   >([]);
@@ -365,8 +360,6 @@ export default function InventoryModule() {
   // Trạng thái lưu hàng loạt & xem lại chi tiết nhập hàng
   const [savingBatch, setSavingBatch] = useState(false);
   const [detailModalReceipt, setDetailModalReceipt] = useState<any | null>(null);
-  const [showRecentImportsSection, setShowRecentImportsSection] = useState(false);
-  const [recentImportRoleFilter, setRecentImportRoleFilter] = useState<"ALL" | "ADMIN" | "ACCOUNTANT">("ALL");
 
   const [statusMsg, setStatusMsg] = useState<{
     type: "success" | "error";
@@ -467,11 +460,6 @@ export default function InventoryModule() {
       setEditingCosts(costMap);
       setEditingPrices(priceMap);
       setEditingVariants(varMap);
-
-      if (pList.length > 0) {
-        setAdjProductId((prev) => prev || pList[0]._id);
-        setTransferProductId((prev) => prev || pList[0]._id);
-      }
     } catch {
       // ignore
     } finally {
@@ -550,16 +538,18 @@ export default function InventoryModule() {
 
   useEffect(() => {
     if (subTab === "REPORT") loadReport();
-    if (subTab === "MOVEMENTS") loadMovements();
-    if (subTab === "IMPORTS") loadImports();
+    if (subTab === "HISTORY") {
+      if (historyView === "IMPORTS") loadImports();
+      if (historyView === "MOVEMENTS") loadMovements();
+      if (historyView === "TRANSFERS") loadTransfers();
+    }
     if (subTab === "TRANSFER") loadTransfers();
-  }, [subTab, loadReport, loadMovements, loadImports, loadTransfers]);
+  }, [subTab, historyView, loadReport, loadMovements, loadImports, loadTransfers]);
 
   const handleSelectWarehouseTab = (wh: ActiveWarehouseTab) => {
     setActiveWarehouse(wh);
     if (wh === "FLOOR_1" || wh === "FLOOR_2") {
       setNewProdWarehouse(wh);
-      setAdjWarehouse(wh);
     }
   };
 
@@ -1303,6 +1293,7 @@ export default function InventoryModule() {
 
   const handleSubmitAdminBatchImport = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submittingImportRef.current || submittingAdminImport) return;
     setStatusMsg(null);
 
     const validRows = adminImportRows.filter(
@@ -1343,8 +1334,10 @@ export default function InventoryModule() {
       return;
     }
 
+    submittingImportRef.current = true;
     setSubmittingAdminImport(true);
     const floorText = newProdWarehouse === "FLOOR_2" ? "Kho Tầng 2" : "Kho Tầng 1";
+    let createdReceiptId: string | null = null;
     try {
       const actor = getStoredUser();
       const actorLabel = actor?.fullName || "Nhân sự kho";
@@ -1397,6 +1390,7 @@ export default function InventoryModule() {
       });
 
       const savedReceipt = createdRes.data;
+      createdReceiptId = savedReceipt?._id || null;
       await apiRequest<any>(`/imports/${savedReceipt._id}/complete`, {
         method: "POST",
         body: JSON.stringify({
@@ -1405,6 +1399,7 @@ export default function InventoryModule() {
           items: savedReceipt.items || payloadItems,
         }),
       });
+      createdReceiptId = null;
 
       const totalUnits = confirmedRows.reduce((s, r) => s + Math.max(1, Number(r.quantity || 1)), 0);
       setStatusMsg({
@@ -1433,12 +1428,21 @@ export default function InventoryModule() {
       setShowAdminImportModal(false);
       await loadProductsAndCats();
       loadCategoriesAndImports();
+      if (subTab === "HISTORY") {
+        loadImports();
+        loadMovements();
+      }
     } catch (err: any) {
+      // Nếu đã tạo phiếu DRAFT nhưng bước hoàn thành lỗi thì dọn phiếu DRAFT để tránh rác/trùng khi bấm thử lại
+      if (createdReceiptId) {
+        await apiRequest(`/imports/${createdReceiptId}`, { method: "DELETE" }).catch(() => {});
+      }
       setStatusMsg({
         type: "error",
         text: err?.message || "Không thể nhập sản phẩm vào kho.",
       });
     } finally {
+      submittingImportRef.current = false;
       setSubmittingAdminImport(false);
     }
   };
@@ -1667,42 +1671,6 @@ export default function InventoryModule() {
     setShowLabelModal(true);
   };
 
-  const handleCreateAdjustment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setStatusMsg(null);
-    if (!adjProductId || adjQuantityChange === 0 || !adjReason.trim()) {
-      setStatusMsg({
-        type: "error",
-        text: "Vui lòng chọn sản phẩm, nhập số lượng điều chỉnh khác 0 và lý do điều chỉnh.",
-      });
-      return;
-    }
-    try {
-      await apiRequest("/inventory/adjustments", {
-        method: "POST",
-        body: JSON.stringify({
-          productId: adjProductId,
-          color: adjColor.trim(),
-          size: adjSize.trim().toUpperCase(),
-          warehouse: adjWarehouse,
-          quantityChange: Number(adjQuantityChange),
-          reason: adjReason.trim(),
-        }),
-      });
-      setStatusMsg({
-        type: "success",
-        text: `Đã lập Phiếu Điều Chỉnh Kho (${adjWarehouse === "FLOOR_2" ? "Kho Tầng 2" : "Kho Tầng 1"}) thành công!`,
-      });
-      loadProductsAndCats();
-      loadMovements();
-    } catch (err: any) {
-      setStatusMsg({
-        type: "error",
-        text: err?.message || "Lỗi khi lập phiếu điều chỉnh kho.",
-      });
-    }
-  };
-
   // Sản phẩm có tồn > 0 tại kho đầu dời (theo hướng dời đang chọn) + Smart Search
   const sourceFloorProducts = useMemo(() => {
     const avail = products.filter((p) => {
@@ -1808,15 +1776,11 @@ export default function InventoryModule() {
     setTransferDirection(dir);
     setTransferItems([]);
     setTransferSearch("");
-    const avail = products.filter((p) => {
-      const f1 = Number(p.stockFloor1 ?? p.stock) || 0;
-      const f2 = Number(p.stockFloor2) || 0;
-      return (dir === "F1_TO_F2" ? f1 : f2) > 0;
-    });
-    const firstProd = avail[0];
-    setTransferProductId(firstProd?._id || "");
-    syncDefaultTransferVariantForProduct(firstProd, dir);
+    setTransferProductId("");
+    setTransferColor("");
+    setTransferSize("");
     setTransferQty(1);
+    setTransferSuggestOpen(false);
   };
 
   const handleAddTransferItem = (
@@ -1826,11 +1790,11 @@ export default function InventoryModule() {
     explicitSize?: string
   ) => {
     setStatusMsg(null);
-    const targetId = prodId || transferProductId || sourceFloorProducts[0]?._id;
+    const targetId = prodId || transferProductId;
     if (!targetId) {
       setStatusMsg({
         type: "error",
-        text: "Không có sản phẩm nào còn tồn ở kho đầu dời để chọn.",
+        text: "Vui lòng chọn sản phẩm cần chuyển kho.",
       });
       return;
     }
@@ -2817,127 +2781,103 @@ export default function InventoryModule() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* THANH CHỌN KHO + ĐIỀU HƯỚNG 6 PHÂN HỆ KHO */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-4 sm:p-5 space-y-4">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-100">
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-base sm:text-lg font-extrabold text-slate-900 tracking-tight">
-                Trung tâm Quản lý Kho, Giá niêm yết &amp; Sổ kho
-              </h2>
-              <span className="px-2.5 py-0.5 rounded-full bg-teal-50 border border-teal-200 text-teal-800 text-[11px] font-bold">
-                {activeWarehouseLabel}
-              </span>
+    <div className="space-y-4">
+      {/* HEADER GỌN GÀNG: CHỌN KHO TẦNG + THAO TÁC NHANH + 4 TAB CHÍNH */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-3.5 sm:p-4 space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <h2 className="text-base sm:text-lg font-extrabold text-slate-900 tracking-tight">
+              Quản lý Kho
+            </h2>
+            {/* Bộ chọn Kho tầng dạng Segmented Control gọn 1 hàng */}
+            <div className="inline-flex items-center p-1 rounded-xl bg-slate-100 border border-slate-200 text-xs font-bold">
+              <button
+                type="button"
+                onClick={() => handleSelectWarehouseTab("FLOOR_1")}
+                className={`px-3 py-1.5 rounded-lg transition cursor-pointer inline-flex items-center gap-1.5 ${
+                  activeWarehouse === "FLOOR_1"
+                    ? "bg-teal-600 text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                <span>Kho Tầng 1</span>
+                <span
+                  className={`font-mono text-[10px] px-1.5 py-0.2 rounded-full ${
+                    activeWarehouse === "FLOOR_1"
+                      ? "bg-white/20 text-white"
+                      : "bg-white text-slate-700"
+                  }`}
+                >
+                  {totalFloor1Qty.toLocaleString("vi-VN")}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSelectWarehouseTab("FLOOR_2")}
+                className={`px-3 py-1.5 rounded-lg transition cursor-pointer inline-flex items-center gap-1.5 ${
+                  activeWarehouse === "FLOOR_2"
+                    ? "bg-teal-600 text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                <span>Kho Tầng 2</span>
+                <span
+                  className={`font-mono text-[10px] px-1.5 py-0.2 rounded-full ${
+                    activeWarehouse === "FLOOR_2"
+                      ? "bg-white/20 text-white"
+                      : "bg-white text-slate-700"
+                  }`}
+                >
+                  {totalFloor2Qty.toLocaleString("vi-VN")}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSelectWarehouseTab("ALL")}
+                className={`px-3 py-1.5 rounded-lg transition cursor-pointer inline-flex items-center gap-1.5 ${
+                  activeWarehouse === "ALL"
+                    ? "bg-slate-800 text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                <span>Gộp 2 kho</span>
+                <span
+                  className={`font-mono text-[10px] px-1.5 py-0.2 rounded-full ${
+                    activeWarehouse === "ALL"
+                      ? "bg-white/20 text-white"
+                      : "bg-white text-slate-700"
+                  }`}
+                >
+                  {(totalFloor1Qty + totalFloor2Qty).toLocaleString("vi-VN")}
+                </span>
+              </button>
             </div>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Quản lý tồn kho tách biệt 2 tầng, điều chỉnh Giá vốn / Giá niêm yết, nhập kho, kiểm kê mã vạch và luân chuyển hàng hoá.
-            </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 w-full lg:w-auto">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              onClick={() => handleSelectWarehouseTab("FLOOR_1")}
-              className={`px-3.5 py-2 rounded-xl text-left transition border cursor-pointer ${
-                activeWarehouse === "FLOOR_1"
-                  ? "bg-teal-600 text-white border-slate-900 shadow-sm"
-                  : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-white hover:border-slate-300"
-              }`}
+              onClick={() => {
+                setEditingProductModal(null);
+                setShowCodeCreator(true);
+              }}
+              className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 text-xs font-extrabold inline-flex items-center gap-1.5 transition cursor-pointer"
             >
-              <div className="text-xs font-extrabold flex items-center justify-between gap-3">
-                <span className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-teal-400" />
-                  🏢 Kho Tầng 1
-                </span>
-                <span
-                  className={`font-mono text-xs px-2 py-0.5 rounded-full ${
-                    activeWarehouse === "FLOOR_1"
-                      ? "bg-teal-500/20 text-teal-300"
-                      : "bg-teal-50 text-teal-800"
-                  }`}
-                >
-                  {totalFloor1Qty.toLocaleString("vi-VN")} SP
-                </span>
-              </div>
-              <div
-                className={`text-[10px] mt-0.5 ${
-                  activeWarehouse === "FLOOR_1" ? "text-slate-300" : "text-slate-500"
-                }`}
-              >
-                Kho bán hàng POS trực tiếp
-              </div>
+              <Plus className="w-3.5 h-3.5" />
+              Tạo SP mới
             </button>
-
             <button
               type="button"
-              onClick={() => handleSelectWarehouseTab("FLOOR_2")}
-              className={`px-3.5 py-2 rounded-xl text-left transition border cursor-pointer ${
-                activeWarehouse === "FLOOR_2"
-                  ? "bg-teal-600 text-white border-slate-900 shadow-sm"
-                  : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-white hover:border-slate-300"
-              }`}
+              onClick={() => setShowAdminImportModal(true)}
+              className="px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-extrabold inline-flex items-center gap-1.5 shadow-xs transition cursor-pointer"
             >
-              <div className="text-xs font-extrabold flex items-center justify-between gap-3">
-                <span className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-purple-400" />
-                  🏬 Kho Tầng 2
-                </span>
-                <span
-                  className={`font-mono text-xs px-2 py-0.5 rounded-full ${
-                    activeWarehouse === "FLOOR_2"
-                      ? "bg-purple-500/20 text-purple-300"
-                      : "bg-purple-50 text-purple-800"
-                  }`}
-                >
-                  {totalFloor2Qty.toLocaleString("vi-VN")} SP
-                </span>
-              </div>
-              <div
-                className={`text-[10px] mt-0.5 ${
-                  activeWarehouse === "FLOOR_2" ? "text-slate-300" : "text-slate-500"
-                }`}
-              >
-                Kho dự trữ &amp; lưu kho
-              </div>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleSelectWarehouseTab("ALL")}
-              className={`px-3.5 py-2 rounded-xl text-left transition border cursor-pointer ${
-                activeWarehouse === "ALL"
-                  ? "bg-teal-600 text-white border-slate-900 shadow-sm"
-                  : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-white hover:border-slate-300"
-              }`}
-            >
-              <div className="text-xs font-extrabold flex items-center justify-between gap-3">
-                <span className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-teal-400" />
-                  📊 Gộp 2 Kho
-                </span>
-                <span
-                  className={`font-mono text-xs px-2 py-0.5 rounded-full ${
-                    activeWarehouse === "ALL"
-                      ? "bg-teal-500/20 text-teal-300"
-                      : "bg-teal-50 text-teal-800"
-                  }`}
-                >
-                  {(totalFloor1Qty + totalFloor2Qty).toLocaleString("vi-VN")} SP
-                </span>
-              </div>
-              <div
-                className={`text-[10px] mt-0.5 ${
-                  activeWarehouse === "ALL" ? "text-slate-300" : "text-slate-500"
-                }`}
-              >
-                So sánh Tầng 1 + Tầng 2
-              </div>
+              <ClipboardList className="w-3.5 h-3.5" />
+              Nhập kho nhanh
             </button>
           </div>
         </div>
 
-        {/* Thanh chuyển Sub-Tab trong Module Kho */}
+        {/* Thanh chuyển 4 Tab gọn gàng (Đã bỏ Điều chỉnh kho & gom toàn bộ Lịch sử vào 1 tab) */}
         <div
           role="tablist"
           aria-label="Phân hệ Quản lý kho"
@@ -2955,7 +2895,7 @@ export default function InventoryModule() {
             }`}
           >
             <Package className="w-4 h-4" />
-            <span>1. Tồn kho &amp; Giá niêm yết</span>
+            <span>1. Tồn kho &amp; Giá</span>
             <span
               className={`px-1.5 py-0.2 rounded-full font-mono text-[10px] ${
                 subTab === "PRODUCTS" ? "bg-white/20 text-white" : "bg-white text-slate-600"
@@ -2963,6 +2903,45 @@ export default function InventoryModule() {
             >
               {products.length}
             </span>
+          </button>
+
+          <button
+            type="button"
+            role="tab"
+            aria-selected={subTab === "TRANSFER"}
+            onClick={() => setSubTab("TRANSFER")}
+            className={`px-3.5 py-2 rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition cursor-pointer ${
+              subTab === "TRANSFER"
+                ? "bg-teal-600 text-white shadow-xs"
+                : "text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200/80"
+            }`}
+          >
+            <ArrowLeftRight className="w-4 h-4" />
+            <span>2. Chuyển tầng (T1 ↔ T2)</span>
+          </button>
+
+          <button
+            type="button"
+            role="tab"
+            aria-selected={subTab === "HISTORY"}
+            onClick={() => setSubTab("HISTORY")}
+            className={`px-3.5 py-2 rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition cursor-pointer ${
+              subTab === "HISTORY"
+                ? "bg-teal-600 text-white shadow-xs"
+                : "text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200/80"
+            }`}
+          >
+            <History className="w-4 h-4" />
+            <span>3. Lịch sử kho</span>
+            {importsList.length > 0 && (
+              <span
+                className={`px-1.5 py-0.2 rounded-full font-mono text-[10px] ${
+                  subTab === "HISTORY" ? "bg-white/20 text-white" : "bg-white text-slate-600"
+                }`}
+              >
+                {importsList.length}
+              </span>
+            )}
           </button>
 
           <button
@@ -2977,76 +2956,7 @@ export default function InventoryModule() {
             }`}
           >
             <BarChart3 className="w-4 h-4" />
-            <span>2. Báo cáo Nhập-Xuất-Tồn</span>
-          </button>
-
-          <button
-            type="button"
-            role="tab"
-            aria-selected={subTab === "MOVEMENTS"}
-            onClick={() => setSubTab("MOVEMENTS")}
-            className={`px-3.5 py-2 rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition cursor-pointer ${
-              subTab === "MOVEMENTS"
-                ? "bg-teal-600 text-white shadow-xs"
-                : "text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200/80"
-            }`}
-          >
-            <BookOpen className="w-4 h-4" />
-            <span>3. Sổ kho</span>
-          </button>
-
-          <button
-            type="button"
-            role="tab"
-            aria-selected={subTab === "IMPORTS"}
-            onClick={() => setSubTab("IMPORTS")}
-            className={`px-3.5 py-2 rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition cursor-pointer ${
-              subTab === "IMPORTS"
-                ? "bg-teal-600 text-white shadow-xs"
-                : "text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200/80"
-            }`}
-          >
-            <ClipboardList className="w-4 h-4" />
-            <span>4. Phiếu nhập kho</span>
-            {importsList.length > 0 && (
-              <span
-                className={`px-1.5 py-0.2 rounded-full font-mono text-[10px] ${
-                  subTab === "IMPORTS" ? "bg-white/20 text-white" : "bg-white text-slate-600"
-                }`}
-              >
-                {importsList.length}
-              </span>
-            )}
-          </button>
-
-          <button
-            type="button"
-            role="tab"
-            aria-selected={subTab === "ADJUSTMENT"}
-            onClick={() => setSubTab("ADJUSTMENT")}
-            className={`px-3.5 py-2 rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition cursor-pointer ${
-              subTab === "ADJUSTMENT"
-                ? "bg-teal-600 text-white shadow-xs"
-                : "text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200/80"
-            }`}
-          >
-            <Sliders className="w-4 h-4" />
-            <span>5. Điều chỉnh kho</span>
-          </button>
-
-          <button
-            type="button"
-            role="tab"
-            aria-selected={subTab === "TRANSFER"}
-            onClick={() => setSubTab("TRANSFER")}
-            className={`px-3.5 py-2 rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition cursor-pointer ${
-              subTab === "TRANSFER"
-                ? "bg-indigo-600 text-white shadow-xs"
-                : "text-indigo-700 bg-indigo-50/70 hover:bg-indigo-100 border border-indigo-200"
-            }`}
-          >
-            <ArrowLeftRight className="w-4 h-4" />
-            <span>6. Chuyển tầng (Kho 1 ↔ Kho 2)</span>
+            <span>4. Báo cáo Nhập-Xuất-Tồn</span>
           </button>
         </div>
       </div>
@@ -3135,285 +3045,6 @@ export default function InventoryModule() {
                 = Tổng giá niêm yết − Tổng giá vốn
               </div>
             </div>
-          </div>
-
-          {/* MỤC XEM LẠI CHI TIẾT KHI NHẬP HÀNG VÀO KHO (PHIẾU NHẬP PN-... & NHẬP THẲNG CMS) */}
-          <div className="bg-white rounded-xl border border-indigo-200 shadow-sm overflow-hidden">
-            <div className="px-5 py-3.5 bg-gradient-to-r from-indigo-50/80 via-white to-teal-50/60 border-b border-indigo-100 flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-2.5">
-                <span className="p-2 rounded-lg bg-indigo-600 text-white shadow-sm">
-                  <History className="w-4 h-4" />
-                </span>
-                <div>
-                  <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
-                    <span>Xem Lại Chi Tiết Khi Nhập Hàng Vào Kho</span>
-                    <span className="px-2 py-0.5 rounded-full text-[11px] font-mono bg-indigo-100 text-indigo-800">
-                      {importsList.length} phiếu nhập ·{" "}
-                      {movements.filter((m) => m.type === "IMPORT" && m.referenceCode === "CMS-NHAP-THANG").length} lượt nhập thẳng
-                    </span>
-                  </h3>
-                  <p className="text-[11px] text-slate-500">
-                    Lưu vết đầy đủ thông tin Người nhập (<strong className="text-purple-700">ADMIN</strong> hoặc{" "}
-                    <strong className="text-teal-700">ACCOUNTANT</strong>), kho nhận, số lượng, giá vốn và giá niêm yết.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2">
-                {showRecentImportsSection && (
-                  <div className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5 text-[11px] font-bold">
-                    <button
-                      type="button"
-                      onClick={() => setRecentImportRoleFilter("ALL")}
-                      className={`px-2.5 py-1 rounded-md transition ${recentImportRoleFilter === "ALL"
-                        ? "bg-teal-600 text-white"
-                        : "text-slate-600 hover:bg-slate-100"
-                        }`}
-                    >
-                      Tất cả vai trò
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setRecentImportRoleFilter("ADMIN")}
-                      className={`px-2.5 py-1 rounded-md transition ${recentImportRoleFilter === "ADMIN"
-                        ? "bg-purple-700 text-white"
-                        : "text-purple-700 hover:bg-purple-50"
-                        }`}
-                    >
-                      Admin
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setRecentImportRoleFilter("ACCOUNTANT")}
-                      className={`px-2.5 py-1 rounded-md transition ${recentImportRoleFilter === "ACCOUNTANT"
-                        ? "bg-teal-700 text-white"
-                        : "text-teal-700 hover:bg-teal-50"
-                        }`}
-                    >
-                      Kế toán & Kho
-                    </button>
-                  </div>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setShowRecentImportsSection((prev) => !prev)}
-                  className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-sm transition"
-                >
-                  <Eye className="w-3.5 h-3.5" />
-                  {showRecentImportsSection ? "Thu gọn mục xem lại" : "Xem lại chi tiết nhập hàng"}
-                </button>
-              </div>
-            </div>
-
-            {showRecentImportsSection && (
-              <div className="p-4 space-y-3">
-                <div className="overflow-x-auto border border-slate-200 rounded-xl">
-                  <table className="w-full text-xs text-left">
-                    <thead className="bg-slate-100 text-slate-700 border-b border-slate-200 uppercase text-[11px]">
-                      <tr>
-                        <th className="py-2.5 px-3">Mã phiếu / Chứng từ</th>
-                        <th className="py-2.5 px-3">Thời gian nhập</th>
-                        <th className="py-2.5 px-3">Kho nhận</th>
-                        <th className="py-2.5 px-3">Người nhập (Admin / Warehouse)</th>
-                        <th className="py-2.5 px-3">Người kiểm / Hoàn thành</th>
-                        <th className="py-2.5 px-3 text-right">Số SP</th>
-                        <th className="py-2.5 px-3 text-right">Tổng SL nhập</th>
-                        <th className="py-2.5 px-3 text-right">Tổng giá vốn</th>
-                        <th className="py-2.5 px-3 text-center">Xem chi tiết</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200">
-                      {(() => {
-                        // Kết hợp Phiếu nhập kho (PN-...) và Lượt nhập thẳng CMS (CMS-NHAP-THANG)
-                        const combinedEntries: any[] = [];
-
-                        importsList.forEach((imp) => {
-                          const wh = imp.targetWarehouse === "FLOOR_2" ? "FLOOR_2" : "FLOOR_1";
-                          if (activeWarehouse !== "ALL" && wh !== activeWarehouse) return;
-                          const creatorRole = String(imp.createdByRole || "ADMIN").toUpperCase();
-                          const completerRole = String(imp.completedByRole || "").toUpperCase();
-                          if (
-                            recentImportRoleFilter !== "ALL" &&
-                            creatorRole !== recentImportRoleFilter &&
-                            completerRole !== recentImportRoleFilter
-                          ) {
-                            return;
-                          }
-                          const items: any[] = imp.items || [];
-                          const totalQty = items.reduce(
-                            (s, it) => s + (Number(it.actualQuantity ?? it.expectedQuantity) || 0),
-                            0
-                          );
-                          const totalCost = items.reduce(
-                            (s, it) =>
-                              s +
-                              (Number(it.costPrice) || 0) *
-                              (Number(it.actualQuantity ?? it.expectedQuantity) || 0),
-                            0
-                          );
-                          combinedEntries.push({
-                            _id: imp._id,
-                            entryType: "RECEIPT",
-                            code: imp.code || imp.receiptCode || imp._id,
-                            createdAt: imp.createdAt,
-                            targetWarehouse: wh,
-                            status: imp.status,
-                            createdByName: imp.createdByName || "Quản trị viên",
-                            createdByRole: imp.createdByRole || "ADMIN",
-                            completedByName: imp.completedByName,
-                            completedByRole: imp.completedByRole,
-                            itemCount: items.length,
-                            totalQty,
-                            totalCost,
-                            rawReceipt: imp,
-                          });
-                        });
-
-                        movements
-                          .filter((m) => m.type === "IMPORT" && m.referenceCode === "CMS-NHAP-THANG")
-                          .forEach((m) => {
-                            const wh = m.warehouseLocation === "FLOOR_2" ? "FLOOR_2" : "FLOOR_1";
-                            if (activeWarehouse !== "ALL" && wh !== activeWarehouse) return;
-                            const role = String(m.performedByRole || "ADMIN").toUpperCase();
-                            if (recentImportRoleFilter !== "ALL" && role !== recentImportRoleFilter) {
-                              return;
-                            }
-                            const qty = Math.abs(Number(m.quantityChange) || 0);
-                            const cost = Number(m.costPrice || 0);
-                            const sell = Number(m.sellingPrice || 0);
-                            combinedEntries.push({
-                              _id: `mov-${m._id}`,
-                              entryType: "DIRECT_CMS",
-                              code: `CMS-NHAP-THANG`,
-                              createdAt: m.createdAt,
-                              targetWarehouse: wh,
-                              status: "COMPLETED",
-                              createdByName: m.performedByName || "Quản lý (Admin)",
-                              createdByRole: m.performedByRole || "ADMIN",
-                              completedByName: m.performedByName || "Quản lý (Admin)",
-                              completedByRole: m.performedByRole || "ADMIN",
-                              itemCount: 1,
-                              totalQty: qty,
-                              totalCost: qty * cost,
-                              rawReceipt: {
-                                _id: m._id,
-                                code: `CMS-NHAP-THANG (${m.productCode})`,
-                                status: "COMPLETED",
-                                targetWarehouse: wh,
-                                createdByName: m.performedByName || "Quản lý (Admin)",
-                                createdByRole: m.performedByRole || "ADMIN",
-                                completedByName: m.performedByName || "Quản lý (Admin)",
-                                completedByRole: m.performedByRole || "ADMIN",
-                                createdAt: m.createdAt,
-                                completedAt: m.createdAt,
-                                note: m.note || "Nhập thẳng sản phẩm vào kho từ CMS",
-                                items: [
-                                  {
-                                    stt: 1,
-                                    productCode: m.productCode,
-                                    productName: m.productName,
-                                    unit: productByCode.get(m.productCode)?.unit || "Cái",
-                                    expectedQuantity: qty,
-                                    actualQuantity: qty,
-                                    costPrice: cost,
-                                    sellingPrice: sell,
-                                    checkedByName: m.performedByName || "Quản lý (Admin)",
-                                    checkedByRole: m.performedByRole || "ADMIN",
-                                    isConfirmed: true,
-                                  },
-                                ],
-                              },
-                            });
-                          });
-
-                        combinedEntries.sort(
-                          (a, b) =>
-                            new Date(b.createdAt || 0).getTime() -
-                            new Date(a.createdAt || 0).getTime()
-                        );
-
-                        const topEntries = combinedEntries.slice(0, 15);
-                        if (topEntries.length === 0) {
-                          return (
-                            <tr>
-                              <td colSpan={9} className="py-6 text-center text-slate-400">
-                                Chưa có dữ liệu nhập hàng nào khớp bộ lọc.
-                              </td>
-                            </tr>
-                          );
-                        }
-
-                        return topEntries.map((entry) => (
-                          <tr key={entry._id} className="hover:bg-indigo-50/40">
-                            <td className="py-2.5 px-3 font-mono font-bold text-slate-900 whitespace-nowrap">
-                              {entry.code}
-                              {entry.entryType === "DIRECT_CMS" && (
-                                <span className="ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-sans font-bold bg-amber-100 text-amber-800">
-                                  Nhập thẳng
-                                </span>
-                              )}
-                            </td>
-                            <td className="py-2.5 px-3 text-slate-500 whitespace-nowrap">
-                              {formatDateTime(entry.createdAt)}
-                            </td>
-                            <td className="py-2.5 px-3 whitespace-nowrap">
-                              <span
-                                className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${entry.targetWarehouse === "FLOOR_2"
-                                  ? "bg-teal-100 text-teal-800"
-                                  : "bg-teal-100 text-teal-800"
-                                  }`}
-                              >
-                                {entry.targetWarehouse === "FLOOR_2"
-                                  ? "🏬 Kho Tầng 2"
-                                  : "🏢 Kho Tầng 1"}
-                              </span>
-                            </td>
-                            <td className="py-2.5 px-3 whitespace-nowrap">
-                              <div className="flex items-center gap-1.5">
-                                <span className="font-semibold text-slate-800">
-                                  {entry.createdByName}
-                                </span>
-                                <CmsRoleBadge role={entry.createdByRole} compact />
-                              </div>
-                            </td>
-                            <td className="py-2.5 px-3 whitespace-nowrap">
-                              {entry.completedByName ? (
-                                <div className="flex items-center gap-1.5">
-                                  <span className="font-semibold text-slate-700">
-                                    {entry.completedByName}
-                                  </span>
-                                  <CmsRoleBadge role={entry.completedByRole} compact />
-                                </div>
-                              ) : (
-                                <span className="text-slate-400 italic">Đang xử lý ({entry.status})</span>
-                              )}
-                            </td>
-                            <td className="py-2.5 px-3 text-right font-mono font-bold">
-                              {entry.itemCount} SP
-                            </td>
-                            <td className="py-2.5 px-3 text-right font-mono font-extrabold text-teal-700">
-                              +{entry.totalQty}
-                            </td>
-                            <td className="py-2.5 px-3 text-right font-mono font-bold text-amber-800 whitespace-nowrap">
-                              {formatVND(entry.totalCost)}
-                            </td>
-                            <td className="py-2.5 px-3 text-center whitespace-nowrap">
-                              <button
-                                type="button"
-                                onClick={() => setDetailModalReceipt(entry.rawReceipt)}
-                                className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-bold text-[11px] inline-flex items-center gap-1"
-                              >
-                                <Eye className="w-3.5 h-3.5" /> Xem chi tiết
-                              </button>
-                            </td>
-                          </tr>
-                        ));
-                      })()}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Bảng danh sách sản phẩm: Chia rõ Kho Tầng 1 & Kho Tầng 2 */}
@@ -3746,36 +3377,35 @@ export default function InventoryModule() {
               </div>
             )}
 
-            <div className="overflow-x-auto border border-slate-200 rounded-xl">
+            <div className="overflow-x-auto border border-slate-200 rounded-2xl bg-white">
               <table className="w-full text-xs text-left">
-                <thead className="bg-slate-100 text-slate-700 border-b border-slate-200 uppercase">
+                <thead className="bg-slate-50 text-slate-500 border-b border-slate-200 text-[11px] font-bold uppercase tracking-wider">
                   <tr>
-                    <th className="py-3 px-2.5 w-12 text-center">STT</th>
-                    <th className="py-3 px-2.5 max-w-[180px]">Mã hàng</th>
-                    <th className="py-3 px-2.5 min-w-[220px]">Tên sản phẩm</th>
-                    <th className="py-3 px-2.5 w-32">Category</th>
-                    <th className="py-3 px-2 text-center w-16">ĐVT</th>
+                    <th className="py-3 px-4">Sản phẩm</th>
+                    <th className="py-3 px-3 w-36">Category</th>
+                    <th className="py-3 px-3 w-36">Thương hiệu</th>
                     {(activeWarehouse === "FLOOR_1" || activeWarehouse === "ALL") && (
-                      <th className="py-3 px-2.5 text-right w-32 whitespace-nowrap bg-teal-950 text-teal-300">
-                        🏢 Tồn Kho Tầng 1
+                      <th className="py-3 px-3 text-center w-28 whitespace-nowrap text-teal-700">
+                        Tồn Tầng 1
                       </th>
                     )}
                     {(activeWarehouse === "FLOOR_2" || activeWarehouse === "ALL") && (
-                      <th className="py-3 px-2.5 text-right w-32 whitespace-nowrap bg-purple-950 text-purple-300">
-                        🏬 Tồn Kho Tầng 2
+                      <th className="py-3 px-3 text-center w-28 whitespace-nowrap text-purple-700">
+                        Tồn Tầng 2
                       </th>
                     )}
                     {activeWarehouse === "ALL" && (
-                      <th className="py-3 px-2.5 text-right w-24 whitespace-nowrap bg-slate-800">
+                      <th className="py-3 px-3 text-center w-28 whitespace-nowrap text-slate-700">
                         Tổng 2 Kho
                       </th>
                     )}
-                    <th className="py-3 px-2.5 text-right w-36 whitespace-nowrap">Giá vốn (VND)</th>
-                    <th className="py-3 px-2.5 text-right w-36 whitespace-nowrap">Giá niêm yết (VND)</th>
-                    <th className="py-3 px-2.5 text-right w-36 whitespace-nowrap">Thao tác</th>
+                    <th className="py-3 px-3 text-right w-36 whitespace-nowrap">Giá vốn (VND)</th>
+                    <th className="py-3 px-3 text-right w-36 whitespace-nowrap">Giá niêm yết (VND)</th>
+                    <th className="py-3 px-3 text-right w-32 whitespace-nowrap">Lãi / SP</th>
+                    <th className="py-3 px-4 text-right w-32 whitespace-nowrap">Thao tác</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-200">
+                <tbody className="divide-y divide-slate-100">
                   {pagedProducts.map((p, idx) => {
                     const rowStt =
                       prodPageSize <= 0
@@ -3787,7 +3417,10 @@ export default function InventoryModule() {
                       (typeof p.categoryId === "object"
                         ? p.categoryId?._id || ""
                         : String(p.categoryId || ""));
-                    const unitVal = editingUnits[p._id] ?? p.unit ?? "Cái";
+                    const catName =
+                      categories.find((c) => c._id === catVal)?.name ||
+                      (typeof p.categoryId === "object" ? p.categoryId?.name : "") ||
+                      "Chưa phân loại";
                     const origF1 = Number(p.stockFloor1 ?? p.stock ?? 0);
                     const origF2 = Number(p.stockFloor2 ?? 0);
                     const f1Val = Number(editingFloor1[p._id] ?? origF1);
@@ -3801,6 +3434,7 @@ export default function InventoryModule() {
                     const costVal = Number(editingCosts[p._id] ?? p.costPrice ?? 0);
                     const sellVal = Number(editingPrices[p._id] ?? p.sellingPrice ?? 0);
                     const margin = sellVal - costVal;
+                    const marginPct = costVal > 0 ? Math.round((margin / costVal) * 100) : 0;
                     const prodVariants = editingVariants[p._id] ?? p.variants ?? [];
                     const namedVars = prodVariants.filter((v) => v.color || v.size);
                     const isVarExpanded = expandedVariantProdId === p._id;
@@ -3811,484 +3445,338 @@ export default function InventoryModule() {
                       stockFloor2: activeWarehouse === "FLOOR_2" ? 1 : 0,
                     };
                     const scannedQty = scannedCheckCounts[p._id] || 0;
+                    const previewVars = isVarExpanded ? namedVars : namedVars.slice(0, 4);
+                    const hiddenVarCount = Math.max(0, namedVars.length - previewVars.length);
                     return (
                       <React.Fragment key={p._id}>
                         <tr
-                          className={`hover:bg-slate-50 transition-colors ${lastScannedProdId === p._id
-                            ? "bg-teal-100/80 ring-2 ring-inset ring-teal-500"
+                          className={`bg-white hover:bg-slate-50/70 transition-colors ${lastScannedProdId === p._id
+                            ? "bg-teal-50/90 ring-2 ring-inset ring-teal-500"
                             : scannedQty > 0
                               ? "bg-teal-50/40"
                               : ""
                             }`}
                         >
-                          <td className="py-3 px-2 text-center font-mono font-bold text-slate-400 align-top">
-                            {rowStt}
-                          </td>
-                          <td className="py-3 px-2.5 font-mono font-bold text-slate-800 align-top break-all max-w-[180px] text-[11px] leading-snug">
-                            <div>{p.code}</div>
-                            {(p.brandName || p.brand || p.versionName) && (
-                              <div className="mt-0.5 font-sans font-semibold text-[10px] text-slate-500 break-normal">
-                                {p.brandCode ? `[${p.brandCode}] ` : ""}
-                                {p.brandName || p.brand || ""}
-                                {p.versionName ? ` · ${p.versionName}` : ""}
-                                {p.versionCode ? ` (${p.versionCode})` : ""}
-                              </div>
-                            )}
-                            {p.legacyCode && p.legacyCode !== p.code && (
-                              <div className="text-[10px] text-slate-400 font-normal" title="Mã cũ trước chuẩn hoá — vẫn quét được">
-                                Mã cũ: {p.legacyCode}
-                              </div>
-                            )}
-                            {scannedQty > 0 && (
-                              <span
-                                className={`mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-extrabold font-mono border ${scannedQty === activeQty
-                                  ? "bg-teal-600 text-white border-teal-700"
-                                  : scannedQty > activeQty
-                                    ? "bg-amber-500 text-white border-amber-600"
-                                    : "bg-teal-100 text-teal-900 border-teal-300"
-                                  }`}
-                              >
-                                Đã quét: {scannedQty}/{activeQty}
+                          {/* 1. SẢN PHẨM */}
+                          <td className="py-3.5 px-4 align-top">
+                            <div className="flex flex-wrap items-center gap-2 text-[11px] font-mono">
+                              <span className="font-semibold text-slate-400">
+                                {String(rowStt).padStart(2, "0")}
                               </span>
-                            )}
-                            <div>
+                              <span className="font-semibold text-slate-500">{p.code}</span>
+                              {(p.brandName || p.brand || p.versionName) && (
+                                <span className="font-sans text-[10px] text-slate-400">
+                                  · {p.brandName || p.brand || ""}
+                                  {p.versionName ? ` ${p.versionName}` : ""}
+                                </span>
+                              )}
+                              {scannedQty > 0 && (
+                                <span
+                                  className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-extrabold border ${scannedQty === activeQty
+                                    ? "bg-teal-600 text-white border-teal-700"
+                                    : scannedQty > activeQty
+                                      ? "bg-amber-500 text-white border-amber-600"
+                                      : "bg-teal-100 text-teal-900 border-teal-300"
+                                    }`}
+                                >
+                                  Quét: {scannedQty}/{activeQty}
+                                </span>
+                              )}
                               <button
                                 type="button"
                                 onClick={() => handleOpenPrintLabelForProduct(p)}
-                                className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-sans font-bold text-[10px]"
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-sans font-semibold text-slate-500 hover:text-indigo-700 hover:bg-indigo-50 border border-transparent hover:border-indigo-200 transition cursor-pointer"
                                 title="In tem nhãn mã vạch theo từng Mã con (Màu + Size)"
                               >
-                                <Printer className="w-5 h-3" />IN MÃ
+                                <Printer className="w-3 h-3" /> In mã
                               </button>
                             </div>
-                          </td>
-                          <td className="py-3 px-2.5 align-top space-y-1.5">
-                            <textarea
-                              rows={Math.max(2, Math.ceil((nameVal.length || 0) / 42))}
-                              value={nameVal}
-                              onChange={(e) =>
-                                setEditingNames((prev) => ({
-                                  ...prev,
-                                  [p._id]: e.target.value,
-                                }))
-                              }
-                              className="w-full px-2.5 py-1.5 rounded border border-slate-300 font-semibold text-slate-900 whitespace-pre-wrap break-words leading-snug resize-y"
-                            />
-                            <input
-                              type="text"
-                              value={editingNotes[p._id] ?? p.note ?? ""}
-                              onChange={(e) =>
-                                setEditingNotes((prev) => ({
-                                  ...prev,
-                                  [p._id]: e.target.value,
-                                }))
-                              }
-                              placeholder="Ghi chú sản phẩm..."
-                              className="w-full px-2.5 py-1 rounded border border-slate-200 bg-slate-50/70 text-[11px] text-slate-700 placeholder:text-slate-400"
-                            />
-                            <div className="space-y-1">
-                              {namedVars.length > 0 && (() => {
-                                const byColor = new Map<string, ProductVariant[]>();
-                                for (const v of namedVars) {
-                                  const cKey = (v.color || "").trim() || "Mặc định";
-                                  const list = byColor.get(cKey) || [];
-                                  list.push(v);
-                                  byColor.set(cKey, list);
-                                }
-                                const colorGroups = Array.from(byColor.entries()).map(([colorLabel, vars]) => {
-                                  const sortedVars = [...vars].sort((a, b) => {
-                                    const sa = parseFloat(String(a.size || "").replace(",", "."));
-                                    const sb = parseFloat(String(b.size || "").replace(",", "."));
-                                    if (!isNaN(sa) && !isNaN(sb) && sa !== sb) return sa - sb;
-                                    return String(a.size || "").localeCompare(String(b.size || ""), "vi");
-                                  });
-                                  return { colorLabel, vars: sortedVars };
-                                });
 
-                                const MAX_GROUPS_PREVIEW = 2;
-                                const visibleGroups = isVarExpanded
-                                  ? colorGroups
-                                  : colorGroups.slice(0, MAX_GROUPS_PREVIEW);
-                                const hiddenGroupsCount = Math.max(
-                                  0,
-                                  colorGroups.length - visibleGroups.length
-                                );
+                            <div className="mt-1 font-bold text-slate-900 text-[13px] leading-snug">
+                              {nameVal}
+                            </div>
+                            {(editingNotes[p._id] ?? p.note) && (
+                              <div className="mt-0.5 text-[11px] text-slate-400 truncate max-w-md">
+                                {editingNotes[p._id] ?? p.note}
+                              </div>
+                            )}
 
-                                return (
-                                  <div className="space-y-1">
-                                    {visibleGroups.map(({ colorLabel, vars }) => {
-                                      const displayVars = isVarExpanded ? vars : vars.slice(0, 6);
-                                      const hiddenVarsCount = Math.max(0, vars.length - displayVars.length);
-                                      const explicitGroupHexes = vars.find(
-                                        (v) => Array.isArray(v.colorHexes) && v.colorHexes.length > 0
-                                      )?.colorHexes;
-                                      const groupHexes = resolveVariantColorHexes(
-                                        colorLabel,
-                                        explicitGroupHexes
-                                      );
-                                      return (
-                                        <div
-                                          key={colorLabel}
-                                          style={getColorBoxBorderStyle(groupHexes, "#f8fafc", 2)}
-                                          className="flex flex-wrap items-center gap-1 bg-slate-50/90 border border-slate-200/80 rounded px-2 py-1"
-                                        >
-                                          <span className="text-[10px] font-extrabold text-slate-800 mr-0.5 flex items-center gap-1.5">
-                                            <ColorSwatchBadge
-                                              hexes={groupHexes}
-                                              colorName={colorLabel}
-                                              size="xs"
-                                            />
-                                            <span>{colorLabel}:</span>
-                                          </span>
-                                          {displayVars.map((v, vIdx) => {
-                                            const childCode =
-                                              v.variantCode ||
-                                              variantCodeFor(p.code, v.color, v.size);
-                                            const vScanned = scannedVariantCounts[p._id]?.[childCode] || 0;
-                                            const vQty =
-                                              activeWarehouse === "FLOOR_2"
-                                                ? v.stockFloor2
-                                                : activeWarehouse === "FLOOR_1"
-                                                  ? v.stockFloor1
-                                                  : (v.stockFloor1 || 0) + (v.stockFloor2 || 0);
-                                            return (
-                                              <span
-                                                key={`${v.color}-${v.size}-${vIdx}`}
-                                                title={`Mã con in tem: ${childCode}`}
-                                                className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded border text-[10px] font-bold ${lastScannedVariantCode === childCode
-                                                  ? "bg-teal-600 text-white border-teal-700 ring-2 ring-teal-300"
-                                                  : Number(vQty) > 0
-                                                    ? "bg-white text-indigo-900 border-indigo-200"
-                                                    : "bg-slate-100 text-slate-400 border-slate-200"
-                                                  }`}
-                                              >
-                                                {Boolean(v.size?.trim()) && (
-                                                  <span>{v.size.trim()}</span>
-                                                )}
-                                                <span
-                                                  className={`font-mono font-extrabold ${lastScannedVariantCode === childCode
-                                                    ? "text-white"
-                                                    : "text-teal-700"
-                                                    }`}
-                                                >
-                                                  ({vQty})
-                                                </span>
-                                                {vScanned > 0 && (
-                                                  <span className="ml-0.5 px-1 rounded bg-teal-700 text-white font-mono text-[9px]">
-                                                    Quét:{vScanned}
-                                                  </span>
-                                                )}
-                                              </span>
-                                            );
-                                          })}
-                                          {hiddenVarsCount > 0 && (
-                                            <button
-                                              type="button"
-                                              onClick={() =>
-                                                setExpandedVariantProdId(isVarExpanded ? null : p._id)
-                                              }
-                                              className="text-[10px] font-extrabold text-indigo-700 hover:underline px-1"
-                                            >
-                                              +{hiddenVarsCount} size...
-                                            </button>
-                                          )}
-                                        </div>
-                                      );
-                                    })}
-                                    {hiddenGroupsCount > 0 && (
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          setExpandedVariantProdId(isVarExpanded ? null : p._id)
-                                        }
-                                        className="text-[10px] font-extrabold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-2 py-0.5 rounded transition"
-                                      >
-                                        +{hiddenGroupsCount} màu khác ({namedVars.length} mã con)...
-                                      </button>
-                                    )}
-                                  </div>
-                                );
-                              })()}
-                              <div className="flex flex-wrap items-center gap-1.5">
+                            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                              {previewVars.length > 0 ? (
+                                previewVars.map((v, vIdx) => {
+                                  const cLabel = (v.color || "").trim() || "Mặc định";
+                                  const sLabel = (v.size || "").trim();
+                                  const vQty =
+                                    activeWarehouse === "FLOOR_2"
+                                      ? v.stockFloor2 || 0
+                                      : activeWarehouse === "FLOOR_1"
+                                        ? v.stockFloor1 || 0
+                                        : (v.stockFloor1 || 0) + (v.stockFloor2 || 0);
+                                  const vHexes = resolveVariantColorHexes(
+                                    cLabel,
+                                    Array.isArray(v.colorHexes) && v.colorHexes.length > 0
+                                      ? v.colorHexes
+                                      : undefined
+                                  );
+                                  const childCode =
+                                    v.variantCode || variantCodeFor(p.code, v.color, v.size);
+                                  return (
+                                    <button
+                                      key={`${cLabel}-${sLabel}-${vIdx}`}
+                                      type="button"
+                                      onClick={() =>
+                                        setExpandedVariantProdId(isVarExpanded ? null : p._id)
+                                      }
+                                      title={`Mã con: ${childCode} · Bấm để quản lý Size/Màu`}
+                                      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[11px] font-semibold transition cursor-pointer ${lastScannedVariantCode === childCode
+                                        ? "bg-teal-600 text-white border-teal-700"
+                                        : "bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200"
+                                        }`}
+                                    >
+                                      <ColorSwatchBadge
+                                        hexes={vHexes}
+                                        colorName={cLabel}
+                                        size="xs"
+                                      />
+                                      <span>
+                                        {cLabel}
+                                        {sLabel ? ` · ${sLabel}` : ""} ({vQty})
+                                      </span>
+                                    </button>
+                                  );
+                                })
+                              ) : (
                                 <button
                                   type="button"
                                   onClick={() =>
                                     setExpandedVariantProdId(isVarExpanded ? null : p._id)
                                   }
-                                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-[10px] font-extrabold transition ${isVarExpanded
-                                    ? "bg-indigo-600 text-white border-indigo-700"
-                                    : "bg-slate-100 hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 border-slate-300"
-                                    }`}
+                                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-dashed border-slate-300 bg-white hover:border-teal-400 hover:text-teal-700 text-slate-500 text-[11px] font-semibold transition cursor-pointer"
                                 >
-                                  <span>
-                                    🎨 Quản lý Size/Màu ({namedVars.length} mã con) · +Thêm
-                                  </span>
-                                  {isVarExpanded ? (
-                                    <ChevronUp className="w-3 h-3" />
-                                  ) : (
-                                    <ChevronDown className="w-3 h-3" />
-                                  )}
+                                  + Thêm size/màu
                                 </button>
+                              )}
+                              {hiddenVarCount > 0 && (
                                 <button
                                   type="button"
-                                  onClick={() => handleOpenSetLinkModal(p)}
-                                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-[10px] font-extrabold transition cursor-pointer ${(p.parentSetProductId && (p.packSize || 0) > 0) ||
-                                    (Array.isArray(p.linkedRetailProducts) && p.linkedRetailProducts.length > 0)
-                                    ? "bg-amber-100 hover:bg-amber-200 text-amber-950 border-amber-400"
-                                    : "bg-slate-100 hover:bg-amber-50 text-slate-700 hover:text-amber-800 border-slate-300"
-                                    }`}
-                                  title="Cấu hình liên kết tự động tách từ Sản phẩm Bộ/Hộp sang Sản phẩm Lẻ"
+                                  onClick={() =>
+                                    setExpandedVariantProdId(isVarExpanded ? null : p._id)
+                                  }
+                                  className="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 text-[11px] font-bold hover:bg-indigo-100 cursor-pointer"
                                 >
-                                  <span>
-                                    🔗{" "}
-                                    {p.parentSetProductId && (p.packSize || 0) > 0
-                                      ? `SP Lẻ (1 ${p.parentSetUnit || "Bộ"} = ${p.packSize} ${p.unit})`
-                                      : Array.isArray(p.linkedRetailProducts) &&
-                                        p.linkedRetailProducts.length > 0
-                                        ? `SP Bộ (${p.linkedRetailProducts.length} SP lẻ)`
-                                        : "Gắn Bộ ↔ Lẻ"}
-                                  </span>
+                                  +{hiddenVarCount} nữa
                                 </button>
-                              </div>
-
-                              {/* Hiển thị thông tin & nút Tách 1 Bộ nhanh nếu là SP Lẻ đã liên kết */}
-                              {p.parentSetProductId && (p.packSize || 0) > 0 && (
-                                <div className="mt-1 p-1.5 rounded-lg bg-amber-50/90 border border-amber-200 flex flex-wrap items-center justify-between gap-1.5 text-[10px]">
-                                  <div className="text-amber-950 font-semibold leading-tight">
-                                    <span>
-                                      📦 Tự tách từ Bộ:{" "}
-                                      <strong className="font-mono text-amber-900">
-                                        {p.parentSetProductCode || "SP Bộ"}
-                                      </strong>{" "}
-                                      (1 {p.parentSetUnit || "Bộ"} = <b>{p.packSize}</b> {p.unit})
-                                    </span>
-                                    <span className="ml-1.5 px-1.5 py-0.5 rounded bg-white border border-amber-200 font-mono text-[10px] text-teal-800 font-bold">
-                                      Tồn Bộ T1: {p.parentSetStockFloor1 ?? 0} {p.parentSetUnit || "Bộ"}
-                                      {(p.parentSetStockFloor2 ?? 0) > 0
-                                        ? ` · T2: ${p.parentSetStockFloor2}`
-                                        : ""}
-                                    </span>
-                                  </div>
-                                  <button
-                                    type="button"
-                                    disabled={unpackingLoadingId === p._id}
-                                    onClick={() => handleQuickUnpackSet(p._id, 1)}
-                                    className="px-2 py-0.5 rounded bg-teal-600 hover:bg-teal-700 disabled:bg-slate-300 text-white font-extrabold text-[10px] inline-flex items-center gap-1 shadow-2xs cursor-pointer"
-                                    title={`Trừ 1 ${p.parentSetUnit || "Bộ"} ở ${activeWarehouse === "FLOOR_2" ? "Kho Tầng 2" : "Kho Tầng 1"} và cộng +${p.packSize} ${p.unit} vào sản phẩm lẻ này`}
-                                  >
-                                    {unpackingLoadingId === p._id
-                                      ? "Đang tách..."
-                                      : `⚡ Tách 1 ${p.parentSetUnit || "Bộ"} → +${p.packSize} ${p.unit}`}
-                                  </button>
-                                </div>
                               )}
-
-                              {/* Hiển thị thông tin & nút Tách 1 Bộ nhanh nếu là SP Bộ có SP Lẻ liên kết */}
-                              {Array.isArray(p.linkedRetailProducts) &&
-                                p.linkedRetailProducts.length > 0 && (
-                                  <div className="mt-1 space-y-1">
-                                    {p.linkedRetailProducts.map((ret) => (
-                                      <div
-                                        key={ret._id}
-                                        className="p-1.5 rounded-lg bg-teal-50/90 border border-teal-200 flex flex-wrap items-center justify-between gap-1.5 text-[10px]"
-                                      >
-                                        <div className="text-teal-950 font-semibold leading-tight">
-                                          <span>
-                                            🔹 Bóc lẻ sang:{" "}
-                                            <strong className="font-mono text-teal-900">
-                                              {ret.code}
-                                            </strong>{" "}
-                                            (1 {p.unit} = <b>{ret.packSize}</b> {ret.unit} · Tồn lẻ T1:{" "}
-                                            <b>{ret.stockFloor1}</b> {ret.unit})
-                                          </span>
-                                        </div>
-                                        <button
-                                          type="button"
-                                          disabled={unpackingLoadingId === ret._id}
-                                          onClick={() => handleQuickUnpackSet(ret._id, 1)}
-                                          className="px-2 py-0.5 rounded bg-teal-600 hover:bg-teal-700 disabled:bg-slate-300 text-white font-extrabold text-[10px] inline-flex items-center gap-1 shadow-2xs cursor-pointer"
-                                          title={`Trừ 1 ${p.unit} này và cộng +${ret.packSize} ${ret.unit} vào mã lẻ ${ret.code}`}
-                                        >
-                                          {unpackingLoadingId === ret._id
-                                            ? "Đang tách..."
-                                            : `⚡ Tách 1 ${p.unit} → +${ret.packSize} ${ret.unit}`}
-                                        </button>
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-                            </div>
-                          </td>
-                          <td className="py-3 px-2.5 align-top">
-                            <select
-                              value={catVal}
-                              onChange={(e) =>
-                                setEditingCats((prev) => ({
-                                  ...prev,
-                                  [p._id]: e.target.value,
-                                }))
-                              }
-                              className="w-full px-2 py-1.5 rounded border border-slate-300 bg-white text-slate-700"
-                            >
-                              {categories.map((c) => (
-                                <option key={c._id} value={c._id}>
-                                  {c.name}
-                                </option>
-                              ))}
-                            </select>
-                          </td>
-                          <td className="py-3 px-2 text-center align-top">
-                            <input
-                              type="text"
-                              value={unitVal}
-                              onChange={(e) =>
-                                setEditingUnits((prev) => ({
-                                  ...prev,
-                                  [p._id]: e.target.value,
-                                }))
-                              }
-                              className="w-14 px-1.5 py-1.5 rounded border border-slate-300 text-center"
-                            />
-                          </td>
-
-                          {(activeWarehouse === "FLOOR_1" || activeWarehouse === "ALL") && (
-                            <td className="py-3 px-2.5 text-right align-top bg-teal-50/30">
-                              <input
-                                type="number"
-                                min={0}
-                                step={1}
-                                value={f1Val}
-                                onChange={(e) =>
-                                  setEditingFloor1((prev) => ({
-                                    ...prev,
-                                    [p._id]: Math.max(0, Math.round(Number(e.target.value) || 0)),
-                                  }))
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setExpandedVariantProdId(isVarExpanded ? null : p._id)
                                 }
-                                className={`w-24 px-2 py-1.5 rounded border text-right font-mono font-extrabold ${f1Val !== origF1
-                                  ? "border-teal-500 bg-teal-50 text-teal-900"
-                                  : "border-slate-300 bg-white text-teal-700"
-                                  }`}
-                              />
-                              {activeWarehouse === "FLOOR_1" && origF2 > 0 && (
-                                <div className="mt-1 text-[10px] text-purple-700 font-mono">
-                                  (Kho Tầng 2 đang có: <b>{origF2}</b>)
-                                </div>
-                              )}
-                              {f1Val !== origF1 && (
-                                <div className="mt-0.5 text-[10px] font-mono font-bold text-teal-700">
-                                  Hiện tại: {origF1} ({f1Val > origF1 ? `+${f1Val - origF1}` : f1Val - origF1})
-                                </div>
-                              )}
-                            </td>
-                          )}
-
-                          {(activeWarehouse === "FLOOR_2" || activeWarehouse === "ALL") && (
-                            <td className="py-3 px-2.5 text-right align-top bg-purple-50/30">
-                              <input
-                                type="number"
-                                min={0}
-                                step={1}
-                                value={f2Val}
-                                onChange={(e) =>
-                                  setEditingFloor2((prev) => ({
-                                    ...prev,
-                                    [p._id]: Math.max(0, Math.round(Number(e.target.value) || 0)),
-                                  }))
-                                }
-                                className={`w-24 px-2 py-1.5 rounded border text-right font-mono font-extrabold ${f2Val !== origF2
-                                  ? "border-purple-500 bg-purple-50 text-purple-900"
-                                  : "border-slate-300 bg-white text-purple-700"
-                                  }`}
-                              />
-                              {activeWarehouse === "FLOOR_2" && origF1 > 0 && (
-                                <div className="mt-1 text-[10px] text-teal-700 font-mono">
-                                  (Kho Tầng 1 đang có: <b>{origF1}</b>)
-                                </div>
-                              )}
-                              {f2Val !== origF2 && (
-                                <div className="mt-0.5 text-[10px] font-mono font-bold text-purple-700">
-                                  Hiện tại: {origF2} ({f2Val > origF2 ? `+${f2Val - origF2}` : f2Val - origF2})
-                                </div>
-                              )}
-                            </td>
-                          )}
-
-                          {activeWarehouse === "ALL" && (
-                            <td className="py-3 px-2.5 text-right align-top font-mono font-extrabold text-slate-900 bg-slate-50">
-                              <div className="py-1.5">{f1Val + f2Val}</div>
-                            </td>
-                          )}
-
-                          <td className="py-3 px-2.5 text-right align-top">
-                            <div className="relative inline-block w-32">
-                              <input
-                                type="text"
-                                inputMode="numeric"
-                                value={costVal > 0 ? formatNumberDots(costVal) : ""}
-                                placeholder="0"
-                                onChange={(e) =>
-                                  setEditingCosts((prev) => ({
-                                    ...prev,
-                                    [p._id]: parseNumberDots(e.target.value),
-                                  }))
-                                }
-                                className={`w-full pl-2 pr-9 py-1.5 rounded border text-right font-mono font-bold ${costVal === 0
-                                  ? "border-orange-300 bg-orange-50 text-orange-900"
-                                  : "border-slate-300 bg-white text-slate-800"
-                                  }`}
-                              />
-                              <span className="absolute right-2 top-2 text-[10px] font-mono font-bold text-slate-400 pointer-events-none">
-                                VND
-                              </span>
-                            </div>
-                            <div className="mt-1 text-[10px] text-slate-500 font-mono whitespace-nowrap">
-                              Tổng vốn: {formatVND(activeQty * costVal)}
-                            </div>
-                          </td>
-                          <td className="py-3 px-2.5 text-right align-top">
-                            <div className="relative inline-block w-32">
-                              <input
-                                type="text"
-                                inputMode="numeric"
-                                value={sellVal > 0 ? formatNumberDots(sellVal) : ""}
-                                placeholder="0"
-                                onChange={(e) =>
-                                  setEditingPrices((prev) => ({
-                                    ...prev,
-                                    [p._id]: parseNumberDots(e.target.value),
-                                  }))
-                                }
-                                className={`w-full pl-2 pr-9 py-1.5 rounded border text-right font-mono font-bold ${sellVal === 0
-                                  ? "border-amber-400 bg-amber-50 text-amber-900"
-                                  : "border-slate-300 bg-white text-slate-900"
-                                  }`}
-                              />
-                              <span className="absolute right-2 top-2 text-[10px] font-mono font-bold text-slate-400 pointer-events-none">
-                                VND
-                              </span>
-                            </div>
-                            <div className="mt-1 text-[10px] text-slate-500 font-mono whitespace-nowrap">
-                              Tổng bán: {formatVND(activeQty * sellVal)}
-                            </div>
-                            {sellVal > 0 && costVal > 0 && (
-                              <div
-                                className={`mt-0.5 text-[10px] font-bold whitespace-nowrap ${margin < 0 ? "text-red-600" : "text-teal-700"
+                                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-dashed text-[11px] font-semibold transition cursor-pointer ${isVarExpanded
+                                  ? "bg-teal-600 text-white border-teal-700"
+                                  : "bg-white hover:bg-slate-50 text-slate-600 border-slate-300"
                                   }`}
                               >
-                                {margin < 0 ? "Lỗ" : "Lãi"}: {formatVND(Math.abs(margin))}/SP (
-                                {Math.round((margin / costVal) * 100)}%)
+                                + Thêm
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenSetLinkModal(p)}
+                                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border text-[11px] font-semibold transition cursor-pointer ${(p.parentSetProductId && (p.packSize || 0) > 0) ||
+                                  (Array.isArray(p.linkedRetailProducts) &&
+                                    p.linkedRetailProducts.length > 0)
+                                  ? "bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-300"
+                                  : "bg-white hover:bg-slate-50 text-slate-600 border-slate-200"
+                                  }`}
+                                title="Cấu hình liên kết tự động tách từ Sản phẩm Bộ/Hộp sang Sản phẩm Lẻ"
+                              >
+                                {p.parentSetProductId && (p.packSize || 0) > 0
+                                  ? `SP Lẻ (1 ${p.parentSetUnit || "Bộ"} = ${p.packSize} ${p.unit})`
+                                  : Array.isArray(p.linkedRetailProducts) &&
+                                    p.linkedRetailProducts.length > 0
+                                    ? `SP Bộ (${p.linkedRetailProducts.length} SP lẻ)`
+                                    : "Gắn Bộ ↔ Lẻ"}
+                              </button>
+                            </div>
+
+                            {/* Giữ nút Tách 1 Bộ nhanh nếu đã liên kết Bộ <-> Lẻ */}
+                            {p.parentSetProductId && (p.packSize || 0) > 0 && (
+                              <div className="mt-1.5 px-2.5 py-1 rounded-lg bg-amber-50/80 border border-amber-200 inline-flex flex-wrap items-center gap-2 text-[10px]">
+                                <span className="text-amber-950 font-semibold">
+                                  Bộ:{" "}
+                                  <strong className="font-mono">
+                                    {p.parentSetProductCode || "SP Bộ"}
+                                  </strong>{" "}
+                                  (Tồn T1: {p.parentSetStockFloor1 ?? 0})
+                                </span>
+                                <button
+                                  type="button"
+                                  disabled={unpackingLoadingId === p._id}
+                                  onClick={() => handleQuickUnpackSet(p._id, 1)}
+                                  className="px-2 py-0.5 rounded bg-teal-600 hover:bg-teal-700 disabled:bg-slate-300 text-white font-bold text-[10px] cursor-pointer"
+                                >
+                                  {unpackingLoadingId === p._id
+                                    ? "Đang tách..."
+                                    : `⚡ Tách 1 ${p.parentSetUnit || "Bộ"} → +${p.packSize} ${p.unit}`}
+                                </button>
                               </div>
                             )}
+                            {Array.isArray(p.linkedRetailProducts) &&
+                              p.linkedRetailProducts.length > 0 && (
+                                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                                  {p.linkedRetailProducts.map((ret) => (
+                                    <div
+                                      key={ret._id}
+                                      className="px-2.5 py-1 rounded-lg bg-teal-50/80 border border-teal-200 inline-flex items-center gap-2 text-[10px]"
+                                    >
+                                      <span className="text-teal-950 font-semibold">
+                                        Bóc lẻ{" "}
+                                        <strong className="font-mono">{ret.code}</strong> (Tồn T1:{" "}
+                                        {ret.stockFloor1})
+                                      </span>
+                                      <button
+                                        type="button"
+                                        disabled={unpackingLoadingId === ret._id}
+                                        onClick={() => handleQuickUnpackSet(ret._id, 1)}
+                                        className="px-2 py-0.5 rounded bg-teal-600 hover:bg-teal-700 disabled:bg-slate-300 text-white font-bold text-[10px] cursor-pointer"
+                                      >
+                                        {unpackingLoadingId === ret._id
+                                          ? "Đang tách..."
+                                          : `⚡ Tách 1 ${p.unit} → +${ret.packSize} ${ret.unit}`}
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                           </td>
-                          <td className="py-3 px-2.5 text-right align-top whitespace-nowrap">
-                            <div className="inline-flex items-center gap-1">
+
+                          {/* 2. CATEGORY */}
+                          <td className="py-3.5 px-3 align-top">
+                            <span className="inline-block px-2.5 py-1 rounded-lg bg-teal-50 text-teal-700 font-semibold text-[11px] whitespace-nowrap">
+                              {catName}
+                            </span>
+                          </td>
+
+                          {/* 2b. THƯƠNG HIỆU */}
+                          <td className="py-3.5 px-3 align-top">
+                            {(p.brandName || p.brand) ? (
+                              <div>
+                                <span className="inline-block px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 font-semibold text-[11px] whitespace-nowrap">
+                                  {p.brandName || p.brand}
+                                </span>
+                                {p.versionName && (
+                                  <div className="mt-0.5 text-[10px] text-slate-400 whitespace-nowrap">
+                                    {p.versionName}
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-[11px] text-slate-400">—</span>
+                            )}
+                          </td>
+
+                          {/* 3. TỒN TẦNG 1 */}
+                          {(activeWarehouse === "FLOOR_1" || activeWarehouse === "ALL") && (
+                            <td className="py-3.5 px-3 text-center align-top">
+                              <div className="text-base font-extrabold text-slate-900 tabular-nums">
+                                {formatNumberDots(f1Val)}
+                              </div>
+                              <span
+                                className={`inline-block mt-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap ${f1Val > 0
+                                  ? "bg-emerald-50 text-emerald-700"
+                                  : "bg-slate-100 text-slate-500"
+                                  }`}
+                              >
+                                {f1Val > 0 ? "Còn hàng" : "Hết hàng"}
+                              </span>
+                            </td>
+                          )}
+
+                          {/* 4. TỒN TẦNG 2 */}
+                          {(activeWarehouse === "FLOOR_2" || activeWarehouse === "ALL") && (
+                            <td className="py-3.5 px-3 text-center align-top">
+                              <div className="text-base font-extrabold text-slate-900 tabular-nums">
+                                {formatNumberDots(f2Val)}
+                              </div>
+                              <span
+                                className={`inline-block mt-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap ${f2Val > 0
+                                  ? "bg-emerald-50 text-emerald-700"
+                                  : "bg-slate-100 text-slate-500"
+                                  }`}
+                              >
+                                {f2Val > 0 ? "Còn hàng" : "Hết hàng"}
+                              </span>
+                            </td>
+                          )}
+
+                          {/* TỔNG 2 KHO (khi chọn Gộp 2 kho) */}
+                          {activeWarehouse === "ALL" && (
+                            <td className="py-3.5 px-3 text-center align-top">
+                              <div className="text-base font-extrabold text-slate-900 tabular-nums">
+                                {formatNumberDots(f1Val + f2Val)}
+                              </div>
+                              <span
+                                className={`inline-block mt-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap ${f1Val + f2Val > 0
+                                  ? "bg-slate-100 text-slate-700"
+                                  : "bg-slate-100 text-slate-400"
+                                  }`}
+                              >
+                                Tổng
+                              </span>
+                            </td>
+                          )}
+
+                          {/* 5. GIÁ VỐN (VND) */}
+                          <td className="py-3.5 px-3 text-right align-top">
+                            <div className="text-sm font-extrabold text-slate-900 tabular-nums">
+                              {formatNumberDots(costVal)}
+                            </div>
+                            <div className="mt-0.5 text-[11px] text-slate-500 whitespace-nowrap tabular-nums">
+                              Tổng: {formatNumberDots(activeQty * costVal)}
+                            </div>
+                          </td>
+
+                          {/* 6. GIÁ NIÊM YẾT (VND) */}
+                          <td className="py-3.5 px-3 text-right align-top">
+                            <div className="text-sm font-extrabold text-slate-900 tabular-nums">
+                              {formatNumberDots(sellVal)}
+                            </div>
+                            <div className="mt-0.5 text-[11px] text-slate-500 whitespace-nowrap">
+                              Niêm yết
+                            </div>
+                          </td>
+
+                          {/* 7. LÃI / SP */}
+                          <td className="py-3.5 px-3 text-right align-top">
+                            {sellVal > 0 ? (
+                              <>
+                                <div
+                                  className={`text-sm font-extrabold tabular-nums whitespace-nowrap ${margin < 0 ? "text-red-600" : "text-emerald-600"
+                                    }`}
+                                >
+                                  {margin >= 0
+                                    ? `+${formatNumberDots(margin)}`
+                                    : `-${formatNumberDots(Math.abs(margin))}`}
+                                </div>
+                                <div className="mt-0.5 text-[11px] text-slate-500 whitespace-nowrap">
+                                  {costVal > 0 ? `${marginPct}% / SP` : "Chưa có vốn"}
+                                </div>
+                              </>
+                            ) : (
+                              <div className="text-xs text-slate-400">—</div>
+                            )}
+                          </td>
+
+                          {/* 8. THAO TÁC */}
+                          <td className="py-3.5 px-4 text-right align-top whitespace-nowrap">
+                            <div className="inline-flex items-center gap-1.5">
                               {isProductChanged(p) && (
                                 <>
                                   <button
                                     type="button"
                                     disabled={savingBatch}
                                     onClick={() => handleSaveSingleProductRow(p)}
-                                    className="px-2 py-1 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-[10px] font-extrabold inline-flex items-center gap-1 shadow-2xs cursor-pointer"
+                                    className="px-2 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-[10px] font-extrabold inline-flex items-center gap-1 shadow-2xs cursor-pointer"
                                     title="Lưu riêng dòng sản phẩm này"
                                   >
                                     <Save className="w-3 h-3" /> Lưu
@@ -4297,7 +3785,7 @@ export default function InventoryModule() {
                                     type="button"
                                     disabled={savingBatch}
                                     onClick={() => handleResetSingleProductRow(p)}
-                                    className="p-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-600 inline-flex items-center justify-center cursor-pointer"
+                                    className="w-8 h-8 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-600 inline-flex items-center justify-center cursor-pointer"
                                     title="Hoàn tác dòng này"
                                   >
                                     <RotateCcw className="w-3.5 h-3.5" />
@@ -4307,8 +3795,8 @@ export default function InventoryModule() {
                               <button
                                 type="button"
                                 onClick={() => setEditingProductModal(p)}
-                                className="p-1.5 rounded-lg border border-teal-200 bg-teal-50 hover:bg-teal-100 text-teal-700 inline-flex items-center justify-center cursor-pointer"
-                                title="Sửa đầy đủ Category, Thương hiệu, Version, Mã Version, Tên SP, Giá và Biến thể"
+                                className="w-8 h-8 rounded-lg border border-slate-200 bg-white hover:bg-teal-50 hover:border-teal-300 text-teal-700 inline-flex items-center justify-center transition cursor-pointer"
+                                title="Sửa thông tin sản phẩm, giá và biến thể"
                               >
                                 <Pencil className="w-3.5 h-3.5" />
                               </button>
@@ -4323,15 +3811,15 @@ export default function InventoryModule() {
                                   }
                                   setSubTab("TRANSFER");
                                 }}
-                                className="p-1.5 rounded-lg border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 inline-flex items-center justify-center cursor-pointer"
-                                title="Dời sản phẩm giữa Kho Tầng 1 và Kho Tầng 2 (Lập phiếu xuất kho)"
+                                className="w-8 h-8 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 inline-flex items-center justify-center transition cursor-pointer"
+                                title="Chuyển tầng (T1 ↔ T2)"
                               >
                                 <ArrowLeftRight className="w-3.5 h-3.5" />
                               </button>
                               <button
                                 type="button"
                                 onClick={() => handleDeleteProduct(p)}
-                                className="p-1.5 rounded-lg border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 inline-flex items-center justify-center cursor-pointer"
+                                className="w-8 h-8 rounded-lg border border-slate-200 bg-white hover:bg-red-50 hover:border-red-200 text-red-500 inline-flex items-center justify-center transition cursor-pointer"
                                 title="Xóa sản phẩm"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
@@ -4341,7 +3829,7 @@ export default function InventoryModule() {
                         </tr>
                         {isVarExpanded && (
                           <tr className="bg-indigo-50/40">
-                            <td colSpan={11} className="p-3.5">
+                            <td colSpan={activeWarehouse === "ALL" ? 10 : 8} className="p-3.5">
                               <div className="bg-white rounded-xl border-2 border-indigo-200 p-3.5 space-y-3 shadow-xs">
                                 <div className="flex flex-wrap items-center justify-between gap-2">
                                   <div>
@@ -5066,22 +4554,91 @@ export default function InventoryModule() {
         </div>
       )}
 
-      {/* SUB-TAB 3: SỔ KHO (STOCK MOVEMENTS — SỐ LƯỢNG, GIÁ GỐC, GIÁ BÁN) */}
-      {subTab === "MOVEMENTS" && (
+      {/* SUB-TAB 3: LỊCH SỬ KHO (GOM PHIẾU NHẬP KHO + SỔ XUẤT NHẬP TỒN + LỊCH SỬ CHUYỂN TẦNG) */}
+      {subTab === "HISTORY" && (
+        <div className="space-y-4">
+          {/* Thanh chuyển 3 góc nhìn Lịch sử kho */}
+          <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-3 flex flex-wrap items-center justify-between gap-3">
+            <div className="inline-flex flex-wrap items-center gap-1 p-1 rounded-xl bg-slate-100 border border-slate-200">
+              <button
+                type="button"
+                onClick={() => setHistoryView("IMPORTS")}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-extrabold inline-flex items-center gap-1.5 transition cursor-pointer ${
+                  historyView === "IMPORTS"
+                    ? "bg-teal-600 text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                <ClipboardList className="w-3.5 h-3.5" />
+                <span>Phiếu nhập kho</span>
+                <span
+                  className={`font-mono text-[10px] px-1.5 py-0.2 rounded-full ${
+                    historyView === "IMPORTS" ? "bg-white/20 text-white" : "bg-white text-slate-700"
+                  }`}
+                >
+                  {filteredImports.length}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setHistoryView("MOVEMENTS")}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-extrabold inline-flex items-center gap-1.5 transition cursor-pointer ${
+                  historyView === "MOVEMENTS"
+                    ? "bg-teal-600 text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                <BookOpen className="w-3.5 h-3.5" />
+                <span>Sổ xuất nhập tồn</span>
+                <span
+                  className={`font-mono text-[10px] px-1.5 py-0.2 rounded-full ${
+                    historyView === "MOVEMENTS" ? "bg-white/20 text-white" : "bg-white text-slate-700"
+                  }`}
+                >
+                  {filteredMovements.length}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setHistoryView("TRANSFERS")}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-extrabold inline-flex items-center gap-1.5 transition cursor-pointer ${
+                  historyView === "TRANSFERS"
+                    ? "bg-teal-600 text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                <ArrowLeftRight className="w-3.5 h-3.5" />
+                <span>Lịch sử chuyển tầng (PXK)</span>
+                <span
+                  className={`font-mono text-[10px] px-1.5 py-0.2 rounded-full ${
+                    historyView === "TRANSFERS" ? "bg-white/20 text-white" : "bg-white text-slate-700"
+                  }`}
+                >
+                  {new Set(transfersList.map((m) => m.referenceCode || m._id)).size}
+                </span>
+              </button>
+            </div>
+
+            <span className="text-xs text-slate-500">
+              Đang lọc theo: <strong className="text-teal-700">{activeWarehouseLabel}</strong>
+            </span>
+          </div>
+
+          {/* GÓC NHÌN 2: SỔ XUẤT NHẬP TỒN (STOCK MOVEMENTS) */}
+          {historyView === "MOVEMENTS" && (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h3 className="font-bold text-slate-900 text-base">
-                Sổ Kho Kế Toán —{" "}
+                Sổ Xuất Nhập Tồn —{" "}
                 {activeWarehouse === "FLOOR_1"
                   ? "🏢 Kho Tầng 1"
                   : activeWarehouse === "FLOOR_2"
                     ? "🏬 Kho Tầng 2"
-                    : "📊 Cả 2 Kho"}{" "}
-                (Stock Movements — BR-07)
+                    : "📊 Cả 2 Kho"}
               </h3>
               <p className="text-xs text-slate-500">
-                Lưu vết toàn bộ lịch sử biến động tồn kho kèm Kho tầng, Số lượng, Giá vốn, Giá niêm yết, mã chứng từ tham chiếu và nhân viên thực hiện.
+                Lưu vết toàn bộ lịch sử biến động tồn kho kèm Kho tầng, Số lượng, Giá vốn, Giá niêm yết, mã chứng từ và nhân viên thực hiện.
               </p>
             </div>
 
@@ -5198,22 +4755,21 @@ export default function InventoryModule() {
         </div>
       )}
 
-      {/* SUB-TAB 4: DANH SÁCH PHIẾU NHẬP KHO (KÈM SỐ LƯỢNG, GIÁ GỐC, GIÁ BÁN) */}
-      {subTab === "IMPORTS" && (
+      {/* GÓC NHÌN 1: DANH SÁCH PHIẾU NHẬP KHO */}
+      {historyView === "IMPORTS" && (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h3 className="font-bold text-slate-900 text-base">
-                Danh sách Phiếu Nhập Kho —{" "}
+                Lịch sử Phiếu Nhập Kho —{" "}
                 {activeWarehouse === "FLOOR_1"
                   ? "🏢 Kho Tầng 1"
                   : activeWarehouse === "FLOOR_2"
                     ? "🏬 Kho Tầng 2"
-                    : "📊 Cả 2 Kho"}{" "}
-                (BR-09, BR-10)
+                    : "📊 Cả 2 Kho"}
               </h3>
               <p className="text-xs text-slate-500">
-                Bấm vào một dòng phiếu nhập hoặc nút <strong>Xem chi tiết</strong> để xem lại đầy đủ thông tin Người nhập (Admin hay Warehouse), Số lượng, Giá vốn, Giá niêm yết.
+                Bấm vào dòng phiếu hoặc nút <strong>Chi tiết</strong> để xem đầy đủ từng biến thể (Màu • Size • Mã con), Số lượng, Giá vốn và Người thực hiện.
               </p>
             </div>
             <ExportExcelButton
@@ -5256,7 +4812,7 @@ export default function InventoryModule() {
                   );
                   const totalSell = items.reduce((s, it) => {
                     const p = productByCode.get(it.productCode);
-                    const sellPrice = Number(p?.sellingPrice || 0);
+                    const sellPrice = Number(it.sellingPrice || p?.sellingPrice || 0);
                     return (
                       s + sellPrice * (Number(it.actualQuantity ?? it.expectedQuantity) || 0)
                     );
@@ -5451,17 +5007,28 @@ export default function InventoryModule() {
                                     const prod = productByCode.get(it.productCode);
                                     const qty = Number(it.actualQuantity ?? it.expectedQuantity) || 0;
                                     const cost = Number(it.costPrice || prod?.costPrice || 0);
-                                    const sell = Number(prod?.sellingPrice || 0);
+                                    const sell = Number(it.sellingPrice || prod?.sellingPrice || 0);
+                                    const varLabel = [it.color, it.size].filter(Boolean).join(" · ");
                                     return (
                                       <tr key={idx}>
                                         <td className="py-1.5 px-2.5 text-center font-mono">
                                           {it.stt || idx + 1}
                                         </td>
                                         <td className="py-1.5 px-2.5 font-mono font-bold">
-                                          {it.productCode}
+                                          <div>{it.variantCode || it.productCode}</div>
+                                          {it.variantCode && it.variantCode !== it.productCode && (
+                                            <div className="text-[10px] font-normal text-slate-400">
+                                              Gốc: {it.productCode}
+                                            </div>
+                                          )}
                                         </td>
                                         <td className="py-1.5 px-2.5 font-semibold">
-                                          {it.productName}
+                                          <div>{it.productName}</div>
+                                          {varLabel && (
+                                            <div className="text-[10px] font-bold text-indigo-700">
+                                              {varLabel}
+                                            </div>
+                                          )}
                                         </td>
                                         <td className="py-1.5 px-2.5 text-center">{it.unit}</td>
                                         <td className="py-1.5 px-2.5 text-right font-mono">
@@ -5528,660 +5095,672 @@ export default function InventoryModule() {
         </div>
       )}
 
-      {/* SUB-TAB 5: LẬP PHIẾU ĐIỀU CHỈNH KHO */}
-      {subTab === "ADJUSTMENT" && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 max-w-2xl">
-          <h3 className="font-bold text-slate-900 text-base">
-            Lập Phiếu Điều Chỉnh Kho (BR-10)
-          </h3>
-          <p className="text-xs text-slate-500 mt-1">
-            Vì Phiếu nhập kho đã hoàn thành không được sửa trực tiếp, Quản lý sử dụng chức năng này để điều chỉnh tăng/giảm tồn kho thực tế và tự động ghi vết vào Sổ kho.
-          </p>
-
-          <form onSubmit={handleCreateAdjustment} className="mt-5 space-y-4">
-            <div>
-              <label className="block text-xs font-bold uppercase text-slate-700 mb-1">
-                Chọn Sản phẩm cần điều chỉnh *
-              </label>
-              <select
-                value={adjProductId}
-                onChange={(e) => {
-                  setAdjProductId(e.target.value);
-                  setAdjColor("");
-                  setAdjSize("");
-                }}
-                className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm bg-white font-semibold"
-              >
-                {products.map((p) => (
-                  <option key={p._id} value={p._id}>
-                    {p.name} ({p.code}) — Tổng tồn: {p.stock} {p.unit} (T1: {p.stockFloor1 ?? p.stock} · T2: {p.stockFloor2 ?? 0})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-bold uppercase text-indigo-700 mb-1">
-                  Màu sắc (Nếu sản phẩm chia theo Màu)
-                </label>
-                <input
-                  type="text"
-                  value={adjColor}
-                  onChange={(e) => setAdjColor(e.target.value)}
-                  placeholder="VD: Đỏ, Trắng..."
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs"
-                />
+          {/* GÓC NHÌN 3: LỊCH SỬ PHIẾU XUẤT KHO CHUYỂN TẦNG (PXK) */}
+          {historyView === "TRANSFERS" && (
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h3 className="font-bold text-slate-900 text-base">
+                    Lịch sử Phiếu Xuất Kho Chuyển Tầng (PXK)
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Mỗi phiếu xuất kho chuyển tầng (<code>PXK-...</code>) gom nhiều sản phẩm / màu sắc. Bấm vào dòng phiếu để xem chi tiết.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSubTab("TRANSFER")}
+                  className="px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-extrabold inline-flex items-center gap-1.5 cursor-pointer"
+                >
+                  <ArrowLeftRight className="w-3.5 h-3.5" />
+                  Tạo phiếu chuyển tầng mới
+                </button>
               </div>
-              <div>
-                <label className="block text-xs font-bold uppercase text-indigo-700 mb-1">
-                  Size (Nếu sản phẩm chia theo Size)
-                </label>
-                <input
-                  type="text"
-                  value={adjSize}
-                  onChange={(e) => setAdjSize(e.target.value.toUpperCase())}
-                  placeholder="VD: M, L, XL, 42..."
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono font-bold uppercase"
-                />
+              <div className="overflow-x-auto border border-slate-200 rounded-xl">
+                <table className="w-full text-xs text-left">
+                  <thead className="bg-slate-100 text-slate-700 border-b border-slate-200 uppercase">
+                    <tr>
+                      <th className="py-3 px-3">Mã Phiếu Xuất</th>
+                      <th className="py-3 px-3">Thời gian</th>
+                      <th className="py-3 px-3">Từ Kho (Đầu dời)</th>
+                      <th className="py-3 px-3">Sang Kho (Đích)</th>
+                      <th className="py-3 px-3 text-right">Số mặt hàng</th>
+                      <th className="py-3 px-3 text-right">Tổng SL dời</th>
+                      <th className="py-3 px-3">Người thực hiện</th>
+                      <th className="py-3 px-3">Ghi chú</th>
+                      <th className="py-3 px-3 text-center">Chi tiết</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {(() => {
+                      const groupedMap = new Map<string, StockMovement[]>();
+                      transfersList.forEach((m) => {
+                        const code = m.referenceCode || m._id;
+                        const list = groupedMap.get(code) || [];
+                        list.push(m);
+                        groupedMap.set(code, list);
+                      });
+                      const receiptGroups = Array.from(groupedMap.entries());
+
+                      if (receiptGroups.length === 0) {
+                        return (
+                          <tr>
+                            <td colSpan={9} className="py-8 text-center text-slate-400">
+                              Chưa có phiếu xuất kho chuyển tầng nào.
+                            </td>
+                          </tr>
+                        );
+                      }
+
+                      return receiptGroups.map(([refCode, items]) => {
+                        const first = items[0];
+                        const totalQty = items.reduce(
+                          (s, it) => s + Math.abs(Number(it.quantityChange) || 0),
+                          0
+                        );
+                        const isExpanded = expandedTransferCode === refCode;
+
+                        return (
+                          <React.Fragment key={refCode}>
+                            <tr
+                              onClick={() =>
+                                setExpandedTransferCode(isExpanded ? null : refCode)
+                              }
+                              className="hover:bg-indigo-50/40 cursor-pointer transition"
+                            >
+                              <td className="py-3 px-3 font-mono font-extrabold text-indigo-700">
+                                {refCode}
+                              </td>
+                              <td className="py-3 px-3 text-slate-600 whitespace-nowrap">
+                                {formatDateTime(first.createdAt)}
+                              </td>
+                              <td className="py-3 px-3 font-bold text-slate-800 whitespace-nowrap">
+                                {first.fromWarehouse === "FLOOR_2"
+                                  ? "🏬 Kho Tầng 2"
+                                  : "🏢 Kho Tầng 1"}
+                              </td>
+                              <td className="py-3 px-3 font-bold text-indigo-700 whitespace-nowrap">
+                                {first.toWarehouse === "FLOOR_2"
+                                  ? "🏬 Kho Tầng 2"
+                                  : "🏢 Kho Tầng 1"}
+                              </td>
+                              <td className="py-3 px-3 text-right font-mono font-bold">
+                                {items.length} SP
+                              </td>
+                              <td className="py-3 px-3 text-right font-mono font-extrabold text-indigo-700">
+                                {totalQty}
+                              </td>
+                              <td className="py-3 px-3 font-semibold text-slate-800 whitespace-nowrap">
+                                {first.performedByName || "Quản trị viên"}
+                              </td>
+                              <td className="py-3 px-3 text-slate-600 max-w-xs truncate">
+                                {first.note || "-"}
+                              </td>
+                              <td className="py-3 px-3 text-center">
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 font-bold text-[11px]">
+                                  {isExpanded ? (
+                                    <>
+                                      Ẩn <ChevronUp className="w-3.5 h-3.5" />
+                                    </>
+                                  ) : (
+                                    <>
+                                      Xem ({items.length}) <ChevronDown className="w-3.5 h-3.5" />
+                                    </>
+                                  )}
+                                </span>
+                              </td>
+                            </tr>
+
+                            {isExpanded && (
+                              <tr className="bg-indigo-50/30">
+                                <td colSpan={9} className="p-3.5">
+                                  <div className="border border-indigo-200 rounded-xl overflow-x-auto bg-white shadow-sm">
+                                    <div className="bg-indigo-950 text-white px-3.5 py-2 text-[11px] font-bold flex flex-wrap items-center justify-between gap-2">
+                                      <span>
+                                        Chi tiết Phiếu Xuất Kho Chuyển Tầng: {refCode} (
+                                        {first.fromWarehouse === "FLOOR_2"
+                                          ? "Kho Tầng 2 → Kho Tầng 1"
+                                          : "Kho Tầng 1 → Kho Tầng 2"}
+                                        )
+                                      </span>
+                                      <span>
+                                        Người thực hiện: {first.performedByName || "Quản trị viên"} ·{" "}
+                                        {formatDateTime(first.createdAt)}
+                                      </span>
+                                    </div>
+                                    <table className="w-full text-[11px] text-left">
+                                      <thead className="bg-slate-100 text-slate-800 uppercase border-b border-slate-200">
+                                        <tr>
+                                          <th className="py-2 px-3 text-center w-12">STT</th>
+                                          <th className="py-2 px-3">Mã hàng</th>
+                                          <th className="py-2 px-3">Tên sản phẩm</th>
+                                          <th className="py-2 px-3">Màu sắc</th>
+                                          <th className="py-2 px-3 text-center">Size</th>
+                                          <th className="py-2 px-3 text-center">ĐVT</th>
+                                          <th className="py-2 px-3">Từ Kho</th>
+                                          <th className="py-2 px-3">Sang Kho</th>
+                                          <th className="py-2 px-3 text-right">Số lượng dời</th>
+                                          <th className="py-2 px-3">Ghi chú</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody className="divide-y divide-slate-200">
+                                        {items.map((it, idx) => {
+                                          const prod = productByCode.get(it.productCode);
+                                          const itColor = String(it.color || "").trim();
+                                          const itSize = String(it.size || "").trim();
+                                          const childCode =
+                                            itColor || itSize
+                                              ? variantCodeFor(
+                                                  it.productCode,
+                                                  itColor,
+                                                  itSize
+                                                )
+                                              : it.productCode;
+                                          const matchedVar = (prod?.variants || []).find(
+                                            (v) =>
+                                              String(v.color || "").trim().toLowerCase() ===
+                                              itColor.toLowerCase()
+                                          );
+                                          const hexes = resolveVariantColorHexes(
+                                            itColor,
+                                            matchedVar?.colorHexes
+                                          );
+                                          return (
+                                            <tr key={it._id || idx} className="hover:bg-slate-50">
+                                              <td className="py-2 px-3 text-center font-mono">
+                                                {idx + 1}
+                                              </td>
+                                              <td className="py-2 px-3 font-mono font-bold text-slate-800">
+                                                <div>{childCode}</div>
+                                                {(itColor || itSize) && (
+                                                  <div className="text-[10px] font-normal text-slate-400">
+                                                    Gốc: {it.productCode}
+                                                  </div>
+                                                )}
+                                              </td>
+                                              <td className="py-2 px-3 font-semibold text-slate-900">
+                                                {it.productName}
+                                              </td>
+                                              <td className="py-2 px-3">
+                                                {itColor ? (
+                                                  <span
+                                                    style={getColorBoxBorderStyle(
+                                                      hexes,
+                                                      "#f8fafc",
+                                                      2
+                                                    )}
+                                                    className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md border border-slate-200 font-bold text-slate-800"
+                                                  >
+                                                    <ColorSwatchBadge
+                                                      hexes={matchedVar?.colorHexes}
+                                                      colorName={itColor}
+                                                      size="xs"
+                                                    />
+                                                    <span>{itColor}</span>
+                                                  </span>
+                                                ) : (
+                                                  <span className="text-slate-400">-</span>
+                                                )}
+                                              </td>
+                                              <td className="py-2 px-3 text-center">
+                                                {Boolean(itSize) ? (
+                                                  <span className="px-2 py-0.5 rounded bg-indigo-50 text-indigo-800 border border-indigo-200 font-mono font-extrabold">
+                                                    {itSize}
+                                                  </span>
+                                                ) : (
+                                                  <span className="text-slate-400">—</span>
+                                                )}
+                                              </td>
+                                              <td className="py-2 px-3 text-center">
+                                                {(it as any).unit || prod?.unit || "Cái"}
+                                              </td>
+                                              <td className="py-2 px-3 font-semibold text-slate-700">
+                                                {it.fromWarehouse === "FLOOR_2"
+                                                  ? "🏬 Kho Tầng 2"
+                                                  : "🏢 Kho Tầng 1"}
+                                              </td>
+                                              <td className="py-2 px-3 font-semibold text-indigo-700">
+                                                {it.toWarehouse === "FLOOR_2"
+                                                  ? "🏬 Kho Tầng 2"
+                                                  : "🏢 Kho Tầng 1"}
+                                              </td>
+                                              <td className="py-2 px-3 text-right font-mono font-extrabold text-indigo-700">
+                                                {Math.abs(Number(it.quantityChange) || 0)}
+                                              </td>
+                                              <td className="py-2 px-3 text-slate-600">
+                                                {it.note || "-"}
+                                              </td>
+                                            </tr>
+                                          );
+                                        })}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
+                        );
+                      });
+                    })()}
+                  </tbody>
+                </table>
               </div>
             </div>
-
-            <div>
-              <label className="block text-xs font-bold uppercase text-slate-700 mb-1">
-                Chọn Kho điều chỉnh *
-              </label>
-              <select
-                value={adjWarehouse}
-                onChange={(e) =>
-                  setAdjWarehouse(e.target.value === "FLOOR_2" ? "FLOOR_2" : "FLOOR_1")
-                }
-                className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm bg-white font-semibold"
-              >
-                <option value="FLOOR_1">🏢 Kho Tầng 1</option>
-                <option value="FLOOR_2">🏬 Kho Tầng 2</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold uppercase text-slate-700 mb-1">
-                Số lượng điều chỉnh (Nhập số dương + để tăng, số âm - để giảm) *
-              </label>
-              <input
-                type="number"
-                required
-                value={adjQuantityChange}
-                onChange={(e) => setAdjQuantityChange(Number(e.target.value))}
-                className="w-48 px-3.5 py-2.5 rounded-xl border border-slate-300 font-mono text-base font-extrabold"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold uppercase text-slate-700 mb-1">
-                Lý do điều chỉnh kho (Bắt buộc ghi rõ mã phiếu/biên bản) *
-              </label>
-              <input
-                type="text"
-                required
-                value={adjReason}
-                onChange={(e) => setAdjReason(e.target.value)}
-                placeholder="VD: Kiểm kê lệch phiếu nhập PN-0001..."
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm"
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="px-6 py-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-extrabold text-sm shadow"
-            >
-              Xác nhận Điều chỉnh Kho & Ghi Sổ Kho
-            </button>
-          </form>
+          )}
         </div>
       )}
 
-      {/* SUB-TAB 6: XUẤT KHO CHUYỂN TẦNG (KHO TẦNG 1 <-> KHO TẦNG 2) */}
+      {/* SUB-TAB 2: XUẤT KHO CHUYỂN TẦNG (KHO TẦNG 1 <-> KHO TẦNG 2) */}
       {subTab === "TRANSFER" && (
-        <div className="space-y-6">
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-5">
+        <div className="space-y-4">
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <h3 className="font-bold text-slate-900 text-base flex items-center gap-2">
                   <ArrowLeftRight className="w-5 h-5 text-indigo-600" />
-                  Tạo Phiếu Xuất Kho Chuyển Tầng (Nhiều sản phẩm trong 1 phiếu PXK)
+                  Tạo Phiếu Xuất Kho Chuyển Tầng (Kho 1 ↔ Kho 2)
                 </h3>
-                <p className="text-xs text-slate-500 mt-1">
-                  Bước 1: Chọn <strong>Hướng dời kho</strong> → Hệ thống chỉ hiển thị các sản phẩm đang có tồn tại <strong>Kho đầu dời</strong>. Bước 2: Chọn nhiều sản phẩm cần dời vào phiếu và bấm <strong>Xác nhận Tạo Phiếu Xuất Kho</strong>.
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Chọn hướng dời kho → thêm sản phẩm vào phiếu → bấm <strong>Xác nhận Tạo Phiếu Xuất Kho</strong>.
                 </p>
               </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setHistoryView("TRANSFERS");
+                  setSubTab("HISTORY");
+                }}
+                className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
+              >
+                <History className="w-3.5 h-3.5" />
+                Xem lịch sử chuyển tầng →
+              </button>
             </div>
 
-            {/* BƯỚC 1: CHỌN HƯỚNG DỜI KHO */}
-            <div className="bg-indigo-50/50 border border-indigo-200 rounded-xl p-4 space-y-2.5">
-              <label className="block text-xs font-extrabold uppercase text-indigo-900">
-                1. Chọn Hướng Dời Kho (Kho xuất đầu dời → Kho nhận) *
-              </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => handleChangeTransferDirection("F1_TO_F2")}
-                  className={`p-3.5 rounded-xl border-2 text-left transition flex items-center justify-between ${transferDirection === "F1_TO_F2"
-                    ? "bg-teal-600 text-white border-teal-700 shadow-md"
-                    : "bg-white text-slate-800 border-slate-200 hover:border-teal-400"
-                    }`}
-                >
-                  <div>
-                    <div className="text-xs font-extrabold uppercase">
-                      🏢 Kho Tầng 1 → 🏬 Kho Tầng 2
-                    </div>
-                    <div
-                      className={`text-[11px] mt-0.5 ${transferDirection === "F1_TO_F2"
-                        ? "text-teal-100"
-                        : "text-slate-500"
-                        }`}
-                    >
-                      Kho đầu dời: <strong>Kho Tầng 1</strong> (Chỉ hiện SP có tồn Tầng 1)
-                    </div>
-                  </div>
-                  <span
-                    className={`px-2.5 py-1 rounded-full font-mono text-xs font-extrabold ${transferDirection === "F1_TO_F2"
-                      ? "bg-white text-teal-800"
-                      : "bg-teal-100 text-teal-800"
-                      }`}
-                  >
-                    {
-                      products.filter((p) => (Number(p.stockFloor1 ?? p.stock) || 0) > 0)
-                        .length
-                    }{" "}
-                    SP
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleChangeTransferDirection("F2_TO_F1")}
-                  className={`p-3.5 rounded-xl border-2 text-left transition flex items-center justify-between ${transferDirection === "F2_TO_F1"
-                    ? "bg-teal-600 text-white border-teal-700 shadow-md"
-                    : "bg-white text-slate-800 border-slate-200 hover:border-teal-400"
-                    }`}
-                >
-                  <div>
-                    <div className="text-xs font-extrabold uppercase">
-                      🏬 Kho Tầng 2 → 🏢 Kho Tầng 1
-                    </div>
-                    <div
-                      className={`text-[11px] mt-0.5 ${transferDirection === "F2_TO_F1"
-                        ? "text-teal-100"
-                        : "text-slate-500"
-                        }`}
-                    >
-                      Kho đầu dời: <strong>Kho Tầng 2</strong> (Chỉ hiện SP có tồn Tầng 2)
-                    </div>
-                  </div>
-                  <span
-                    className={`px-2.5 py-1 rounded-full font-mono text-xs font-extrabold ${transferDirection === "F2_TO_F1"
-                      ? "bg-white text-teal-800"
-                      : "bg-teal-100 text-teal-800"
-                      }`}
-                  >
-                    {products.filter((p) => (Number(p.stockFloor2) || 0) > 0).length} SP
-                  </span>
-                </button>
-              </div>
-            </div>
-
-            {/* BƯỚC 2: CHỌN SẢN PHẨM TỪ KHO ĐẦU DỜI ĐỂ THÊM VÀO PHIẾU */}
-            <div className="space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <label className="text-xs font-extrabold uppercase text-slate-800">
-                  2. Chọn sản phẩm cần dời từ{" "}
-                  <span className="text-indigo-700">
-                    {transferDirection === "F1_TO_F2" ? "🏢 Kho Tầng 1" : "🏬 Kho Tầng 2"}
-                  </span>{" "}
-                  ({sourceFloorProducts.length} sản phẩm đang có hàng)
-                </label>
-                <div className="relative w-full sm:w-64">
-                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
-                  <input
-                    type="text"
-                    value={transferSearch}
-                    onChange={(e) => setTransferSearch(e.target.value)}
-                    placeholder="Tìm tên hoặc mã SP ở kho đầu dời..."
-                    className="w-full pl-8 pr-3 py-1.5 rounded-lg border border-slate-300 text-xs"
-                  />
+            {/* BƯỚC 1: CHỌN HƯỚNG DỜI KHO (GỌN 1 HÀNG) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <button
+                type="button"
+                onClick={() => handleChangeTransferDirection("F1_TO_F2")}
+                className={`px-3.5 py-2.5 rounded-xl border text-left transition flex items-center justify-between cursor-pointer ${transferDirection === "F1_TO_F2"
+                  ? "bg-teal-600 text-white border-teal-700 shadow-sm"
+                  : "bg-slate-50 text-slate-800 border-slate-200 hover:border-teal-400"
+                  }`}
+              >
+                <div className="text-xs font-extrabold">
+                  🏢 Kho Tầng 1 → 🏬 Kho Tầng 2
                 </div>
-              </div>
+                <span
+                  className={`px-2 py-0.5 rounded-full font-mono text-[11px] font-extrabold ${transferDirection === "F1_TO_F2"
+                    ? "bg-white/20 text-white"
+                    : "bg-white text-teal-800 border border-slate-200"
+                    }`}
+                >
+                  {products.filter((p) => (Number(p.stockFloor1 ?? p.stock) || 0) > 0).length} SP
+                </span>
+              </button>
 
-              {/* Thanh chọn từ dropdown + Màu sắc + Size (Kích cỡ) + số lượng + nút Thêm */}
-              {(() => {
-                const activeTransferProdId =
-                  transferProductId || sourceFloorProducts[0]?._id || "";
-                const selectedTransferProd = products.find(
-                  (p) => p._id === activeTransferProdId
+              <button
+                type="button"
+                onClick={() => handleChangeTransferDirection("F2_TO_F1")}
+                className={`px-3.5 py-2.5 rounded-xl border text-left transition flex items-center justify-between cursor-pointer ${transferDirection === "F2_TO_F1"
+                  ? "bg-teal-600 text-white border-teal-700 shadow-sm"
+                  : "bg-slate-50 text-slate-800 border-slate-200 hover:border-teal-400"
+                  }`}
+              >
+                <div className="text-xs font-extrabold">
+                  🏬 Kho Tầng 2 → 🏢 Kho Tầng 1
+                </div>
+                <span
+                  className={`px-2 py-0.5 rounded-full font-mono text-[11px] font-extrabold ${transferDirection === "F2_TO_F1"
+                    ? "bg-white/20 text-white"
+                    : "bg-white text-teal-800 border border-slate-200"
+                    }`}
+                >
+                  {products.filter((p) => (Number(p.stockFloor2) || 0) > 0).length} SP
+                </span>
+              </button>
+            </div>
+
+            {/* BƯỚC 2: TÌM NHANH & THÊM SẢN PHẨM VÀO PHIẾU (KHÔNG ĐỔ LIST DÀI) */}
+            {(() => {
+              const activeTransferProdId = transferProductId;
+              const selectedTransferProd = activeTransferProdId
+                ? products.find((p) => p._id === activeTransferProdId)
+                : undefined;
+              const availVars = getProductSourceVariants(selectedTransferProd);
+              const effectiveColor =
+                transferColor ||
+                (availVars.length > 0 && !transferSize
+                  ? availVars[0].color || ""
+                  : "");
+              const effectiveSize =
+                transferSize ||
+                (availVars.length > 0 && !transferColor
+                  ? availVars[0].size || ""
+                  : "");
+
+              const uniqueColorOptions: Array<{ color: string; totalStock: number }> = [];
+              for (const v of availVars) {
+                const cName = String(v.color || "").trim();
+                const existingColor = uniqueColorOptions.find(
+                  (c) => c.color.toLowerCase() === cName.toLowerCase()
                 );
-                const availVars = getProductSourceVariants(selectedTransferProd);
-                const effectiveColor =
-                  transferColor ||
-                  (availVars.length > 0 && !transferSize
-                    ? availVars[0].color || ""
-                    : "");
-                const effectiveSize =
-                  transferSize ||
-                  (availVars.length > 0 && !transferColor
-                    ? availVars[0].size || ""
-                    : "");
+                const vStock = getVariantSourceFloorStock(v);
+                if (existingColor) existingColor.totalStock += vStock;
+                else uniqueColorOptions.push({ color: cName, totalStock: vStock });
+              }
 
-                // Gom danh sách Màu duy nhất từ các biến thể có tồn tại kho đầu dời
-                const uniqueColorOptions: Array<{
-                  color: string;
-                  totalStock: number;
-                }> = [];
-                for (const v of availVars) {
-                  const cName = String(v.color || "").trim();
-                  const existingColor = uniqueColorOptions.find(
-                    (c) => c.color.toLowerCase() === cName.toLowerCase()
-                  );
-                  const vStock = getVariantSourceFloorStock(v);
-                  if (existingColor) {
-                    existingColor.totalStock += vStock;
-                  } else {
-                    uniqueColorOptions.push({ color: cName, totalStock: vStock });
-                  }
-                }
-
-                // Lọc danh sách các biến thể (Size) tương ứng với Màu đang chọn
-                const varsForSelectedColor =
-                  availVars.filter(
+              const varsForSelectedColor =
+                availVars.filter(
+                  (v) =>
+                    String(v.color || "").trim().toLowerCase() ===
+                    String(effectiveColor || "").trim().toLowerCase()
+                ).length > 0
+                  ? availVars.filter(
                     (v) =>
                       String(v.color || "").trim().toLowerCase() ===
                       String(effectiveColor || "").trim().toLowerCase()
-                  ).length > 0
-                    ? availVars.filter(
-                      (v) =>
-                        String(v.color || "").trim().toLowerCase() ===
-                        String(effectiveColor || "").trim().toLowerCase()
-                    )
-                    : availVars;
+                  )
+                  : availVars;
 
-                return (
-                  <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-3">
-                    <datalist id="transfer-size-presets">
-                      {["S", "M", "L", "XL", "XXL", "36", "37", "38", "39", "40", "41", "42", "43", "44"].map(
-                        (sz) => (
-                          <option key={sz} value={sz} />
-                        )
-                      )}
-                    </datalist>
+              const quickSuggestions = sourceFloorProducts.slice(0, 12);
 
-                    <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
-                      <div className="md:col-span-4">
-                        <label className="block text-[11px] font-bold uppercase text-slate-600 mb-1">
-                          Sản phẩm có tại{" "}
-                          {transferDirection === "F1_TO_F2"
-                            ? "Kho Tầng 1"
-                            : "Kho Tầng 2"}
-                        </label>
-                        <select
-                          value={activeTransferProdId}
-                          onChange={(e) =>
-                            handleSelectTransferProduct(e.target.value)
+              return (
+                <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-3">
+                  <datalist id="transfer-size-presets">
+                    {["S", "M", "L", "XL", "XXL", "36", "37", "38", "39", "40", "41", "42", "43", "44"].map(
+                      (sz) => (
+                        <option key={sz} value={sz} />
+                      )
+                    )}
+                  </datalist>
+
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5 items-end">
+                    {/* Ô tìm kiếm thông minh có dropdown gợi ý */}
+                    <div className="md:col-span-5 relative">
+                      <label className="block text-[11px] font-bold uppercase text-slate-600 mb-1">
+                        Tìm &amp; chọn SP tại {transferDirection === "F1_TO_F2" ? "Kho Tầng 1" : "Kho Tầng 2"}
+                      </label>
+                      <div className="relative">
+                        <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+                        <input
+                          type="text"
+                          value={transferSearch}
+                          onFocus={() => setTransferSuggestOpen(true)}
+                          onBlur={() => setTimeout(() => setTransferSuggestOpen(false), 180)}
+                          onChange={(e) => {
+                            setTransferSearch(e.target.value);
+                            setTransferSuggestOpen(true);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              if (quickSuggestions.length > 0) {
+                                const first = quickSuggestions[0];
+                                handleSelectTransferProduct(first._id);
+                                setTransferSearch(`${first.name} (${first.code})`);
+                                setTransferSuggestOpen(false);
+                              }
+                            }
+                          }}
+                          placeholder={
+                            selectedTransferProd
+                              ? `${selectedTransferProd.name} (${selectedTransferProd.code})`
+                              : "Gõ tên, mã gốc hoặc mã con..."
                           }
-                          className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs bg-white font-semibold"
-                        >
-                          {sourceFloorProducts.length === 0 ? (
-                            <option value="">
-                              -- Không có sản phẩm nào còn tồn ở kho đầu dời này --
-                            </option>
+                          className="w-full pl-8 pr-8 py-2 rounded-xl border border-slate-300 text-xs bg-white font-semibold focus:outline-none focus:border-teal-500"
+                        />
+                        {(transferSearch || transferProductId) && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setTransferSearch("");
+                              setTransferProductId("");
+                              setTransferColor("");
+                              setTransferSize("");
+                              setTransferSuggestOpen(true);
+                            }}
+                            className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-700"
+                            title="Xóa lựa chọn"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+
+                      {transferSuggestOpen && (
+                        <div className="absolute z-30 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl max-h-64 overflow-y-auto divide-y divide-slate-100">
+                          {quickSuggestions.length === 0 ? (
+                            <div className="p-3 text-xs text-slate-400 text-center">
+                              Không tìm thấy sản phẩm còn tồn ở kho đầu dời.
+                            </div>
                           ) : (
-                            sourceFloorProducts.map((p) => {
+                            quickSuggestions.map((p) => {
                               const avail = getSourceFloorStock(p);
+                              const isPicked = p._id === activeTransferProdId;
                               return (
-                                <option key={p._id} value={p._id}>
-                                  {p.name} ({p.code}) — Tồn{" "}
-                                  {transferDirection === "F1_TO_F2"
-                                    ? "Kho Tầng 1"
-                                    : "Kho Tầng 2"}
-                                  : {avail} {p.unit}
-                                </option>
+                                <button
+                                  key={p._id}
+                                  type="button"
+                                  onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    handleSelectTransferProduct(p._id);
+                                    setTransferSearch(`${p.name} (${p.code})`);
+                                    setTransferSuggestOpen(false);
+                                  }}
+                                  className={`w-full px-3 py-2 text-left text-xs flex items-center justify-between gap-2 hover:bg-teal-50 transition ${
+                                    isPicked ? "bg-teal-50/80" : ""
+                                  }`}
+                                >
+                                  <div className="min-w-0">
+                                    <div className="font-bold text-slate-900 truncate">{p.name}</div>
+                                    <div className="font-mono text-[10px] text-slate-500">{p.code}</div>
+                                  </div>
+                                  <span className="px-2 py-0.5 rounded bg-teal-100 text-teal-800 font-mono font-bold text-[11px] shrink-0">
+                                    Tồn: {avail} {p.unit}
+                                  </span>
+                                </button>
                               );
                             })
                           )}
-                        </select>
-                      </div>
-
-                      <div className="md:col-span-3">
-                        <label className="block text-[11px] font-bold uppercase text-indigo-700 mb-1">
-                          Màu sắc cần dời
-                        </label>
-                        {uniqueColorOptions.length > 0 ? (
-                          <select
-                            value={String(effectiveColor || "").trim().toLowerCase()}
-                            onChange={(e) => {
-                              const nextColorLower = e.target.value;
-                              const matchedColorVars = availVars.filter(
-                                (v) =>
-                                  String(v.color || "").trim().toLowerCase() ===
-                                  nextColorLower
-                              );
-                              if (matchedColorVars.length > 0) {
-                                setTransferColor(matchedColorVars[0].color || "");
-                                setTransferSize(matchedColorVars[0].size || "");
-                              } else {
-                                setTransferColor("");
-                                setTransferSize("");
-                              }
-                            }}
-                            className="w-full px-3 py-2 rounded-xl border border-indigo-300 text-xs bg-white font-bold text-slate-900"
-                          >
-                            {uniqueColorOptions.map((cOpt, cIdx) => (
-                              <option
-                                key={`${cOpt.color}_${cIdx}`}
-                                value={cOpt.color.toLowerCase()}
-                              >
-                                Màu: {cOpt.color || "Mặc định"} (Tồn:{" "}
-                                {cOpt.totalStock}{" "}
-                                {selectedTransferProd?.unit || "Cái"})
-                              </option>
-                            ))}
-                          </select>
-                        ) : (
-                          <ColorInputWithPicker
-                            value={transferColor}
-                            onChange={(nextColor) => setTransferColor(nextColor)}
-                            placeholder="Chọn hoặc nhập màu sắc..."
-                          />
-                        )}
-                      </div>
-
-                      <div className="md:col-span-2">
-                        <label className="block text-[11px] font-bold uppercase text-indigo-700 mb-1">
-                          Size (Kích cỡ)
-                        </label>
-                        {varsForSelectedColor.length > 0 ? (
-                          <select
-                            value={String(effectiveSize || "").trim().toUpperCase()}
-                            onChange={(e) => {
-                              const nextSizeUpper = e.target.value;
-                              const matchedVar = varsForSelectedColor.find(
-                                (v) =>
-                                  String(v.size || "").trim().toUpperCase() ===
-                                  nextSizeUpper
-                              );
-                              if (matchedVar) {
-                                setTransferColor(
-                                  matchedVar.color || effectiveColor || ""
-                                );
-                                setTransferSize(matchedVar.size || "");
-                              } else {
-                                setTransferSize(e.target.value);
-                              }
-                            }}
-                            className="w-full px-3 py-2 rounded-xl border border-indigo-300 text-xs bg-white font-mono font-bold text-slate-900"
-                          >
-                            {varsForSelectedColor.map((v, sIdx) => {
-                              const szTrim = String(v.size || "").trim();
-                              const szVal = szTrim.toUpperCase();
-                              const vStock = getVariantSourceFloorStock(v);
-                              return (
-                                <option key={`${szVal}_${sIdx}`} value={szVal}>
-                                  {szTrim
-                                    ? `Size ${szTrim} (Tồn: ${vStock})`
-                                    : `Không có size (Tồn: ${vStock})`}
-                                </option>
-                              );
-                            })}
-                          </select>
-                        ) : (
-                          <input
-                            type="text"
-                            list="transfer-size-presets"
-                            value={transferSize}
-                            onChange={(e) =>
-                              setTransferSize(e.target.value.toUpperCase())
-                            }
-                            placeholder="Trống = Không size (VD: M, L, 41)"
-                            className="w-full px-3 py-2 rounded-xl border border-indigo-300 text-xs bg-white font-mono font-bold uppercase text-slate-900"
-                          />
-                        )}
-                      </div>
-
-                      <div className="md:col-span-1">
-                        <label className="block text-[11px] font-bold uppercase text-slate-600 mb-1">
-                          SL thêm
-                        </label>
-                        <input
-                          type="number"
-                          min={1}
-                          step={1}
-                          value={transferQty}
-                          onChange={(e) =>
-                            setTransferQty(
-                              Math.max(1, Math.round(Number(e.target.value) || 1))
-                            )
-                          }
-                          className="w-full px-2.5 py-2 rounded-xl border border-slate-300 font-mono text-sm font-extrabold text-right bg-white"
-                        />
-                      </div>
-
-                      <div className="md:col-span-2">
-                        <button
-                          type="button"
-                          disabled={sourceFloorProducts.length === 0}
-                          onClick={() =>
-                            handleAddTransferItem(
-                              activeTransferProdId,
-                              transferQty,
-                              effectiveColor,
-                              effectiveSize
-                            )
-                          }
-                          className="w-full py-2.5 px-3 rounded-xl bg-teal-600 hover:bg-teal-700 disabled:bg-slate-300 text-white font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-sm"
-                        >
-                          <Plus className="w-4 h-4" />
-                          Thêm vào phiếu
-                        </button>
-                      </div>
+                        </div>
+                      )}
                     </div>
 
-                    {/* Hiển thị nhanh các chip Màu sắc & Size của sản phẩm đang chọn để bấm chọn trực quan */}
-                    {selectedTransferProd && availVars.length > 0 && (
-                      <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-slate-200/80">
-                        <span className="text-[11px] font-bold text-slate-500 mr-1">
-                          Chọn nhanh Màu &amp; Size của &quot;{selectedTransferProd.name}&quot;:
-                        </span>
-                        {availVars.map((v, vIdx) => {
-                          const vStock = getVariantSourceFloorStock(v);
-                          const isSelectedVar =
-                            String(v.color || "").trim().toLowerCase() ===
-                            String(effectiveColor || "").trim().toLowerCase() &&
-                            String(v.size || "").trim().toUpperCase() ===
-                            String(effectiveSize || "").trim().toUpperCase();
-                          const hexes = resolveVariantColorHexes(
-                            v.color,
-                            v.colorHexes
-                          );
-                          return (
-                            <button
-                              key={`${v.color}-${v.size}-${vIdx}`}
-                              type="button"
-                              onClick={() => {
-                                setTransferColor(v.color || "");
-                                setTransferSize(v.size || "");
-                              }}
-                              style={getColorBoxBorderStyle(
-                                hexes,
-                                isSelectedVar ? "#eef2ff" : "#ffffff",
-                                2
-                              )}
-                              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-bold transition ${isSelectedVar
-                                ? "ring-2 ring-indigo-600 text-indigo-950 shadow-xs"
-                                : "border-slate-200 text-slate-800 hover:bg-slate-100"
-                                }`}
-                            >
-                              <ColorSwatchBadge
-                                hexes={v.colorHexes}
-                                colorName={v.color || "Mặc định"}
-                                size="xs"
-                              />
-                              <span>{v.color || "Mặc định"}</span>
-                              {Boolean(v.size?.trim()) && (
-                                <span className="px-1 py-0.2 rounded bg-indigo-100 text-indigo-800 font-mono text-[10px] font-extrabold">
-                                  Size {v.size?.trim()}
-                                </span>
-                              )}
-                              <span className="font-mono text-[10px] font-extrabold text-teal-700">
-                                ({vStock})
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                );
-              })()}
-
-              {/* Danh sách gợi ý bấm chọn nhanh các SP & Màu sắc ở Kho đầu dời */}
-              {sourceFloorProducts.length > 0 && (
-                <div className="border border-slate-200 rounded-xl p-3 bg-white">
-                  <div className="text-[11px] font-bold text-slate-500 mb-2">
-                    Bấm nhanh vào sản phẩm hoặc bấm trực tiếp vào từng Màu sắc bên dưới để đưa vào phiếu dời kho:
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 max-h-60 overflow-y-auto pr-1">
-                    {sourceFloorProducts.map((p) => {
-                      const avail = getSourceFloorStock(p);
-                      const prodVars = getProductSourceVariants(p);
-                      const totalSelectedForProd = transferItems
-                        .filter((i) => i.productId === p._id)
-                        .reduce((sum, i) => sum + i.quantity, 0);
-
-                      return (
-                        <div
-                          key={p._id}
-                          className={`p-2.5 rounded-lg border text-left transition flex flex-col justify-between gap-2 text-xs ${totalSelectedForProd > 0
-                            ? "border-indigo-500 bg-indigo-50/50"
-                            : "border-slate-200 hover:border-indigo-300 bg-white"
-                            }`}
+                    <div className="md:col-span-2">
+                      <label className="block text-[11px] font-bold uppercase text-indigo-700 mb-1">
+                        Màu sắc
+                      </label>
+                      {uniqueColorOptions.length > 0 ? (
+                        <select
+                          value={String(effectiveColor || "").trim().toLowerCase()}
+                          onChange={(e) => {
+                            const nextColorLower = e.target.value;
+                            const matchedColorVars = availVars.filter(
+                              (v) =>
+                                String(v.color || "").trim().toLowerCase() ===
+                                nextColorLower
+                            );
+                            if (matchedColorVars.length > 0) {
+                              setTransferColor(matchedColorVars[0].color || "");
+                              setTransferSize(matchedColorVars[0].size || "");
+                            } else {
+                              setTransferColor("");
+                              setTransferSize("");
+                            }
+                          }}
+                          className="w-full px-2.5 py-2 rounded-xl border border-indigo-300 text-xs bg-white font-bold text-slate-900"
                         >
-                          <div
-                            onClick={() => {
-                              setTransferProductId(p._id);
-                              if (prodVars.length > 0) {
-                                setTransferColor(prodVars[0].color || "");
-                                setTransferSize(prodVars[0].size || "");
-                                handleAddTransferItem(
-                                  p._id,
-                                  1,
-                                  prodVars[0].color || "",
-                                  prodVars[0].size || ""
-                                );
-                              } else {
-                                handleAddTransferItem(p._id, 1, "", "");
-                              }
-                            }}
-                            className="flex items-start justify-between gap-2 cursor-pointer"
-                          >
-                            <div className="min-w-0">
-                              <div className="font-bold text-slate-900 truncate">
-                                {p.name}
-                              </div>
-                              <div className="font-mono text-[10px] text-slate-500 truncate">
-                                {p.code}
-                              </div>
-                            </div>
-                            <div className="text-right shrink-0">
-                              <span className="px-2 py-0.5 rounded bg-teal-100 text-teal-800 font-mono font-bold text-[11px]">
-                                Tồn: {avail} {p.unit}
-                              </span>
-                              {totalSelectedForProd > 0 && (
-                                <div className="text-[10px] font-extrabold text-indigo-700 mt-0.5">
-                                  Đã chọn: {totalSelectedForProd}
-                                </div>
-                              )}
-                            </div>
-                          </div>
+                          {uniqueColorOptions.map((cOpt, cIdx) => (
+                            <option
+                              key={`${cOpt.color}_${cIdx}`}
+                              value={cOpt.color.toLowerCase()}
+                            >
+                              {cOpt.color || "Mặc định"} ({cOpt.totalStock})
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <ColorInputWithPicker
+                          value={transferColor}
+                          onChange={(nextColor) => setTransferColor(nextColor)}
+                          placeholder="Màu sắc..."
+                        />
+                      )}
+                    </div>
 
-                          {prodVars.length > 0 && (
-                            <div className="flex flex-wrap items-center gap-1 pt-1.5 border-t border-slate-200/70">
-                              {prodVars.map((v, vIdx) => {
-                                const vAvail = getVariantSourceFloorStock(v);
-                                const vKey = getTransferItemKey(
-                                  p._id,
-                                  v.color,
-                                  v.size
-                                );
-                                const inCartVar = transferItems.find(
-                                  (i) =>
-                                    getTransferItemKey(
-                                      i.productId,
-                                      i.color,
-                                      i.size
-                                    ) === vKey
-                                );
-                                const hexes = resolveVariantColorHexes(
-                                  v.color,
-                                  v.colorHexes
-                                );
-                                return (
-                                  <button
-                                    key={`${v.color}-${v.size}-${vIdx}`}
-                                    type="button"
-                                    disabled={vAvail <= 0}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setTransferProductId(p._id);
-                                      setTransferColor(v.color || "");
-                                      setTransferSize(v.size || "");
-                                      handleAddTransferItem(
-                                        p._id,
-                                        1,
-                                        v.color || "",
-                                        v.size || ""
-                                      );
-                                    }}
-                                    style={getColorBoxBorderStyle(
-                                      hexes,
-                                      inCartVar ? "#e0e7ff" : "#ffffff",
-                                      2
-                                    )}
-                                    title={`Bấm để thêm +1 Màu ${v.color || "Mặc định"}${v.size?.trim() ? ` - Size ${v.size.trim()}` : ""
-                                      }`}
-                                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[10px] font-bold transition ${inCartVar
-                                      ? "ring-1 ring-indigo-600 text-indigo-950"
-                                      : "border-slate-200 text-slate-800 hover:bg-indigo-50"
-                                      }`}
-                                  >
-                                    <ColorSwatchBadge
-                                      hexes={v.colorHexes}
-                                      colorName={v.color || "Mặc định"}
-                                      size="xs"
-                                    />
-                                    <span>{v.color || "Mặc định"}</span>
-                                    {Boolean(v.size?.trim()) && (
-                                      <span className="font-mono font-extrabold text-indigo-700">
-                                        • {v.size?.trim()}
-                                      </span>
-                                    )}
-                                    <span className="font-mono font-extrabold text-teal-700">
-                                      ({vAvail})
-                                    </span>
-                                    {inCartVar && (
-                                      <span className="px-1 rounded bg-indigo-600 text-white font-mono text-[9px]">
-                                        ✓{inCartVar.quantity}
-                                      </span>
-                                    )}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
+                    <div className="md:col-span-2">
+                      <label className="block text-[11px] font-bold uppercase text-indigo-700 mb-1">
+                        Size
+                      </label>
+                      {varsForSelectedColor.length > 0 ? (
+                        <select
+                          value={String(effectiveSize || "").trim().toUpperCase()}
+                          onChange={(e) => {
+                            const nextSizeUpper = e.target.value;
+                            const matchedVar = varsForSelectedColor.find(
+                              (v) =>
+                                String(v.size || "").trim().toUpperCase() ===
+                                nextSizeUpper
+                            );
+                            if (matchedVar) {
+                              setTransferColor(matchedVar.color || effectiveColor || "");
+                              setTransferSize(matchedVar.size || "");
+                            } else {
+                              setTransferSize(e.target.value);
+                            }
+                          }}
+                          className="w-full px-2.5 py-2 rounded-xl border border-indigo-300 text-xs bg-white font-mono font-bold text-slate-900"
+                        >
+                          {varsForSelectedColor.map((v, sIdx) => {
+                            const szTrim = String(v.size || "").trim();
+                            const szVal = szTrim.toUpperCase();
+                            const vStock = getVariantSourceFloorStock(v);
+                            return (
+                              <option key={`${szVal}_${sIdx}`} value={szVal}>
+                                {szTrim ? `${szTrim} (Tồn: ${vStock})` : `Không size (${vStock})`}
+                              </option>
+                            );
+                          })}
+                        </select>
+                      ) : (
+                        <input
+                          type="text"
+                          list="transfer-size-presets"
+                          value={transferSize}
+                          onChange={(e) => setTransferSize(e.target.value.toUpperCase())}
+                          placeholder="VD: M, L, 41"
+                          className="w-full px-2.5 py-2 rounded-xl border border-indigo-300 text-xs bg-white font-mono font-bold uppercase text-slate-900"
+                        />
+                      )}
+                    </div>
+
+                    <div className="md:col-span-1">
+                      <label className="block text-[11px] font-bold uppercase text-slate-600 mb-1">
+                        SL
+                      </label>
+                      <input
+                        type="number"
+                        min={1}
+                        step={1}
+                        value={transferQty}
+                        onChange={(e) =>
+                          setTransferQty(Math.max(1, Math.round(Number(e.target.value) || 1)))
+                        }
+                        className="w-full px-2 py-2 rounded-xl border border-slate-300 font-mono text-sm font-extrabold text-right bg-white"
+                      />
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <button
+                        type="button"
+                        disabled={!selectedTransferProd}
+                        onClick={() =>
+                          handleAddTransferItem(
+                            activeTransferProdId,
+                            transferQty,
+                            effectiveColor,
+                            effectiveSize
+                          )
+                        }
+                        className="w-full py-2 px-3 rounded-xl bg-teal-600 hover:bg-teal-700 disabled:bg-slate-300 text-white font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Thêm vào phiếu
+                      </button>
+                    </div>
                   </div>
+
+                  {/* Sản phẩm đang chọn + chip Màu/Size để bấm 1 chạm thêm nhanh */}
+                  {selectedTransferProd && (
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-200/80 text-xs">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="font-bold text-slate-700">
+                          Đang chọn: <span className="text-teal-700">{selectedTransferProd.name}</span>
+                        </span>
+                        <span className="font-mono text-[11px] text-slate-500">
+                          ({selectedTransferProd.code} · Tồn {getSourceFloorStock(selectedTransferProd)} {selectedTransferProd.unit})
+                        </span>
+                      </div>
+
+                      {availVars.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {availVars.map((v, vIdx) => {
+                            const vStock = getVariantSourceFloorStock(v);
+                            const isSelectedVar =
+                              String(v.color || "").trim().toLowerCase() ===
+                              String(effectiveColor || "").trim().toLowerCase() &&
+                              String(v.size || "").trim().toUpperCase() ===
+                              String(effectiveSize || "").trim().toUpperCase();
+                            const hexes = resolveVariantColorHexes(v.color, v.colorHexes);
+                            return (
+                              <button
+                                key={`${v.color}-${v.size}-${vIdx}`}
+                                type="button"
+                                onClick={() => {
+                                  setTransferColor(v.color || "");
+                                  setTransferSize(v.size || "");
+                                  handleAddTransferItem(
+                                    activeTransferProdId,
+                                    1,
+                                    v.color || "",
+                                    v.size || ""
+                                  );
+                                }}
+                                style={getColorBoxBorderStyle(
+                                  hexes,
+                                  isSelectedVar ? "#eef2ff" : "#ffffff",
+                                  2
+                                )}
+                                title="Bấm để thêm +1 biến thể này vào phiếu"
+                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border text-[11px] font-bold transition cursor-pointer ${isSelectedVar
+                                  ? "ring-1 ring-indigo-600 text-indigo-950"
+                                  : "border-slate-200 text-slate-800 hover:bg-indigo-50"
+                                  }`}
+                              >
+                                <ColorSwatchBadge
+                                  hexes={v.colorHexes}
+                                  colorName={v.color || "Mặc định"}
+                                  size="xs"
+                                />
+                                <span>{v.color || "Mặc định"}</span>
+                                {Boolean(v.size?.trim()) && (
+                                  <span className="font-mono text-indigo-700">· {v.size?.trim()}</span>
+                                )}
+                                <span className="font-mono text-teal-700">({vStock})</span>
+                                <span className="text-[10px] text-indigo-600 font-extrabold">+1</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              );
+            })()}
 
             {/* BƯỚC 3: BẢNG CÁC SẢN PHẨM TRONG PHIẾU DỜI KHO & XÁC NHẬN */}
             <form onSubmit={handleCreateTransfer} className="space-y-4 pt-2 border-t border-slate-200">
@@ -6492,7 +6071,7 @@ export default function InventoryModule() {
                   <button
                     type="submit"
                     disabled={transferItems.length === 0}
-                    className="w-full py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white font-extrabold text-xs shadow-lg flex items-center justify-center gap-2 transition"
+                    className="w-full py-3 px-4 rounded-xl bg-teal-600 hover:bg-teal-700 disabled:bg-slate-300 text-white font-extrabold text-xs shadow-sm flex items-center justify-center gap-2 transition cursor-pointer"
                   >
                     <ArrowLeftRight className="w-4 h-4" />
                     Xác nhận Tạo Phiếu Xuất Kho ({transferItems.length} dòng)
@@ -6500,249 +6079,6 @@ export default function InventoryModule() {
                 </div>
               </div>
             </form>
-          </div>
-
-          {/* LỊCH SỬ PHIẾU XUẤT KHO CHUYỂN TẦNG (CÓ XEM CHI TIẾT TỪNG PHIẾU) */}
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 space-y-4">
-            <div>
-              <h3 className="font-bold text-slate-900 text-sm">
-                Lịch sử Phiếu Xuất Kho Chuyển Tầng (PXK — Bấm vào dòng phiếu để xem chi tiết sản phẩm & màu sắc dời kho)
-              </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Mỗi phiếu xuất kho chuyển tầng (`PXK-...`) có thể bao gồm 1 hoặc nhiều sản phẩm / màu sắc. Bấm vào một phiếu để mở xem danh sách chi tiết từng mặt hàng đã dời.
-              </p>
-            </div>
-            <div className="overflow-x-auto border border-slate-200 rounded-xl">
-              <table className="w-full text-xs text-left">
-                <thead className="bg-slate-100 text-slate-700 border-b border-slate-200 uppercase">
-                  <tr>
-                    <th className="py-3 px-3">Mã Phiếu Xuất</th>
-                    <th className="py-3 px-3">Thời gian</th>
-                    <th className="py-3 px-3">Từ Kho (Đầu dời)</th>
-                    <th className="py-3 px-3">Sang Kho (Đích)</th>
-                    <th className="py-3 px-3 text-right">Số mặt hàng</th>
-                    <th className="py-3 px-3 text-right">Tổng SL dời</th>
-                    <th className="py-3 px-3">Người thực hiện</th>
-                    <th className="py-3 px-3">Ghi chú</th>
-                    <th className="py-3 px-3 text-center">Chi tiết</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200">
-                  {(() => {
-                    // Gom các bản ghi TRANSFER theo referenceCode (PXK-...)
-                    const groupedMap = new Map<string, StockMovement[]>();
-                    transfersList.forEach((m) => {
-                      const code = m.referenceCode || m._id;
-                      const list = groupedMap.get(code) || [];
-                      list.push(m);
-                      groupedMap.set(code, list);
-                    });
-                    const receiptGroups = Array.from(groupedMap.entries());
-
-                    if (receiptGroups.length === 0) {
-                      return (
-                        <tr>
-                          <td colSpan={9} className="py-8 text-center text-slate-400">
-                            Chưa có phiếu xuất kho chuyển tầng nào.
-                          </td>
-                        </tr>
-                      );
-                    }
-
-                    return receiptGroups.map(([refCode, items]) => {
-                      const first = items[0];
-                      const totalQty = items.reduce(
-                        (s, it) => s + Math.abs(Number(it.quantityChange) || 0),
-                        0
-                      );
-                      const isExpanded = expandedTransferCode === refCode;
-
-                      return (
-                        <React.Fragment key={refCode}>
-                          <tr
-                            onClick={() =>
-                              setExpandedTransferCode(isExpanded ? null : refCode)
-                            }
-                            className="hover:bg-indigo-50/40 cursor-pointer transition"
-                          >
-                            <td className="py-3 px-3 font-mono font-extrabold text-indigo-700">
-                              {refCode}
-                            </td>
-                            <td className="py-3 px-3 text-slate-600 whitespace-nowrap">
-                              {formatDateTime(first.createdAt)}
-                            </td>
-                            <td className="py-3 px-3 font-bold text-slate-800 whitespace-nowrap">
-                              {first.fromWarehouse === "FLOOR_2"
-                                ? "🏬 Kho Tầng 2"
-                                : "🏢 Kho Tầng 1"}
-                            </td>
-                            <td className="py-3 px-3 font-bold text-indigo-700 whitespace-nowrap">
-                              {first.toWarehouse === "FLOOR_2"
-                                ? "🏬 Kho Tầng 2"
-                                : "🏢 Kho Tầng 1"}
-                            </td>
-                            <td className="py-3 px-3 text-right font-mono font-bold">
-                              {items.length} SP
-                            </td>
-                            <td className="py-3 px-3 text-right font-mono font-extrabold text-indigo-700">
-                              {totalQty}
-                            </td>
-                            <td className="py-3 px-3 font-semibold text-slate-800 whitespace-nowrap">
-                              {first.performedByName || "Quản trị viên"}
-                            </td>
-                            <td className="py-3 px-3 text-slate-600 max-w-xs truncate">
-                              {first.note || "-"}
-                            </td>
-                            <td className="py-3 px-3 text-center">
-                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 font-bold text-[11px]">
-                                {isExpanded ? (
-                                  <>
-                                    Ẩn <ChevronUp className="w-3.5 h-3.5" />
-                                  </>
-                                ) : (
-                                  <>
-                                    Xem ({items.length}) <ChevronDown className="w-3.5 h-3.5" />
-                                  </>
-                                )}
-                              </span>
-                            </td>
-                          </tr>
-
-                          {isExpanded && (
-                            <tr className="bg-indigo-50/30">
-                              <td colSpan={9} className="p-3.5">
-                                <div className="border border-indigo-200 rounded-xl overflow-x-auto bg-white shadow-sm">
-                                  <div className="bg-indigo-950 text-white px-3.5 py-2 text-[11px] font-bold flex flex-wrap items-center justify-between gap-2">
-                                    <span>
-                                      Chi tiết Phiếu Xuất Kho Chuyển Tầng: {refCode} (
-                                      {first.fromWarehouse === "FLOOR_2"
-                                        ? "Kho Tầng 2 → Kho Tầng 1"
-                                        : "Kho Tầng 1 → Kho Tầng 2"}
-                                      )
-                                    </span>
-                                    <span>
-                                      Người thực hiện: {first.performedByName || "Quản trị viên"} ·{" "}
-                                      {formatDateTime(first.createdAt)}
-                                    </span>
-                                  </div>
-                                  <table className="w-full text-[11px] text-left">
-                                    <thead className="bg-slate-100 text-slate-800 uppercase border-b border-slate-200">
-                                      <tr>
-                                        <th className="py-2 px-3 text-center w-12">STT</th>
-                                        <th className="py-2 px-3">Mã hàng</th>
-                                        <th className="py-2 px-3">Tên sản phẩm</th>
-                                        <th className="py-2 px-3">Màu sắc</th>
-                                        <th className="py-2 px-3 text-center">Size</th>
-                                        <th className="py-2 px-3 text-center">ĐVT</th>
-                                        <th className="py-2 px-3">Từ Kho</th>
-                                        <th className="py-2 px-3">Sang Kho</th>
-                                        <th className="py-2 px-3 text-right">Số lượng dời</th>
-                                        <th className="py-2 px-3">Ghi chú</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-200">
-                                      {items.map((it, idx) => {
-                                        const prod = productByCode.get(it.productCode);
-                                        const itColor = String(it.color || "").trim();
-                                        const itSize = String(it.size || "").trim();
-                                        const childCode =
-                                          itColor || itSize
-                                            ? variantCodeFor(
-                                              it.productCode,
-                                              itColor,
-                                              itSize
-                                            )
-                                            : it.productCode;
-                                        const matchedVar = (prod?.variants || []).find(
-                                          (v) =>
-                                            String(v.color || "").trim().toLowerCase() ===
-                                            itColor.toLowerCase()
-                                        );
-                                        const hexes = resolveVariantColorHexes(
-                                          itColor,
-                                          matchedVar?.colorHexes
-                                        );
-                                        return (
-                                          <tr key={it._id || idx} className="hover:bg-slate-50">
-                                            <td className="py-2 px-3 text-center font-mono">
-                                              {idx + 1}
-                                            </td>
-                                            <td className="py-2 px-3 font-mono font-bold text-slate-800">
-                                              <div>{childCode}</div>
-                                              {(itColor || itSize) && (
-                                                <div className="text-[10px] font-normal text-slate-400">
-                                                  Gốc: {it.productCode}
-                                                </div>
-                                              )}
-                                            </td>
-                                            <td className="py-2 px-3 font-semibold text-slate-900">
-                                              {it.productName}
-                                            </td>
-                                            <td className="py-2 px-3">
-                                              {itColor ? (
-                                                <span
-                                                  style={getColorBoxBorderStyle(
-                                                    hexes,
-                                                    "#f8fafc",
-                                                    2
-                                                  )}
-                                                  className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md border border-slate-200 font-bold text-slate-800"
-                                                >
-                                                  <ColorSwatchBadge
-                                                    hexes={matchedVar?.colorHexes}
-                                                    colorName={itColor}
-                                                    size="xs"
-                                                  />
-                                                  <span>{itColor}</span>
-                                                </span>
-                                              ) : (
-                                                <span className="text-slate-400">-</span>
-                                              )}
-                                            </td>
-                                            <td className="py-2 px-3 text-center">
-                                              {Boolean(itSize) ? (
-                                                <span className="px-2 py-0.5 rounded bg-indigo-50 text-indigo-800 border border-indigo-200 font-mono font-extrabold">
-                                                  {itSize}
-                                                </span>
-                                              ) : (
-                                                <span className="text-slate-400">—</span>
-                                              )}
-                                            </td>
-                                            <td className="py-2 px-3 text-center">
-                                              {(it as any).unit || prod?.unit || "Cái"}
-                                            </td>
-                                            <td className="py-2 px-3 font-semibold text-slate-700">
-                                              {it.fromWarehouse === "FLOOR_2"
-                                                ? "🏬 Kho Tầng 2"
-                                                : "🏢 Kho Tầng 1"}
-                                            </td>
-                                            <td className="py-2 px-3 font-semibold text-indigo-700">
-                                              {it.toWarehouse === "FLOOR_2"
-                                                ? "🏬 Kho Tầng 2"
-                                                : "🏢 Kho Tầng 1"}
-                                            </td>
-                                            <td className="py-2 px-3 text-right font-mono font-extrabold text-indigo-700">
-                                              {Math.abs(Number(it.quantityChange) || 0)}
-                                            </td>
-                                            <td className="py-2 px-3 text-slate-600">
-                                              {it.note || "-"}
-                                            </td>
-                                          </tr>
-                                        );
-                                      })}
-                                    </tbody>
-                                  </table>
-                                </div>
-                              </td>
-                            </tr>
-                          )}
-                        </React.Fragment>
-                      );
-                    });
-                  })()}
-                </tbody>
-              </table>
-            </div>
           </div>
         </div>
       )}
