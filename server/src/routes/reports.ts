@@ -665,6 +665,7 @@ reportsRouter.get('/reports/revenue-dashboard', async (req, res, next) => {
         unitsSold: number;
         grossRevenue: number;
         discountTotal: number;
+        giftRetailValue: number;
         orderRevenue: number;
         returnImpact: number;
         netRevenue: number;
@@ -687,6 +688,7 @@ reportsRouter.get('/reports/revenue-dashboard', async (req, res, next) => {
           unitsSold: 0,
           grossRevenue: 0,
           discountTotal: 0,
+          giftRetailValue: 0,
           orderRevenue: 0,
           returnImpact: 0,
           netRevenue: 0,
@@ -719,6 +721,7 @@ reportsRouter.get('/reports/revenue-dashboard', async (req, res, next) => {
         unitsSold: number;
         grossRevenue: number;
         discountTotal: number;
+        giftRetailValue: number;
         orderRevenue: number;
         returnImpact: number;
         netRevenue: number;
@@ -736,6 +739,7 @@ reportsRouter.get('/reports/revenue-dashboard', async (req, res, next) => {
         unitsSold: 0,
         grossRevenue: 0,
         discountTotal: 0,
+        giftRetailValue: 0,
         orderRevenue: 0,
         returnImpact: 0,
         netRevenue: 0,
@@ -756,6 +760,7 @@ reportsRouter.get('/reports/revenue-dashboard', async (req, res, next) => {
           unitsSold: 0,
           grossRevenue: 0,
           discountTotal: 0,
+          giftRetailValue: 0,
           orderRevenue: 0,
           returnImpact: 0,
           netRevenue: 0,
@@ -887,12 +892,15 @@ reportsRouter.get('/reports/revenue-dashboard', async (req, res, next) => {
         }
       }
 
-      // D1: orderRevenue = tiền hàng sau giảm SP & giảm bill (S - B), KHÔNG gồm cardFee
+      // Doanh thu thuần hệ thống POS = Giá niêm yết SP + Giá niêm yết Quà tặng
       const effectiveBillDisc = isProductOnlyCatFilter ? orderIncludedBillDisc : orderBillDisc;
       const effectiveCardFee = isProductOnlyCatFilter ? 0 : orderCardFee;
       const effectiveOrderRev = isProductOnlyCatFilter ? orderIncludedNetRev : orderAfterBill;
+      const orderSystemGross =
+        (isProductOnlyCatFilter ? orderIncludedGross : Number(o.rawSubtotal ?? o.subtotal) || 0) +
+        orderIncludedGiftRetail;
 
-      grossRevenue += isProductOnlyCatFilter ? orderIncludedGross : Number(o.rawSubtotal ?? o.subtotal) || 0;
+      grossRevenue += orderSystemGross;
       itemDiscountTotal += isProductOnlyCatFilter ? orderIncludedItemDisc : Number(o.itemDiscountTotal) || 0;
       billDiscountTotal += effectiveBillDisc;
       cardFeeCollected += effectiveCardFee;
@@ -905,7 +913,11 @@ reportsRouter.get('/reports/revenue-dashboard', async (req, res, next) => {
       const dm = extractOrderDebtMeta(o, refundedCashByOrderId.get(String(o._id)) || 0);
       // Tách phí quẹt thẻ thu hộ ngân hàng (orderCardFee) ra khỏi Thực thu lúc mua (cashAtPurchase)
       const netOrderCashAtPurchase = Math.max(0, dm.cashAtPurchase - orderCardFee);
-      const orderCashAtPurchase = isProductOnlyCatFilter ? 0 : netOrderCashAtPurchase;
+      const orderCashAtPurchase = isProductOnlyCatFilter
+        ? orderAfterBill > 0
+          ? Math.round(netOrderCashAtPurchase * Math.min(1, effectiveOrderRev / orderAfterBill))
+          : 0
+        : netOrderCashAtPurchase;
       cashAtPurchase += orderCashAtPurchase;
 
       if (dm.initialDebtAmount > 0 || dm.debtAmount > 0) {
@@ -917,26 +929,28 @@ reportsRouter.get('/reports/revenue-dashboard', async (req, res, next) => {
       }
 
       day.unitsSold += orderIncludedUnits;
-      day.grossRevenue += isProductOnlyCatFilter ? orderIncludedGross : Number(o.rawSubtotal ?? o.subtotal) || 0;
+      day.grossRevenue += orderSystemGross;
       day.discountTotal += (isProductOnlyCatFilter ? orderIncludedItemDisc : Number(o.itemDiscountTotal) || 0) + effectiveBillDisc;
+      day.giftRetailValue += orderIncludedGiftRetail;
       day.orderRevenue += effectiveOrderRev;
-      day.netRevenue += effectiveOrderRev;
+      day.netRevenue += orderSystemGross;
       day.cogs += orderIncludedCogs;
-      day.grossProfit = day.netRevenue - day.cogs;
       day.cashCollected += orderCashAtPurchase;
+      day.grossProfit = day.cashCollected - day.giftRetailValue - day.cogs;
 
       hr.unitsSold += orderIncludedUnits;
-      hr.grossRevenue += filterCatId ? orderIncludedGross : Number(o.rawSubtotal ?? o.subtotal) || 0;
+      hr.grossRevenue += orderSystemGross;
       hr.discountTotal += (filterCatId ? orderIncludedItemDisc : Number(o.itemDiscountTotal) || 0) + effectiveBillDisc;
+      hr.giftRetailValue += orderIncludedGiftRetail;
       hr.orderRevenue += effectiveOrderRev;
-      hr.netRevenue += effectiveOrderRev;
+      hr.netRevenue += orderSystemGross;
       hr.cogs += orderIncludedCogs;
-      hr.grossProfit = hr.netRevenue - hr.cogs;
       hr.cashCollected += orderCashAtPurchase;
+      hr.grossProfit = hr.cashCollected - hr.giftRetailValue - hr.cogs;
 
       const pm = paymentStats[o.paymentMethod] || paymentStats.OTHER;
       pm.orders += 1;
-      pm.revenue += effectiveOrderRev;
+      pm.revenue += orderCashAtPurchase;
     }
 
     let returnGoodsTotal = 0;
@@ -1120,14 +1134,14 @@ reportsRouter.get('/reports/revenue-dashboard', async (req, res, next) => {
       day.returnImpact += goodsDiff;
       day.netRevenue += goodsDiff;
       day.cogs += rCogsImpact;
-      day.grossProfit = day.netRevenue - day.cogs;
       day.cashCollected += rCashDelta;
+      day.grossProfit = day.cashCollected - day.giftRetailValue - day.cogs;
 
       hr.returnImpact += goodsDiff;
       hr.netRevenue += goodsDiff;
       hr.cogs += rCogsImpact;
-      hr.grossProfit = hr.netRevenue - hr.cogs;
       hr.cashCollected += rCashDelta;
+      hr.grossProfit = hr.cashCollected - hr.giftRetailValue - hr.cogs;
     }
 
     const productOrderRevenue = orderRevenue;
@@ -1218,31 +1232,7 @@ reportsRouter.get('/reports/revenue-dashboard', async (req, res, next) => {
             serviceRevenue += soAfterBill;
             serviceCardFeeCollected += soCardFee;
 
-            grossRevenue += soGross;
-            itemDiscountTotal += soItemDisc;
-            billDiscountTotal += soBillDisc;
-            orderRevenue += soAfterBill;
-            cardFeeCollected += soCardFee;
-
-            const day = ensureDay(so.createdAt);
-            const hr = ensureHour(so.createdAt);
-            day.orders += 1;
-            day.grossRevenue += soGross;
-            day.discountTotal += soItemDisc + soBillDisc;
-            day.orderRevenue += soAfterBill;
-            day.netRevenue += soAfterBill;
-            day.grossProfit = day.netRevenue - day.cogs;
-
-            hr.orders += 1;
-            hr.grossRevenue += soGross;
-            hr.discountTotal += soItemDisc + soBillDisc;
-            hr.orderRevenue += soAfterBill;
-            hr.netRevenue += soAfterBill;
-            hr.grossProfit = hr.netRevenue - hr.cogs;
-
-            const pm = paymentStats[so.paymentMethod] || paymentStats.CASH;
-            pm.orders += 1;
-            pm.revenue += soAfterBill;
+            // Theo quy chuẩn 11Sport: Doanh thu dịch vụ tách biệt hoàn toàn, KHÔNG cộng vào Tổng Doanh thu bán hàng
 
             // Phân bổ giảm giá tổng phiếu cho từng dòng dịch vụ để thống kê byServiceType
             let allocatedSvcBillDisc = 0;
@@ -1282,16 +1272,12 @@ reportsRouter.get('/reports/revenue-dashboard', async (req, res, next) => {
         }
 
         // 2. Ghi nhận Thực thu (serviceCashCollected) SAU KHI ĐƠN DỊCH VỤ HOÀN THÀNH (so.status === 'RETURNED')
-        // Không tính phí quẹt thẻ thu hộ ngân hàng (soCardFee) vào Thực thu của công ty
+        // Không tính phí quẹt thẻ thu hộ ngân hàng (soCardFee) vào Thực thu, và giữ tách biệt với Doanh thu bán hàng
         if (so.status === 'RETURNED') {
           const completedAt = so.returnedAt || so.updatedAt || so.createdAt;
           if (inRange(completedAt)) {
             const collectedAmt = soNetAmt;
             serviceCashCollected += collectedAmt;
-            const cDay = ensureDay(completedAt);
-            const cHr = ensureHour(completedAt);
-            cDay.cashCollected += collectedAmt;
-            cHr.cashCollected += collectedAmt;
           }
         }
       }
@@ -1310,17 +1296,13 @@ reportsRouter.get('/reports/revenue-dashboard', async (req, res, next) => {
       }))
       .sort((a, b) => b.revenue - a.revenue);
 
-    const netRevenue = orderRevenue - returnGoodsTotal + exchangeGoodsTotal;
+    // Doanh thu thuần (Hệ thống POS) = Tổng niêm yết SP & Quà tặng + Bù đổi - Hàng trả lại
+    const netRevenue = grossRevenue - returnGoodsTotal + exchangeGoodsTotal;
     const cardFeeNet = cardFeeCollected - cardFeeRefunded;
     const cardFeeTotal = cardFeeNet;
-    const grossProfit = netRevenue - estimatedCogs;
-    const grossMarginPercent =
-      netRevenue > 0 ? Math.round((grossProfit / netRevenue) * 1000) / 10 : 0;
-    const totalOrders = productOrdersCount + serviceOrdersCount;
-    const paidOrders =
-      filteredOrders.filter((o) => o.status === 'PAID').length + completedServiceOrdersCount;
+    const totalOrders = productOrdersCount;
+    const paidOrders = filteredOrders.filter((o) => o.status === 'PAID').length;
     const returnedOrders = filteredOrders.filter((o) => o.status === 'PARTIALLY_RETURNED' || o.status === 'FULLY_RETURNED').length;
-    const avgOrderValue = totalOrders > 0 ? Math.round(orderRevenue / totalOrders) : 0;
 
     // ===== TỔNG HỢP QUẢN LÝ CÔNG NỢ (MUA TRƯỚC TRẢ SAU) =====
     let totalOutstandingDebt = 0;
@@ -1420,7 +1402,9 @@ reportsRouter.get('/reports/revenue-dashboard', async (req, res, next) => {
             const dDay = ensureDay(dp.paidAt);
             const dHr = ensureHour(dp.paidAt);
             dDay.cashCollected += dpAmt;
+            dDay.grossProfit = dDay.cashCollected - dDay.giftRetailValue - dDay.cogs;
             dHr.cashCollected += dpAmt;
+            dHr.grossProfit = dHr.cashCollected - dHr.giftRetailValue - dHr.cogs;
           }
         }
       }
@@ -1550,10 +1534,17 @@ reportsRouter.get('/reports/revenue-dashboard', async (req, res, next) => {
       }
     }
 
-    const cashCollected = isProductOnlyCatFilter
-      ? null
-      : cashAtPurchase + serviceCashCollected + debtCollectedInPeriod - cashRefunded;
-    const collectedRevenue = cashCollected ?? Math.max(0, netRevenue - outstandingDebtInPeriod);
+    // Doanh thu thực tế (Dòng tiền thực thu bán hàng, KHÔNG gồm Dịch vụ và Phí thẻ)
+    // Khách trả tiền (mua hàng / thu nợ / phụ thu đổi) trừ hoàn tiền trả hàng
+    const cashCollected = cashAtPurchase + debtCollectedInPeriod - cashRefunded;
+    const actualRevenue = cashCollected;
+    const deductionsTotal = giftRetailValue;
+    // Công thức cốt lõi 11Sport: LN Gộp = Doanh thu thực tế - Các khoản giảm trừ (Quà tặng) - Giá vốn (COGS)
+    const grossProfit = actualRevenue - deductionsTotal - estimatedCogs;
+    const grossMarginPercent =
+      actualRevenue > 0 ? Math.round((grossProfit / actualRevenue) * 1000) / 10 : 0;
+    const collectedRevenue = actualRevenue;
+    const avgOrderValue = totalOrders > 0 ? Math.round(actualRevenue / totalOrders) : 0;
 
     const debtCustomers = Array.from(customerDebtMap.values())
       .map((c) => ({
@@ -1569,11 +1560,12 @@ reportsRouter.get('/reports/revenue-dashboard', async (req, res, next) => {
 
     const activeDebtCustomersCount = debtCustomers.filter((c) => c.totalDebtAmount > 0).length;
 
-    // Cơ cấu phương thức thanh toán
+    // Cơ cấu phương thức thanh toán (tính trên thực thu bán hàng)
+    const totalPmRev = Object.values(paymentStats).reduce((s, pm) => s + pm.revenue, 0);
     const byPaymentMethod = Object.values(paymentStats).map((pm) => ({
       ...pm,
       sharePercent:
-        orderRevenue > 0 ? Math.round((pm.revenue / orderRevenue) * 1000) / 10 : 0,
+        totalPmRev > 0 ? Math.round((pm.revenue / totalPmRev) * 1000) / 10 : 0,
     }));
 
     // Cơ cấu theo Category
@@ -1611,18 +1603,6 @@ reportsRouter.get('/reports/revenue-dashboard', async (req, res, next) => {
       cRow.cogs += st.cogs;
       cRow.grossProfit = cRow.revenue - cRow.cogs;
     });
-
-    if (!isProductOnlyCatFilter && (serviceRevenue > 0 || totalServiceUnits > 0)) {
-      catStatsMap.set('SERVICE', {
-        categoryId: 'SERVICE',
-        categoryName: 'Dịch vụ (Căng vợt / Sửa chữa)',
-        unitsSold: totalServiceUnits,
-        revenue: serviceRevenue,
-        netRevenue: serviceRevenue,
-        cogs: 0,
-        grossProfit: serviceRevenue,
-      });
-    }
 
     const totalCatRev = Array.from(catStatsMap.values()).reduce((s, c) => s + c.revenue, 0);
     const byCategory = Array.from(catStatsMap.values())
@@ -1797,6 +1777,9 @@ reportsRouter.get('/reports/revenue-dashboard', async (req, res, next) => {
           netReturnRefund: netReturnImpact,
           returnFromPriorPeriods,
           netRevenue,
+          systemGrossRevenue: grossRevenue,
+          actualRevenue,
+          deductionsTotal,
           cashAtPurchase,
           cashRefunded,
           cashCollected,

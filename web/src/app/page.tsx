@@ -82,7 +82,7 @@ const TABS_CONFIG: TabConfig[] = [
   },
   {
     id: "RETURN",
-    label: "Trả / Đổi hàng",
+    label: "Đổi hàng",
     icon: RotateCcw,
     allowedRoles: ["SALES", "ADMIN", "CEO"],
     roleHint: "NV Bán hàng / Quản lý / Giám đốc",

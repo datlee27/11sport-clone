@@ -853,7 +853,14 @@ returnsRouter.post('/returns/calculate', async (req, res, next) => {
 // POST /api/v1/returns
 returnsRouter.post('/returns', async (req, res, next) => {
   try {
-    const { orderId, orderCode } = req.body || {};
+    const { orderId, orderCode, type, exchangeItems } = req.body || {};
+    if (String(type || '').toUpperCase() === 'RETURN' || !Array.isArray(exchangeItems) || exchangeItems.length === 0) {
+      throw new ApiError(
+        400,
+        'RETURN_DISABLED',
+        'Tính năng trả hàng hoàn tiền đã ngừng hỗ trợ. Vui lòng chọn Đổi sang sản phẩm mới.'
+      );
+    }
     const lookupKey = String(orderId || orderCode || '').trim();
     if (!lookupKey) {
       throw new ApiError(

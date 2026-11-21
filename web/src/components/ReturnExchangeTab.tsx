@@ -108,8 +108,8 @@ export default function ReturnExchangeTab() {
   const [sellableProducts, setSellableProducts] = useState<Product[]>([]);
   const [recentReturns, setRecentReturns] = useState<ReturnReceipt[]>([]);
 
-  // Form trả/đổi
-  const [mode, setMode] = useState<"RETURN" | "EXCHANGE">("RETURN");
+  // Form đổi hàng (chỉ hỗ trợ Đổi sang sản phẩm mới, đã ngừng Trả hàng hoàn tiền)
+  const mode = "EXCHANGE" as const;
   const [refundMethod, setRefundMethod] = useState<"CASH" | "BANKING" | "CARD">("CASH");
   const [note, setNote] = useState("");
   const [returnRows, setReturnRows] = useState<ReturnItemForm[]>([]);
@@ -824,12 +824,11 @@ export default function ReturnExchangeTab() {
       {/* Khung tìm đơn hàng gốc */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-3 sm:p-5">
         <h2 className="text-base sm:text-lg font-bold text-slate-900">
-          Trả Hàng & Đổi Hàng Tại Quầy (BR-14, BR-15, BR-16)
+          Đổi Hàng Tại Quầy (BR-15, BR-16)
         </h2>
         <p className="text-xs text-slate-500 mt-0.5">
-          Nhập mã đơn hàng cần trả/đổi. Hệ thống kiểm tra số lượng đã mua/đã trả, cộng lại kho cho hàng{" "}
-          <strong>Còn bán được (GOOD)</strong>, tự động hoàn lại cả{" "}
-          <strong>phí quẹt thẻ</strong> và ưu tiên <strong>cấn trừ công nợ</strong> nếu đơn gốc còn nợ.
+          Nhập mã đơn hàng cần đổi sang sản phẩm mới. Hệ thống kiểm tra số lượng đã mua/đã đổi, cộng lại kho cho hàng{" "}
+          <strong>Còn bán được (GOOD)</strong> và tự động tính chênh lệch giá khi đổi sản phẩm.
         </p>
 
         <form onSubmit={handleSearchOrder} className="mt-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
@@ -937,37 +936,18 @@ export default function ReturnExchangeTab() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:items-center gap-2 lg:shrink-0">
-              <button
-                type="button"
-                onClick={() => setMode("RETURN")}
-                className={`min-h-[44px] px-4 py-2 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition ${
-                  mode === "RETURN"
-                    ? "bg-blue-600 text-white shadow"
-                    : "bg-white border border-slate-300 text-slate-700"
-                }`}
-              >
-                <RotateCcw className="w-4 h-4" /> TRẢ HÀNG HOÀN TIỀN
-              </button>
-              <button
-                type="button"
-                onClick={() => setMode("EXCHANGE")}
-                className={`min-h-[44px] px-4 py-2 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition ${
-                  mode === "EXCHANGE"
-                    ? "bg-blue-600 text-white shadow"
-                    : "bg-white border border-slate-300 text-slate-700"
-                }`}
-              >
+            <div className="flex items-center gap-2 lg:shrink-0">
+              <span className="min-h-[44px] px-4 py-2 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 bg-blue-600 text-white shadow">
                 <ArrowLeftRight className="w-4 h-4" /> ĐỔI SANG SẢN PHẨM MỚI
-              </button>
+              </span>
             </div>
           </div>
 
-          {/* 1. Bảng chọn sản phẩm trả lại & tình trạng hàng */}
+          {/* 1. Bảng chọn sản phẩm đổi & tình trạng hàng */}
           <div className="space-y-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h3 className="font-bold text-slate-900 text-sm">
-                1. Chọn sản phẩm khách trả lại & Tình trạng hàng (GOOD / DAMAGED):
+                1. Chọn sản phẩm khách mang đổi &amp; Tình trạng hàng (GOOD / DAMAGED):
               </h3>
               <div className="flex items-center gap-2">
                 <button
@@ -980,7 +960,7 @@ export default function ReturnExchangeTab() {
                   disabled={returnRows.every((r) => r.maxReturnable === 0)}
                   className="px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 text-xs font-bold disabled:opacity-50"
                 >
-                  Chọn trả toàn bộ đơn
+                  Chọn đổi toàn bộ đơn
                 </button>
                 <button
                   type="button"

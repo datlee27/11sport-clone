@@ -645,6 +645,9 @@ export interface RevenueDashboardSummary {
   netReturnRefund?: number;
   returnFromPriorPeriods?: number;
   netRevenue: number;
+  systemGrossRevenue?: number;
+  actualRevenue?: number;
+  deductionsTotal?: number;
   cashAtPurchase?: number;
   cashRefunded?: number;
   cashCollected?: number | null;
@@ -730,6 +733,7 @@ export interface DailyRevenueTrend {
   unitsSold: number;
   grossRevenue: number;
   discountTotal: number;
+  giftRetailValue?: number;
   orderRevenue: number;
   returnImpact: number;
   netRevenue: number;
@@ -774,6 +778,7 @@ export interface HourlyRevenueTrend {
   unitsSold: number;
   grossRevenue: number;
   discountTotal: number;
+  giftRetailValue?: number;
   orderRevenue: number;
   returnImpact: number;
   netRevenue: number;

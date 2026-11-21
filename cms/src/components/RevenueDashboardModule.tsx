@@ -2143,53 +2143,141 @@ export default function RevenueDashboardModule({
 
       {/* HÀNG 1: 4 THẺ KPI TỔNG QUAN GỌN GÀNG */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5">
+        {/* Ô 1: Doanh thu thuần (Hệ thống POS) */}
         <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <span className="text-xs font-extrabold uppercase text-slate-500">
-                1. Doanh thu thuần
+                1. Doanh thu thuần (POS)
               </span>
-              <span className="p-1.5 rounded-lg bg-teal-50 text-teal-700">
+              <span className="p-1.5 rounded-lg bg-slate-100 text-slate-700">
                 <DollarSign className="w-4 h-4" />
               </span>
             </div>
-            <div className="text-2xl font-black font-mono text-teal-700 mt-1.5">
+            <div className="text-2xl font-black font-mono text-slate-900 mt-1.5">
               {formatVND(s?.netRevenue || 0)}
             </div>
           </div>
           <div className="mt-2.5 pt-2 border-t border-slate-100 space-y-1 text-xs text-slate-600">
-            <div className="flex justify-between">
-              <span className="font-semibold text-teal-700">Thực thu quỹ:</span>
-              <span className="font-mono font-extrabold text-teal-700">
-                {s?.cashCollected === null
-                  ? "— (Theo DM)"
-                  : formatVND(
-                      s?.cashCollected ??
-                        s?.collectedRevenue ??
-                        (s?.netRevenue || 0) - (s?.outstandingDebtInPeriod || 0)
-                    )}
-              </span>
-            </div>
             <div className="flex justify-between text-[11px]">
-              <span>SP: {formatShortVND(s?.productNetRevenue ?? Math.max(0, (s?.netRevenue || 0) - (s?.serviceRevenue || 0)))} · DV: {formatShortVND(s?.serviceRevenue || 0)}</span>
-              <span className="font-mono text-amber-700 font-bold">
+              <span>Giá niêm yết hệ thống (SP + Quà)</span>
+              <span className="font-mono font-bold text-amber-700">
                 Nợ: {formatShortVND(s?.outstandingDebtInPeriod || 0)}
               </span>
             </div>
-            {(s?.totalDiscount || 0) > 0 && (
+            {(s?.returnGoodsTotal || 0) > 0 || (s?.exchangeGoodsTotal || 0) > 0 ? (
               <div className="flex justify-between text-[11px] text-slate-500">
-                <span>Giảm giá: -{formatShortVND(s?.totalDiscount || 0)}</span>
-                <span>Hoàn tiền: -{formatShortVND(s?.cashRefunded || 0)}</span>
+                <span>Đổi: +{formatShortVND(s?.exchangeGoodsTotal || 0)}</span>
+                <span>Trả: -{formatShortVND(s?.returnGoodsTotal || 0)}</span>
+              </div>
+            ) : (
+              <div className="text-[11px] text-slate-400">
+                Gồm đơn công nợ &amp; trị giá quà niêm yết
               </div>
             )}
           </div>
         </div>
 
+        {/* Ô 2: Doanh thu thực tế (Dòng tiền thực thu) */}
+        <div className="bg-white rounded-2xl border border-teal-200 p-4 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-extrabold uppercase text-teal-700">
+                2. Doanh thu thực tế
+              </span>
+              <span className="p-1.5 rounded-lg bg-teal-50 text-teal-700">
+                <CheckCircle2 className="w-4 h-4" />
+              </span>
+            </div>
+            <div className="text-2xl font-black font-mono text-teal-700 mt-1.5">
+              {s?.cashCollected === null
+                ? "— (Theo DM)"
+                : formatVND(s?.actualRevenue ?? s?.cashCollected ?? s?.collectedRevenue ?? 0)}
+            </div>
+          </div>
+          <div className="mt-2.5 pt-2 border-t border-slate-100 space-y-1 text-xs text-slate-600">
+            <div className="flex justify-between text-[11px]">
+              <span>Thực thu khi mua:</span>
+              <span className="font-mono font-bold text-teal-700">
+                {formatShortVND(s?.cashAtPurchase || 0)}
+              </span>
+            </div>
+            <div className="flex justify-between text-[11px] text-slate-500">
+              <span>Thu nợ: +{formatShortVND(s?.debtCollectedInPeriod || 0)}</span>
+              <span>Hoàn tiền: -{formatShortVND(s?.cashRefunded || 0)}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Ô 3: Các khoản giảm trừ doanh thu */}
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-extrabold uppercase text-slate-500">
+                3. Giảm trừ doanh thu
+              </span>
+              <span className="p-1.5 rounded-lg bg-purple-50 text-purple-700">
+                <Layers className="w-4 h-4" />
+              </span>
+            </div>
+            <div className="text-2xl font-black font-mono text-purple-700 mt-1.5">
+              {formatVND(s?.deductionsTotal ?? s?.giftRetailValue ?? 0)}
+            </div>
+          </div>
+          <div className="mt-2.5 pt-2 border-t border-slate-100 space-y-1 text-xs text-slate-600">
+            <div className="flex justify-between text-[11px]">
+              <span>Trị giá niêm yết quà tặng ({s?.totalGiftUnits || 0} SP)</span>
+            </div>
+            <div className="flex justify-between text-[11px] text-slate-500">
+              <span>Giảm giá SP &amp; Bill:</span>
+              <span className="font-mono font-semibold">{formatShortVND(s?.totalDiscount || 0)}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Ô 4: Giá vốn hàng bán (COGS) */}
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-extrabold uppercase text-slate-500 flex items-center gap-1">
+                4. Giá vốn (COGS)
+                {s?.cogsEstimated && (
+                  <span
+                    title="Có đơn cũ ước tính theo giá vốn hiện tại"
+                    className="px-1 py-0.2 rounded bg-amber-50 text-amber-700 border border-amber-200 text-[9px] font-bold normal-case"
+                  >
+                    Ước tính
+                  </span>
+                )}
+              </span>
+              <span className="p-1.5 rounded-lg bg-amber-50 text-amber-700">
+                <PackageCheck className="w-4 h-4" />
+              </span>
+            </div>
+            <div className="text-2xl font-black font-mono text-amber-700 mt-1.5">
+              {formatVND(s?.estimatedCogs || 0)}
+            </div>
+          </div>
+          <div className="mt-2.5 pt-2 border-t border-slate-100 space-y-1 text-xs text-slate-600">
+            <div className="flex justify-between text-[11px]">
+              <span>Vốn SP bán:</span>
+              <span className="font-mono font-bold text-slate-800">
+                {formatShortVND(s?.salesCogs ?? Math.max(0, (s?.estimatedCogs || 0) - (s?.giftCogs || 0)))}
+              </span>
+            </div>
+            <div className="flex justify-between text-[11px] text-slate-500">
+              <span>Vốn quà tặng:</span>
+              <span className="font-mono font-semibold">{formatShortVND(s?.giftCogs || 0)}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Ô 5: Lợi nhuận gộp (LN Gộp) */}
         <div className="bg-white border-2 border-teal-200 text-slate-900 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <span className="text-xs font-extrabold uppercase text-teal-700">
-                2. Lãi gộp thực tế
+                5. Lợi nhuận gộp
               </span>
               <span className="px-2 py-0.5 rounded-full text-[11px] font-mono font-extrabold bg-teal-50 text-teal-700 border border-teal-200">
                 Biên: {s?.grossMarginPercent || 0}%
@@ -2204,88 +2292,97 @@ export default function RevenueDashboardModule({
             </div>
           </div>
           <div className="mt-2.5 pt-2 border-t border-slate-100 space-y-1 text-xs text-slate-600">
-            <div className="flex justify-between">
-              <span className="flex items-center gap-1">
-                Tổng giá vốn:
-                {s?.cogsEstimated && (
-                  <span
-                    title="Có đơn cũ ước tính theo giá vốn hiện tại"
-                    className="px-1 py-0.2 rounded bg-amber-50 text-amber-700 border border-amber-200 text-[9px] font-bold"
-                  >
-                    Ước tính
-                  </span>
-                )}
-              </span>
-              <span className="font-mono font-bold text-amber-700">
-                {formatVND(s?.estimatedCogs || 0)}
-              </span>
-            </div>
-            <div className="flex justify-between text-[11px] text-slate-500">
-              <span>Vốn bán: {formatShortVND(s?.salesCogs ?? Math.max(0, (s?.estimatedCogs || 0) - (s?.giftCogs || 0)))}</span>
-              <span>Phí thẻ NH: {formatShortVND(s?.cardFeeNet ?? s?.cardFeeTotal ?? 0)}</span>
+            <div className="text-[11px] text-slate-500">
+              = Thực thu ({formatShortVND(s?.actualRevenue ?? s?.cashCollected ?? 0)}) − Giảm trừ ({formatShortVND(s?.deductionsTotal ?? s?.giftRetailValue ?? 0)}) − COGS ({formatShortVND(s?.estimatedCogs || 0)})
             </div>
           </div>
         </div>
 
+        {/* Ô 6: Doanh thu dịch vụ (Tách riêng) */}
         <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-extrabold uppercase text-indigo-700">
+                6. Doanh thu dịch vụ
+              </span>
+              <button
+                type="button"
+                onClick={() => setDashboardView("SERVICES")}
+                className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 cursor-pointer"
+              >
+                Tách riêng
+              </button>
+            </div>
+            <div className="text-2xl font-black font-mono text-indigo-700 mt-1.5">
+              {formatVND(s?.serviceRevenue || 0)}
+            </div>
+          </div>
+          <div className="mt-2.5 pt-2 border-t border-slate-100 space-y-1 text-xs text-slate-600">
+            <div className="flex justify-between text-[11px]">
+              <span>Thực thu DV (đã trả khách):</span>
+              <span className="font-mono font-bold text-indigo-700">
+                {formatShortVND(s?.serviceCashCollected || 0)}
+              </span>
+            </div>
+            <div className="flex justify-between text-[11px] text-slate-500">
+              <span>{s?.serviceOrdersCount || 0} phiếu · {s?.totalServiceUnits || 0} lượt</span>
+              <span>Không cộng vào DT bán hàng</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Ô 7: Phí thẻ & Cổng thanh toán (VNPAY / POS) */}
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between gap-2">
               <span className="text-xs font-extrabold uppercase text-slate-500">
-                3. Đơn hàng &amp; AOV
+                7. Phí thẻ (VNPAY / POS)
+              </span>
+              <span className="p-1.5 rounded-lg bg-slate-100 text-slate-600">
+                <CreditCard className="w-4 h-4" />
+              </span>
+            </div>
+            <div className="text-2xl font-black font-mono text-slate-800 mt-1.5">
+              {formatVND(s?.cardFeeNet ?? s?.cardFeeTotal ?? 0)}
+            </div>
+          </div>
+          <div className="mt-2.5 pt-2 border-t border-slate-100 space-y-1 text-xs text-slate-600">
+            <div className="flex justify-between text-[11px]">
+              <span>Thu hộ: +{formatShortVND(s?.cardFeeCollected || 0)}</span>
+              <span>Hoàn lại: -{formatShortVND(s?.cardFeeRefunded || 0)}</span>
+            </div>
+            <div className="text-[11px] text-slate-400">
+              Ngoài doanh thu · Không trừ vào giá bán
+            </div>
+          </div>
+        </div>
+
+        {/* Ô 8: Đơn hàng, Sản lượng & Tổng nợ */}
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-extrabold uppercase text-slate-500">
+                8. Đơn hàng &amp; Công nợ
               </span>
               <span className="p-1.5 rounded-lg bg-teal-50 text-teal-700">
                 <ShoppingBag className="w-4 h-4" />
               </span>
             </div>
             <div className="text-2xl font-black font-mono text-slate-900 mt-1.5">
-              {(s?.totalOrders || 0).toLocaleString("vi-VN")} đơn
+              {(s?.totalOrders || 0).toLocaleString("vi-VN")} đơn · {(s?.totalUnitsSold || 0).toLocaleString("vi-VN")} SP
             </div>
           </div>
           <div className="mt-2.5 pt-2 border-t border-slate-100 space-y-1 text-xs text-slate-600">
-            <div className="flex justify-between">
-              <span>TB mỗi đơn (AOV):</span>
-              <span className="font-mono font-extrabold text-teal-700">
-                {formatVND(s?.avgOrderValue || 0)}
-              </span>
-            </div>
             <div className="flex justify-between text-[11px]">
-              <span>
-                Bán SP: <strong>{s?.productOrdersCount ?? Math.max(0, (s?.totalOrders || 0) - (s?.serviceOrdersCount || 0))}</strong> · DV: <strong>{s?.serviceOrdersCount || 0}</strong>
-              </span>
-              <span className="text-amber-700 font-bold">
-                Trả/Đổi: {s?.returnedOrders || 0}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-extrabold uppercase text-slate-500">
-                4. Sản lượng &amp; Tổng nợ
-              </span>
-              <span className="p-1.5 rounded-lg bg-purple-50 text-purple-700">
-                <PackageCheck className="w-4 h-4" />
-              </span>
-            </div>
-            <div className="text-2xl font-black font-mono text-slate-900 mt-1.5">
-              {(s?.totalUnitsSold || 0).toLocaleString("vi-VN")} SP bán
-            </div>
-          </div>
-          <div className="mt-2.5 pt-2 border-t border-slate-100 space-y-1 text-xs text-slate-600">
-            <div className="flex justify-between">
-              <span>Tặng: <strong className="text-purple-700">{s?.totalGiftUnits || 0}</strong> · Trả: <strong className="text-red-600">{s?.totalUnitsReturned || 0}</strong></span>
-              <span className="font-mono font-bold text-indigo-700">
-                DV: {s?.totalServiceUnits || 0} lượt
-              </span>
+              <span>AOV: <strong className="font-mono text-teal-700">{formatShortVND(s?.avgOrderValue || 0)}</strong></span>
+              <span>Trả: <strong className="text-red-600">{s?.totalUnitsReturned || 0} SP</strong> ({s?.returnedOrders || 0} đơn)</span>
             </div>
             <div className="flex justify-between items-center text-[11px]">
               <span className="text-slate-500">Dư nợ toàn cửa hàng:</span>
               <button
                 type="button"
                 onClick={() => setDashboardView("DEBTS")}
-                className="font-mono font-extrabold text-amber-700 hover:underline"
+                className="font-mono font-extrabold text-amber-700 hover:underline cursor-pointer"
               >
                 {formatShortVND(dm?.summary?.totalOutstandingDebt || 0)} ({dm?.summary?.activeDebtOrdersCount || 0} đơn)
               </button>
