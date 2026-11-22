@@ -208,7 +208,7 @@ export default function ContractFilePreviewModal({
         <div className="flex-1 bg-slate-100 p-3 sm:p-5 overflow-auto flex flex-col items-center justify-start min-h-[480px]">
           {loading && (
             <div className="my-auto flex flex-col items-center gap-2 text-slate-500 text-xs font-bold">
-              <Loader2 className="w-7 h-7 animate-spin text-blue-600" />
+              <Loader2 className="w-7 h-7 animate-spin text-brand-ink" />
               <span>Đang tải bản xem trước hợp đồng...</span>
             </div>
           )}
@@ -249,7 +249,7 @@ export default function ContractFilePreviewModal({
               {errorText ? (
                 <AlertCircle className="w-10 h-10 text-amber-500 mx-auto" />
               ) : (
-                <FileText className="w-10 h-10 text-blue-600 mx-auto" />
+                <FileText className="w-10 h-10 text-brand-ink mx-auto" />
               )}
               <div className="text-sm font-bold text-slate-800">{fileName}</div>
               <p className="text-xs text-slate-500">

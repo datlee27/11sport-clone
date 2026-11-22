@@ -463,16 +463,16 @@ export default function ProductCodeCreatorModal({
           <h2 id="pcc-title" className="font-extrabold text-slate-900 text-base flex items-center gap-2">
             {isEditing ? (
               <>
-                <Pencil className="w-5 h-5 text-blue-600" />
+                <Pencil className="w-5 h-5 text-brand-ink" />
                 <span>
                   Sửa Sản phẩm &amp; Biến thể:{" "}
-                  <span className="font-mono text-blue-700">{editingProduct?.code}</span> —{" "}
+                  <span className="font-mono text-brand-ink">{editingProduct?.code}</span> —{" "}
                   {editingProduct?.name}
                 </span>
               </>
             ) : (
               <>
-                <Sparkles className="w-5 h-5 text-blue-600" />
+                <Sparkles className="w-5 h-5 text-brand-ink" />
                 <span>Tạo sản phẩm chuẩn mã (Cate + Brand + Version + Màu + Size)</span>
               </>
             )}
@@ -576,7 +576,7 @@ export default function ProductCodeCreatorModal({
                 <button
                   type="button"
                   onClick={() => setVersionCode(preview.suggestedVersionCode)}
-                  className="mt-1 text-[11px] text-blue-700 font-bold hover:underline cursor-pointer"
+                  className="mt-1 text-[11px] text-brand-ink font-bold hover:underline cursor-pointer"
                 >
                   Dùng gợi ý {preview.suggestedVersionCode}
                 </button>
@@ -778,7 +778,7 @@ export default function ProductCodeCreatorModal({
                             {vStock}
                           </td>
                         )}
-                        <td className="py-1.5 px-2 font-mono font-extrabold text-indigo-700">
+                        <td className="py-1.5 px-2 font-mono font-extrabold text-brand-ink">
                           {pv?.variantCode || <span className="text-slate-400 font-normal">—</span>}
                         </td>
                         <td className="py-1.5 px-2 text-right">
@@ -834,7 +834,7 @@ export default function ProductCodeCreatorModal({
                   </span>
                 </div>
                 {isEditing && editingProduct && preview.code !== editingProduct.code && (
-                  <p className="text-[11px] text-blue-700 font-semibold">
+                  <p className="text-[11px] text-brand-ink font-semibold">
                     ℹ️ Mã gốc sẽ đổi từ <strong className="font-mono">{editingProduct.code}</strong> sang{" "}
                     <strong className="font-mono">{preview.code}</strong> (mã cũ được tự động lưu vào{" "}
                     <code className="font-mono">legacyCode</code> để vẫn quét được tem cũ).

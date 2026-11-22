@@ -122,12 +122,12 @@ function extractClientOrderDebtMeta(o: Order, refundedCashForOrder = 0) {
     o.debtStatus && o.debtStatus !== "NONE"
       ? o.debtStatus
       : initialDebtAmount <= 0 && debtAmount <= 0
-      ? "NONE"
-      : debtAmount <= 0
-      ? "SETTLED"
-      : cashAtPurchase + collectedDebtAmount <= 0 && reducedByReturnAmount <= 0
-      ? "UNPAID"
-      : "PARTIAL";
+        ? "NONE"
+        : debtAmount <= 0
+          ? "SETTLED"
+          : cashAtPurchase + collectedDebtAmount <= 0 && reducedByReturnAmount <= 0
+            ? "UNPAID"
+            : "PARTIAL";
 
   const dueDate = o.debtDueDate ? new Date(o.debtDueDate) : null;
   const validDueDate = dueDate && !isNaN(dueDate.getTime()) ? dueDate : null;
@@ -629,14 +629,14 @@ function buildClientFallbackDashboard(
     );
     const matchingOrigGrossSum = origOrder
       ? (r.returnItems || []).reduce((s: number, it: any) => {
-          const matchedOrig = (origOrder.items || []).find(
-            (oi) =>
-              String(oi.productId) === String(it.productId) ||
-              oi.productCode === it.productCode
-          );
-          const origUnitPrice = Number(matchedOrig?.unitPrice ?? it.unitPrice) || 0;
-          return s + origUnitPrice * (Number(it.quantity) || 0);
-        }, 0)
+        const matchedOrig = (origOrder.items || []).find(
+          (oi) =>
+            String(oi.productId) === String(it.productId) ||
+            oi.productCode === it.productCode
+        );
+        const origUnitPrice = Number(matchedOrig?.unitPrice ?? it.unitPrice) || 0;
+        return s + origUnitPrice * (Number(it.quantity) || 0);
+      }, 0)
       : rRawLinesSum;
     const isAlreadyNetOfBillDisc =
       origBillDisc > 0 && rRawLinesSum > 0 && rRawLinesSum < matchingOrigGrossSum;
@@ -1456,6 +1456,43 @@ function formatShortVND(n: number) {
   return `${sign}${abs}`;
 }
 
+function AnimatedNumber({
+  value,
+  duration = 650,
+  formatter = (v: number) => Math.round(v).toLocaleString("vi-VN"),
+}: {
+  value: number;
+  duration?: number;
+  formatter?: (v: number) => string;
+}) {
+  const [display, setDisplay] = useState(0);
+
+  useEffect(() => {
+    const target = Number(value) || 0;
+    if (target === 0) {
+      setDisplay(0);
+      return;
+    }
+    let rafId = 0;
+    const startTime = performance.now();
+    const step = (now: number) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(1, elapsed / duration);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplay(Math.round(target * eased));
+      if (progress < 1) {
+        rafId = requestAnimationFrame(step);
+      } else {
+        setDisplay(target);
+      }
+    };
+    rafId = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(rafId);
+  }, [value, duration]);
+
+  return <>{formatter(display)}</>;
+}
+
 /** Biểu đồ Tròn Donut (SVG) hiển thị tỷ trọng trực quan có hiệu ứng tương tác */
 function SvgDonutChart({
   items,
@@ -1490,9 +1527,8 @@ function SvgDonutChart({
 
   return (
     <div
-      className={`flex flex-col ${
-        stacked ? "" : "sm:flex-row"
-      } items-center gap-4 bg-slate-50/80 border border-slate-200/80 rounded-xl p-3.5 overflow-hidden`}
+      className={`flex flex-col ${stacked ? "" : "sm:flex-row"
+        } items-center gap-4 bg-slate-50/80 border border-slate-200/80 rounded-xl p-3.5 overflow-hidden`}
     >
       <div className="relative w-36 h-36 shrink-0 flex items-center justify-center">
         <svg viewBox="0 0 150 150" className="w-36 h-36 -rotate-90 overflow-visible">
@@ -1544,7 +1580,7 @@ function SvgDonutChart({
             {displayValue}
           </span>
           {displaySub && (
-            <span className="text-[10px] font-mono font-extrabold text-teal-600">
+            <span className="text-[10px] font-mono font-extrabold text-brand-ink">
               ({displaySub})
             </span>
           )}
@@ -1559,17 +1595,15 @@ function SvgDonutChart({
               key={`${item.label}-${idx}`}
               onMouseEnter={() => setHoveredIdx(idx)}
               onMouseLeave={() => setHoveredIdx(null)}
-              className={`flex items-center justify-between text-xs gap-2 px-2 py-1 rounded-lg transition-all duration-200 cursor-pointer min-w-0 ${
-                isHovered
-                  ? "bg-white shadow-xs ring-1 ring-teal-300 scale-[1.01]"
-                  : "hover:bg-white/70"
-              }`}
+              className={`flex items-center justify-between text-xs gap-2 px-2 py-1 rounded-lg transition-all duration-200 cursor-pointer min-w-0 ${isHovered
+                ? "bg-white shadow-xs ring-1 ring-teal-300 scale-[1.01]"
+                : "hover:bg-white/70"
+                }`}
             >
               <div className="flex items-center gap-1.5 min-w-0 flex-1">
                 <span
-                  className={`w-2.5 h-2.5 rounded-full shrink-0 transition-transform duration-200 ${
-                    isHovered ? "scale-125" : ""
-                  }`}
+                  className={`w-2.5 h-2.5 rounded-full shrink-0 transition-transform duration-200 ${isHovered ? "scale-125" : ""
+                    }`}
                   style={{ backgroundColor: item.color }}
                 />
                 <span className="font-bold text-slate-800 truncate">{item.label}</span>
@@ -1764,10 +1798,10 @@ export default function RevenueDashboardModule({
     const q = debouncedTopSearch.trim();
     const base = q
       ? filterAndRankBySearch(data.topSellingProducts, q, (p) => [
-          { text: p.productCode, weight: 1.5 },
-          { text: p.productName, weight: 1.3 },
-          { text: p.categoryName, weight: 0.9 },
-        ])
+        { text: p.productCode, weight: 1.5 },
+        { text: p.productName, weight: 1.3 },
+        { text: p.categoryName, weight: 0.9 },
+      ])
       : [...data.topSellingProducts];
 
     // Nếu người dùng không tìm kiếm, hoặc chọn tiêu chí sắp xếp cụ thể thì sắp xếp theo tiêu chí đó
@@ -1980,24 +2014,23 @@ export default function RevenueDashboardModule({
   const dm = data?.debtManagement;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2.5">
       {/* BANNER & BỘ LỌC KỲ DOANH THU (GỌN 2 HÀNG) */}
-      <div className="bg-white text-slate-900 rounded-2xl border border-slate-200 p-4 shadow-sm space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="p-2 rounded-xl bg-teal-50 text-teal-600 border border-teal-200 shrink-0">
-              <TrendingUp className="w-5 h-5" />
+      <div className="bg-white text-slate-900 rounded-2xl border border-slate-200 px-4 py-2.5 shadow-sm space-y-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <div className="p-1.5 rounded-xl bg-teal-50 text-brand-ink border border-teal-200 shrink-0">
+              <TrendingUp className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-lg font-extrabold text-slate-900 leading-tight">
+              <h2 className="text-base font-extrabold text-slate-900 leading-tight">
                 Dashboard Doanh Thu &amp; Phân Tích Kinh Doanh
               </h2>
               <div className="text-xs text-slate-500 mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                <span className="font-bold text-teal-700">
+                <span className="font-bold text-brand-ink">
                   {fromDate || toDate
-                    ? `${fromDate ? fromDate.split("-").reverse().join("/") : "Đầu kỳ"} → ${
-                        toDate ? toDate.split("-").reverse().join("/") : "Hiện tại"
-                      }`
+                    ? `${fromDate ? fromDate.split("-").reverse().join("/") : "Đầu kỳ"} → ${toDate ? toDate.split("-").reverse().join("/") : "Hiện tại"
+                    }`
                     : "Toàn thời gian"}
                 </span>
                 <span>·</span>
@@ -2006,11 +2039,11 @@ export default function RevenueDashboardModule({
                 </span>
                 <span>·</span>
                 <span>
-                  DT thuần: <strong className="text-teal-700 font-mono">{formatVND(s?.netRevenue || 0)}</strong>
+                  DT thuần: <strong className="text-brand-ink font-mono">{formatVND(s?.netRevenue || 0)}</strong>
                 </span>
                 <span>·</span>
                 <span>
-                  Lãi gộp: <strong className="text-teal-700 font-mono">{formatVND(s?.grossProfit || 0)}</strong>
+                  Lãi gộp: <strong className="text-brand-ink font-mono">{formatVND(s?.grossProfit || 0)}</strong>
                 </span>
               </div>
             </div>
@@ -2036,7 +2069,7 @@ export default function RevenueDashboardModule({
               disabled={loading}
               className="px-3 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-xs font-bold text-slate-700 border border-slate-200 flex items-center gap-1.5"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-teal-600" : "text-teal-600"}`} />
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-brand-ink" : "text-brand-ink"}`} />
               Làm mới
             </button>
             {data && (
@@ -2049,7 +2082,7 @@ export default function RevenueDashboardModule({
         </div>
 
         {/* Bộ lọc thời gian, Category & Hình thức thanh toán trên 1 hàng gọn */}
-        <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2.5">
+        <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-1.5">
             {(
               [
@@ -2065,11 +2098,10 @@ export default function RevenueDashboardModule({
                 key={btn.id}
                 type="button"
                 onClick={() => handleSelectQuickRange(btn.id)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
-                  quickRange === btn.id
-                    ? "bg-teal-600 text-white shadow-xs"
-                    : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                }`}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${quickRange === btn.id
+                  ? "bg-teal-600 text-white shadow-xs"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                  }`}
               >
                 {btn.label}
               </button>
@@ -2142,150 +2174,233 @@ export default function RevenueDashboardModule({
       </div>
 
       {/* HÀNG 1: 4 THẺ KPI TỔNG QUAN GỌN GÀNG */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5">
-        <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-extrabold uppercase text-slate-500">
-                1. Doanh thu thuần
-              </span>
-              <span className="p-1.5 rounded-lg bg-teal-50 text-teal-700">
-                <DollarSign className="w-4 h-4" />
-              </span>
-            </div>
-            <div className="text-2xl font-black font-mono text-teal-700 mt-1.5">
-              {formatVND(s?.netRevenue || 0)}
-            </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2.5">
+        {/* Ô 1: Doanh thu thuần (Hệ thống POS) */}
+        <div className="relative group bg-white rounded-xl border border-slate-200 hover:border-teal-500 hover:bg-teal-50 hover:shadow-md px-3.5 py-2.5 shadow-sm transition-all">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[11px] font-extrabold uppercase text-slate-600">
+              1. Doanh thu thuần (POS)
+            </span>
+            <span className="p-1 rounded-lg bg-teal-50 text-brand-ink">
+              <DollarSign className="w-3.5 h-3.5" />
+            </span>
           </div>
-          <div className="mt-2.5 pt-2 border-t border-slate-100 space-y-1 text-xs text-slate-600">
+          <div className="text-xl sm:text-[22px] font-black font-mono text-slate-900 mt-1">
+            <AnimatedNumber value={s?.netRevenue || 0} formatter={formatVND} />
+          </div>
+          <div className="pointer-events-none opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 absolute left-0 right-0 top-full mt-1.5 z-30 bg-teal-50 rounded-xl border border-slate-200 shadow-xl p-3 space-y-1 text-xs text-slate-600">
             <div className="flex justify-between">
-              <span className="font-semibold text-teal-700">Thực thu quỹ:</span>
-              <span className="font-mono font-extrabold text-teal-700">
-                {s?.cashCollected === null
-                  ? "— (Theo DM)"
-                  : formatVND(
-                      s?.cashCollected ??
-                        s?.collectedRevenue ??
-                        (s?.netRevenue || 0) - (s?.outstandingDebtInPeriod || 0)
-                    )}
-              </span>
-            </div>
-            <div className="flex justify-between text-[11px]">
-              <span>SP: {formatShortVND(s?.productNetRevenue ?? Math.max(0, (s?.netRevenue || 0) - (s?.serviceRevenue || 0)))} · DV: {formatShortVND(s?.serviceRevenue || 0)}</span>
-              <span className="font-mono text-amber-700 font-bold">
+              <span>Giá niêm yết (SP + Quà)</span>
+              <span className="font-mono font-bold text-slate-900">
                 Nợ: {formatShortVND(s?.outstandingDebtInPeriod || 0)}
               </span>
             </div>
-            {(s?.totalDiscount || 0) > 0 && (
-              <div className="flex justify-between text-[11px] text-slate-500">
-                <span>Giảm giá: -{formatShortVND(s?.totalDiscount || 0)}</span>
-                <span>Hoàn tiền: -{formatShortVND(s?.cashRefunded || 0)}</span>
+            {(s?.returnGoodsTotal || 0) > 0 || (s?.exchangeGoodsTotal || 0) > 0 ? (
+              <div className="flex justify-between text-slate-600">
+                <span>Đổi: <strong className="text-slate-900">+{formatShortVND(s?.exchangeGoodsTotal || 0)}</strong></span>
+                <span>Trả: <strong className="text-slate-900">-{formatShortVND(s?.returnGoodsTotal || 0)}</strong></span>
+              </div>
+            ) : (
+              <div className="text-xs text-slate-500">
+                Gồm đơn công nợ &amp; trị giá quà niêm yết
               </div>
             )}
           </div>
         </div>
 
-        <div className="bg-white border-2 border-teal-200 text-slate-900 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-extrabold uppercase text-teal-700">
-                2. Lãi gộp thực tế
-              </span>
-              <span className="px-2 py-0.5 rounded-full text-[11px] font-mono font-extrabold bg-teal-50 text-teal-700 border border-teal-200">
-                Biên: {s?.grossMarginPercent || 0}%
+        {/* Ô 2: Doanh thu thực tế (Dòng tiền thực thu) */}
+        <div className="relative group bg-white rounded-xl border-2 border-teal-500 hover:shadow-md px-3.5 py-2.5 shadow-sm transition-all">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[11px] font-extrabold uppercase text-brand-ink">
+              2. Doanh thu thực tế
+            </span>
+            <span className="p-1 rounded-lg bg-teal-50 text-brand-ink">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+            </span>
+          </div>
+          <div className="text-xl sm:text-[22px] font-black font-mono text-slate-900 mt-1">
+            {s?.cashCollected === null ? (
+              "— (Theo DM)"
+            ) : (
+              <AnimatedNumber
+                value={s?.actualRevenue ?? s?.cashCollected ?? s?.collectedRevenue ?? 0}
+                formatter={formatVND}
+              />
+            )}
+          </div>
+          <div className="pointer-events-none opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 absolute left-0 right-0 top-full mt-1.5 z-30 bg-teal-50 rounded-xl border border-slate-200 shadow-xl p-3 space-y-1 text-xs text-slate-600">
+            <div className="flex justify-between">
+              <span>Thực thu khi mua:</span>
+              <span className="font-mono font-bold text-slate-900">
+                {formatShortVND(s?.cashAtPurchase || 0)}
               </span>
             </div>
-            <div
-              className={`text-2xl font-black font-mono mt-1.5 ${
-                (s?.grossProfit || 0) >= 0 ? "text-teal-600" : "text-red-600"
+            <div className="flex justify-between text-slate-600">
+              <span>Thu nợ: <strong className="text-slate-900">+{formatShortVND(s?.debtCollectedInPeriod || 0)}</strong></span>
+              <span>Hoàn: <strong className="text-slate-900">-{formatShortVND(s?.cashRefunded || 0)}</strong></span>
+            </div>
+          </div>
+        </div>
+
+        {/* Ô 3: Các khoản giảm trừ doanh thu */}
+        <div className="relative group bg-white rounded-xl border border-slate-200 hover:border-teal-500 hover:bg-teal-50 hover:shadow-md px-3.5 py-2.5 shadow-sm transition-all">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[11px] font-extrabold uppercase text-slate-600">
+              3. Giảm trừ doanh thu
+            </span>
+            <span className="p-1 rounded-lg bg-slate-100 text-slate-700">
+              <Layers className="w-3.5 h-3.5" />
+            </span>
+          </div>
+          <div className="text-xl sm:text-[22px] font-black font-mono text-slate-900 mt-1">
+            <AnimatedNumber value={s?.deductionsTotal ?? s?.giftRetailValue ?? 0} formatter={formatVND} />
+          </div>
+          <div className="pointer-events-none opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 absolute left-0 right-0 top-full mt-1.5 z-30 bg-teal-50 rounded-xl border border-slate-200 shadow-xl p-3 space-y-1 text-xs text-slate-600">
+            <div className="flex justify-between">
+              <span>Trị giá niêm yết quà tặng (<strong className="text-slate-900">{s?.totalGiftUnits || 0}</strong> SP)</span>
+            </div>
+            <div className="flex justify-between text-slate-600">
+              <span>Giảm giá SP &amp; Bill:</span>
+              <span className="font-mono font-bold text-slate-900">{formatShortVND(s?.totalDiscount || 0)}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Ô 4: Giá vốn hàng bán (COGS) */}
+        <div className="relative group bg-white rounded-xl border border-slate-200 hover:border-teal-500 hover:bg-teal-50 hover:shadow-md px-3.5 py-2.5 shadow-sm transition-all">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[11px] font-extrabold uppercase text-slate-600 flex items-center gap-1">
+              4. Giá vốn (COGS)
+              {s?.cogsEstimated && (
+                <span
+                  title="Có đơn cũ ước tính theo giá vốn hiện tại"
+                  className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 text-[10px] font-bold normal-case"
+                >
+                  Ước tính
+                </span>
+              )}
+            </span>
+            <span className="p-1 rounded-lg bg-slate-100 text-slate-700">
+              <PackageCheck className="w-3.5 h-3.5" />
+            </span>
+          </div>
+          <div className="text-xl sm:text-[22px] font-black font-mono text-slate-900 mt-1">
+            <AnimatedNumber value={s?.estimatedCogs || 0} formatter={formatVND} />
+          </div>
+          <div className="pointer-events-none opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 absolute left-0 right-0 top-full mt-1.5 z-30 bg-teal-50 rounded-xl border border-slate-200 shadow-xl p-3 space-y-1 text-xs text-slate-600">
+            <div className="flex justify-between">
+              <span>Vốn SP bán:</span>
+              <span className="font-mono font-bold text-slate-900">
+                {formatShortVND(s?.salesCogs ?? Math.max(0, (s?.estimatedCogs || 0) - (s?.giftCogs || 0)))}
+              </span>
+            </div>
+            <div className="flex justify-between text-slate-600">
+              <span>Vốn quà tặng:</span>
+              <span className="font-mono font-bold text-slate-900">{formatShortVND(s?.giftCogs || 0)}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Ô 5: Lợi nhuận gộp (LN Gộp) */}
+        <div className="relative group bg-white border-2 border-teal-500 hover:shadow-md text-slate-900 rounded-xl px-3.5 py-2.5 shadow-sm transition-all">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[11px] font-extrabold uppercase text-brand-ink">
+              5. Lợi nhuận gộp
+            </span>
+            <span className="px-2 py-0.5 rounded-full text-[11px] font-mono font-black bg-teal-50 text-brand-ink border border-teal-200">
+              Biên: {s?.grossMarginPercent || 0}%
+            </span>
+          </div>
+          <div
+            className={`text-xl sm:text-[22px] font-black font-mono mt-1 ${(s?.grossProfit || 0) >= 0 ? "text-slate-900" : "text-red-600"
               }`}
+          >
+            <AnimatedNumber value={s?.grossProfit || 0} formatter={formatVND} />
+          </div>
+          <div className="pointer-events-none opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 absolute left-0 right-0 top-full mt-1.5 z-30 bg-teal-50 rounded-xl border border-slate-200 shadow-xl p-3 text-xs text-slate-600">
+            = Thực thu (<strong className="text-slate-900">{formatShortVND(s?.actualRevenue ?? s?.cashCollected ?? 0)}</strong>) − Giảm trừ (<strong className="text-slate-900">{formatShortVND(s?.deductionsTotal ?? s?.giftRetailValue ?? 0)}</strong>) − COGS (<strong className="text-slate-900">{formatShortVND(s?.estimatedCogs || 0)}</strong>)
+          </div>
+        </div>
+
+        {/* Ô 6: Doanh thu dịch vụ (Tách riêng) */}
+        <div className="relative group bg-white rounded-xl border border-slate-200 hover:border-teal-500 hover:bg-teal-50 hover:shadow-md px-3.5 py-2.5 shadow-sm transition-all">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[11px] font-extrabold uppercase text-slate-600">
+              6. Doanh thu dịch vụ
+            </span>
+            <button
+              type="button"
+              onClick={() => setDashboardView("SERVICES")}
+              className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-50 text-brand-ink border border-teal-200 hover:bg-teal-100 cursor-pointer"
             >
-              {formatVND(s?.grossProfit || 0)}
-            </div>
+              Tách riêng
+            </button>
           </div>
-          <div className="mt-2.5 pt-2 border-t border-slate-100 space-y-1 text-xs text-slate-600">
+          <div className="text-xl sm:text-[22px] font-black font-mono text-slate-900 mt-1">
+            <AnimatedNumber value={s?.serviceRevenue || 0} formatter={formatVND} />
+          </div>
+          <div className="pointer-events-none opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 absolute left-0 right-0 top-full mt-1.5 z-30 bg-teal-50 rounded-xl border border-slate-200 shadow-xl p-3 space-y-1 text-xs text-slate-600">
             <div className="flex justify-between">
-              <span className="flex items-center gap-1">
-                Tổng giá vốn:
-                {s?.cogsEstimated && (
-                  <span
-                    title="Có đơn cũ ước tính theo giá vốn hiện tại"
-                    className="px-1 py-0.2 rounded bg-amber-50 text-amber-700 border border-amber-200 text-[9px] font-bold"
-                  >
-                    Ước tính
-                  </span>
-                )}
-              </span>
-              <span className="font-mono font-bold text-amber-700">
-                {formatVND(s?.estimatedCogs || 0)}
+              <span>Thực thu DV (đã trả khách):</span>
+              <span className="font-mono font-bold text-slate-900">
+                {formatShortVND(s?.serviceCashCollected || 0)}
               </span>
             </div>
-            <div className="flex justify-between text-[11px] text-slate-500">
-              <span>Vốn bán: {formatShortVND(s?.salesCogs ?? Math.max(0, (s?.estimatedCogs || 0) - (s?.giftCogs || 0)))}</span>
-              <span>Phí thẻ NH: {formatShortVND(s?.cardFeeNet ?? s?.cardFeeTotal ?? 0)}</span>
+            <div className="flex justify-between text-slate-600">
+              <span><strong className="text-slate-900">{s?.serviceOrdersCount || 0}</strong> phiếu · <strong className="text-slate-900">{s?.totalServiceUnits || 0}</strong> lượt</span>
+              <span>Ngoài DT bán hàng</span>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-extrabold uppercase text-slate-500">
-                3. Đơn hàng &amp; AOV
-              </span>
-              <span className="p-1.5 rounded-lg bg-teal-50 text-teal-700">
-                <ShoppingBag className="w-4 h-4" />
-              </span>
-            </div>
-            <div className="text-2xl font-black font-mono text-slate-900 mt-1.5">
-              {(s?.totalOrders || 0).toLocaleString("vi-VN")} đơn
-            </div>
+        {/* Ô 7: Phí thẻ & Cổng thanh toán (VNPAY / POS) */}
+        <div className="relative group bg-white rounded-xl border border-slate-200 hover:border-teal-500 hover:bg-teal-50 hover:shadow-md px-3.5 py-2.5 shadow-sm transition-all">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[11px] font-extrabold uppercase text-slate-600">
+              7. Phí thẻ (VNPAY / POS)
+            </span>
+            <span className="p-1 rounded-lg bg-slate-100 text-slate-700">
+              <CreditCard className="w-3.5 h-3.5" />
+            </span>
           </div>
-          <div className="mt-2.5 pt-2 border-t border-slate-100 space-y-1 text-xs text-slate-600">
+          <div className="text-xl sm:text-[22px] font-black font-mono text-slate-900 mt-1">
+            <AnimatedNumber value={s?.cardFeeNet ?? s?.cardFeeTotal ?? 0} formatter={formatVND} />
+          </div>
+          <div className="pointer-events-none opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 absolute left-0 right-0 top-full mt-1.5 z-30 bg-teal-50 rounded-xl border border-slate-200 shadow-xl p-3 space-y-1 text-xs text-slate-600">
             <div className="flex justify-between">
-              <span>TB mỗi đơn (AOV):</span>
-              <span className="font-mono font-extrabold text-teal-700">
-                {formatVND(s?.avgOrderValue || 0)}
-              </span>
+              <span>Thu hộ: <strong className="text-slate-900">+{formatShortVND(s?.cardFeeCollected || 0)}</strong></span>
+              <span>Hoàn: <strong className="text-slate-900">-{formatShortVND(s?.cardFeeRefunded || 0)}</strong></span>
             </div>
-            <div className="flex justify-between text-[11px]">
-              <span>
-                Bán SP: <strong>{s?.productOrdersCount ?? Math.max(0, (s?.totalOrders || 0) - (s?.serviceOrdersCount || 0))}</strong> · DV: <strong>{s?.serviceOrdersCount || 0}</strong>
-              </span>
-              <span className="text-amber-700 font-bold">
-                Trả/Đổi: {s?.returnedOrders || 0}
-              </span>
+            <div className="text-xs text-slate-500">
+              Ngoài doanh thu · Không trừ vào giá bán
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-extrabold uppercase text-slate-500">
-                4. Sản lượng &amp; Tổng nợ
-              </span>
-              <span className="p-1.5 rounded-lg bg-purple-50 text-purple-700">
-                <PackageCheck className="w-4 h-4" />
-              </span>
-            </div>
-            <div className="text-2xl font-black font-mono text-slate-900 mt-1.5">
-              {(s?.totalUnitsSold || 0).toLocaleString("vi-VN")} SP bán
-            </div>
+        {/* Ô 8: Đơn hàng, Sản lượng & Tổng nợ */}
+        <div className="relative group bg-white rounded-xl border border-slate-200 hover:border-teal-500 hover:bg-teal-50 hover:shadow-md px-3.5 py-2.5 shadow-sm transition-all">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[11px] font-extrabold uppercase text-slate-600">
+              8. Đơn hàng &amp; Công nợ
+            </span>
+            <span className="p-1 rounded-lg bg-teal-50 text-brand-ink">
+              <ShoppingBag className="w-3.5 h-3.5" />
+            </span>
           </div>
-          <div className="mt-2.5 pt-2 border-t border-slate-100 space-y-1 text-xs text-slate-600">
+          <div className="text-xl sm:text-[22px] font-black font-mono text-slate-900 mt-1">
+            <AnimatedNumber value={s?.totalOrders || 0} /> đơn · <AnimatedNumber value={s?.totalUnitsSold || 0} /> SP
+          </div>
+          <div className="opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 absolute left-0 right-0 top-full mt-1.5 z-30 bg-teal-50 rounded-xl border border-slate-200 shadow-xl p-3 space-y-1 text-xs text-slate-600">
             <div className="flex justify-between">
-              <span>Tặng: <strong className="text-purple-700">{s?.totalGiftUnits || 0}</strong> · Trả: <strong className="text-red-600">{s?.totalUnitsReturned || 0}</strong></span>
-              <span className="font-mono font-bold text-indigo-700">
-                DV: {s?.totalServiceUnits || 0} lượt
-              </span>
+              <span>AOV: <strong className="font-mono text-slate-900">{formatShortVND(s?.avgOrderValue || 0)}</strong></span>
+              <span>Đổi: <strong className="text-slate-900">{s?.totalUnitsReturned || 0} SP</strong></span>
             </div>
-            <div className="flex justify-between items-center text-[11px]">
-              <span className="text-slate-500">Dư nợ toàn cửa hàng:</span>
+            <div className="flex justify-between items-center">
+              <span className="text-slate-600">Dư nợ toàn shop:</span>
               <button
                 type="button"
                 onClick={() => setDashboardView("DEBTS")}
-                className="font-mono font-extrabold text-amber-700 hover:underline"
+                className="font-mono font-black text-slate-900 hover:text-brand-ink hover:underline cursor-pointer"
               >
                 {formatShortVND(dm?.summary?.totalOutstandingDebt || 0)} ({dm?.summary?.activeDebtOrdersCount || 0} đơn)
               </button>
@@ -2299,11 +2414,10 @@ export default function RevenueDashboardModule({
         <button
           type="button"
           onClick={() => setDashboardView("OVERVIEW")}
-          className={`px-4 py-2 rounded-xl text-xs font-extrabold flex items-center gap-2 transition ${
-            dashboardView === "OVERVIEW"
-              ? "bg-teal-600 text-white shadow-xs"
-              : "text-slate-700 hover:bg-slate-100"
-          }`}
+          className={`px-4 py-2 rounded-xl text-xs font-extrabold flex items-center gap-2 transition ${dashboardView === "OVERVIEW"
+            ? "bg-teal-600 text-white shadow-xs"
+            : "text-slate-700 hover:bg-slate-100"
+            }`}
         >
           <BarChart3 className="w-4 h-4" />
           <span>1. Tổng quan &amp; Biểu đồ</span>
@@ -2312,11 +2426,10 @@ export default function RevenueDashboardModule({
         <button
           type="button"
           onClick={() => setDashboardView("PRODUCTS")}
-          className={`px-4 py-2 rounded-xl text-xs font-extrabold flex items-center gap-2 transition ${
-            dashboardView === "PRODUCTS"
-              ? "bg-teal-600 text-white shadow-xs"
-              : "text-slate-700 hover:bg-slate-100"
-          }`}
+          className={`px-4 py-2 rounded-xl text-xs font-extrabold flex items-center gap-2 transition ${dashboardView === "PRODUCTS"
+            ? "bg-teal-600 text-white shadow-xs"
+            : "text-slate-700 hover:bg-slate-100"
+            }`}
         >
           <Flame className="w-4 h-4" />
           <span>2. Sản phẩm Bán chạy ({sortedTopProducts.length})</span>
@@ -2325,21 +2438,19 @@ export default function RevenueDashboardModule({
         <button
           type="button"
           onClick={() => setDashboardView("SERVICES")}
-          className={`px-4 py-2 rounded-xl text-xs font-extrabold flex items-center gap-2 transition ${
-            dashboardView === "SERVICES"
-              ? "bg-teal-600 text-white shadow-xs"
-              : "text-slate-700 hover:bg-slate-100"
-          }`}
+          className={`px-4 py-2 rounded-xl text-xs font-extrabold flex items-center gap-2 transition ${dashboardView === "SERVICES"
+            ? "bg-teal-600 text-white shadow-xs"
+            : "text-slate-700 hover:bg-slate-100"
+            }`}
         >
           <Wrench className="w-4 h-4" />
           <span>3. Mảng Dịch vụ</span>
           {(s?.serviceOrdersCount || 0) > 0 && (
             <span
-              className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${
-                dashboardView === "SERVICES"
-                  ? "bg-white/20 text-white"
-                  : "bg-indigo-100 text-indigo-700"
-              }`}
+              className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${dashboardView === "SERVICES"
+                ? "bg-white/20 text-white"
+                : "bg-indigo-100 text-brand-ink"
+                }`}
             >
               {s?.serviceOrdersCount} phiếu
             </span>
@@ -2349,21 +2460,19 @@ export default function RevenueDashboardModule({
         <button
           type="button"
           onClick={() => setDashboardView("DEBTS")}
-          className={`px-4 py-2 rounded-xl text-xs font-extrabold flex items-center gap-2 transition ${
-            dashboardView === "DEBTS"
-              ? "bg-teal-600 text-white shadow-xs"
-              : "text-slate-700 hover:bg-slate-100"
-          }`}
+          className={`px-4 py-2 rounded-xl text-xs font-extrabold flex items-center gap-2 transition ${dashboardView === "DEBTS"
+            ? "bg-teal-600 text-white shadow-xs"
+            : "text-slate-700 hover:bg-slate-100"
+            }`}
         >
           <Wallet className="w-4 h-4" />
           <span>4. Thống kê Công nợ</span>
           {(dm?.summary?.activeDebtOrdersCount || 0) > 0 && (
             <span
-              className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${
-                dashboardView === "DEBTS"
-                  ? "bg-white/20 text-white"
-                  : "bg-amber-100 text-amber-800"
-              }`}
+              className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${dashboardView === "DEBTS"
+                ? "bg-white/20 text-white"
+                : "bg-amber-100 text-amber-800"
+                }`}
             >
               {dm?.summary?.activeDebtOrdersCount} đơn
             </span>
@@ -2373,998 +2482,741 @@ export default function RevenueDashboardModule({
 
       {/* TAB 3: KHỐI THỐNG KÊ RIÊNG MẢNG LÀM DỊCH VỤ (CĂNG VỢT / SỬA CHỮA) */}
       {dashboardView === "SERVICES" && (
-      <div className="bg-white rounded-2xl border border-indigo-200 p-5 shadow-sm space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-800 text-[11px] font-extrabold uppercase">
-              <Wrench className="w-3.5 h-3.5" />
-              Thống kê Doanh thu &amp; Thực thu Mảng Dịch vụ
-            </div>
-            <h3 className="font-extrabold text-slate-900 text-base mt-1">
-              Tổng quan Doanh thu Dịch vụ (Tính khi tạo đơn) &amp; Thực thu (Tính sau khi hoàn thành)
-            </h3>
-            <p className="text-xs text-slate-500">
-              Doanh thu dịch vụ được ghi nhận ngay theo ngày tạo phiếu (Giá vốn = 0đ, 100% vào Lãi gộp). Thực thu dịch vụ chỉ kết chuyển vào quỹ sau khi đơn dịch vụ đã hoàn thành trả khách (<strong>Đã trả khách</strong>).
-            </p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-          <div className="p-4 rounded-xl bg-indigo-50/60 border border-indigo-200">
-            <div className="text-xs font-bold text-indigo-900">
-              1. Doanh thu thuần Dịch vụ (Theo ngày tạo)
-            </div>
-            <div className="text-xl font-black font-mono text-indigo-700 mt-1">
-              {formatVND(s?.serviceRevenue || 0)}
-            </div>
-            <div className="mt-1.5 text-[11px] text-slate-600 flex justify-between">
-              <span>Giá gốc DV: {formatVND(s?.serviceGrossRevenue || 0)}</span>
-              <span>Giảm: -{formatVND(s?.serviceDiscountTotal || 0)}</span>
+        <div className="bg-white rounded-2xl border border-indigo-200 p-5 shadow-sm space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-100 text-brand-ink text-[11px] font-extrabold uppercase">
+                <Wrench className="w-3.5 h-3.5" />
+                Thống kê Doanh thu &amp; Thực thu Mảng Dịch vụ
+              </div>
+              <h3 className="font-extrabold text-slate-900 text-base mt-1">
+                Tổng quan Doanh thu Dịch vụ (Tính khi tạo đơn) &amp; Thực thu (Tính sau khi hoàn thành)
+              </h3>
+              <p className="text-xs text-slate-500">
+                Doanh thu dịch vụ được ghi nhận ngay theo ngày tạo phiếu (Giá vốn = 0đ, 100% vào Lãi gộp). Thực thu dịch vụ chỉ kết chuyển vào quỹ sau khi đơn dịch vụ đã hoàn thành trả khách (<strong>Đã trả khách</strong>).
+              </p>
             </div>
           </div>
 
-          <div className="p-4 rounded-xl bg-teal-50/60 border border-teal-200">
-            <div className="text-xs font-bold text-teal-900">
-              2. Thực thu Dịch vụ (Đã hoàn thành)
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+            <div className="p-4 rounded-xl bg-indigo-50/60 border border-indigo-200">
+              <div className="text-xs font-bold text-indigo-900">
+                1. Doanh thu thuần Dịch vụ (Theo ngày tạo)
+              </div>
+              <div className="text-xl font-black font-mono text-brand-ink mt-1">
+                {formatVND(s?.serviceRevenue || 0)}
+              </div>
+              <div className="mt-1.5 text-[11px] text-slate-600 flex justify-between">
+                <span>Giá gốc DV: {formatVND(s?.serviceGrossRevenue || 0)}</span>
+                <span>Giảm: -{formatVND(s?.serviceDiscountTotal || 0)}</span>
+              </div>
             </div>
-            <div className="text-xl font-black font-mono text-teal-700 mt-1">
-              {formatVND(s?.serviceCashCollected || 0)}
+
+            <div className="p-4 rounded-xl bg-teal-50/60 border border-teal-200">
+              <div className="text-xs font-bold text-teal-900">
+                2. Thực thu Dịch vụ (Đã hoàn thành)
+              </div>
+              <div className="text-xl font-black font-mono text-brand-ink mt-1">
+                {formatVND(s?.serviceCashCollected || 0)}
+              </div>
+              <div className="mt-1.5 text-[11px] text-brand-ink">
+                Đã hoàn thành trả khách:{" "}
+                <strong>{s?.completedServiceOrdersCount || 0}</strong> đơn
+              </div>
             </div>
-            <div className="mt-1.5 text-[11px] text-teal-800">
-              Đã hoàn thành trả khách:{" "}
-              <strong>{s?.completedServiceOrdersCount || 0}</strong> đơn
+
+            <div className="p-4 rounded-xl bg-amber-50/60 border border-amber-200">
+              <div className="text-xs font-bold text-amber-900">
+                3. Đang làm / Chờ hoàn thành
+              </div>
+              <div className="text-xl font-black font-mono text-amber-700 mt-1">
+                {formatVND(s?.servicePendingCollection || 0)}
+              </div>
+              <div className="mt-1.5 text-[11px] text-amber-800">
+                Chưa kết chuyển thực thu:{" "}
+                <strong>{s?.activeServiceOrdersCount || 0}</strong> đơn đang xử lý
+              </div>
+            </div>
+
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+              <div className="text-xs font-bold text-slate-700">
+                4. Tổng số phiếu &amp; Lượt dịch vụ
+              </div>
+              <div className="text-xl font-black font-mono text-slate-900 mt-1">
+                {s?.serviceOrdersCount || 0} phiếu ({s?.totalServiceUnits || 0} lượt)
+              </div>
+              <div className="mt-1.5 text-[11px] text-slate-500">
+                Phí thẻ DV thu hộ: +{formatVND(s?.serviceCardFeeCollected || 0)}
+              </div>
             </div>
           </div>
 
-          <div className="p-4 rounded-xl bg-amber-50/60 border border-amber-200">
-            <div className="text-xs font-bold text-amber-900">
-              3. Đang làm / Chờ hoàn thành
-            </div>
-            <div className="text-xl font-black font-mono text-amber-700 mt-1">
-              {formatVND(s?.servicePendingCollection || 0)}
-            </div>
-            <div className="mt-1.5 text-[11px] text-amber-800">
-              Chưa kết chuyển thực thu:{" "}
-              <strong>{s?.activeServiceOrdersCount || 0}</strong> đơn đang xử lý
-            </div>
-          </div>
-
-          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
-            <div className="text-xs font-bold text-slate-700">
-              4. Tổng số phiếu &amp; Lượt dịch vụ
-            </div>
-            <div className="text-xl font-black font-mono text-slate-900 mt-1">
-              {s?.serviceOrdersCount || 0} phiếu ({s?.totalServiceUnits || 0} lượt)
-            </div>
-            <div className="mt-1.5 text-[11px] text-slate-500">
-              Phí thẻ DV thu hộ: +{formatVND(s?.serviceCardFeeCollected || 0)}
-            </div>
-          </div>
-        </div>
-
-        {data?.serviceStats?.byServiceType && data.serviceStats.byServiceType.length > 0 && (
-          <div className="overflow-x-auto border border-slate-200 rounded-xl">
-            <table className="w-full text-xs text-left">
-              <thead className="bg-slate-100 text-slate-700 border-b border-slate-200 uppercase text-[11px]">
-                <tr>
-                  <th className="py-2.5 px-3.5">Mã DV</th>
-                  <th className="py-2.5 px-3.5">Tên loại dịch vụ</th>
-                  <th className="py-2.5 px-3.5 text-center">Số phiếu</th>
-                  <th className="py-2.5 px-3.5 text-center">Số lượng</th>
-                  <th className="py-2.5 px-3.5 text-right">Doanh thu thuần</th>
-                  <th className="py-2.5 px-3.5 text-right">Tỷ trọng</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200">
-                {data.serviceStats.byServiceType.map((row) => (
-                  <tr key={row.serviceCode} className="hover:bg-slate-50">
-                    <td className="py-2.5 px-3.5 font-mono font-bold text-indigo-700">
-                      {row.serviceCode}
-                    </td>
-                    <td className="py-2.5 px-3.5 font-bold text-slate-900">
-                      {row.serviceName}
-                    </td>
-                    <td className="py-2.5 px-3.5 text-center font-mono">
-                      {row.orderCount} đơn
-                    </td>
-                    <td className="py-2.5 px-3.5 text-center font-mono font-bold">
-                      {row.quantity} {row.unit}
-                    </td>
-                    <td className="py-2.5 px-3.5 text-right font-mono font-extrabold text-teal-700">
-                      {formatVND(row.revenue)}
-                    </td>
-                    <td className="py-2.5 px-3.5 text-right font-mono font-semibold text-slate-600">
-                      {row.sharePercent}%
-                    </td>
+          {data?.serviceStats?.byServiceType && data.serviceStats.byServiceType.length > 0 && (
+            <div className="overflow-x-auto border border-slate-200 rounded-xl">
+              <table className="w-full text-xs text-left">
+                <thead className="bg-slate-100 text-slate-700 border-b border-slate-200 uppercase text-[11px]">
+                  <tr>
+                    <th className="py-2.5 px-3.5">Mã DV</th>
+                    <th className="py-2.5 px-3.5">Tên loại dịch vụ</th>
+                    <th className="py-2.5 px-3.5 text-center">Số phiếu</th>
+                    <th className="py-2.5 px-3.5 text-center">Số lượng</th>
+                    <th className="py-2.5 px-3.5 text-right">Doanh thu thuần</th>
+                    <th className="py-2.5 px-3.5 text-right">Tỷ trọng</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                  {data.serviceStats.byServiceType.map((row) => (
+                    <tr key={row.serviceCode} className="hover:bg-slate-50">
+                      <td className="py-2.5 px-3.5 font-mono font-bold text-brand-ink">
+                        {row.serviceCode}
+                      </td>
+                      <td className="py-2.5 px-3.5 font-bold text-slate-900">
+                        {row.serviceName}
+                      </td>
+                      <td className="py-2.5 px-3.5 text-center font-mono">
+                        {row.orderCount} đơn
+                      </td>
+                      <td className="py-2.5 px-3.5 text-center font-mono font-bold">
+                        {row.quantity} {row.unit}
+                      </td>
+                      <td className="py-2.5 px-3.5 text-right font-mono font-extrabold text-brand-ink">
+                        {formatVND(row.revenue)}
+                      </td>
+                      <td className="py-2.5 px-3.5 text-right font-mono font-semibold text-slate-600">
+                        {row.sharePercent}%
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       )}
 
       {/* TAB 4: KHU VỰC THỐNG KÊ CÔNG NỢ KHÁCH HÀNG (CHỈ HIỂN THỊ THÔNG TIN TRÊN DASHBOARD) */}
       {dashboardView === "DEBTS" && (
-      <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-teal-100 text-teal-800 text-[11px] font-extrabold uppercase">
-              <Wallet className="w-3.5 h-3.5" />
-              Thống kê Công nợ (Mua trước trả sau)
+        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-teal-100 text-brand-ink text-[11px] font-extrabold uppercase">
+                <Wallet className="w-3.5 h-3.5" />
+                Thống kê Công nợ (Mua trước trả sau)
+              </div>
+              <h3 className="font-extrabold text-slate-900 text-base mt-1">
+                Tổng quan Dư nợ Khách hàng & Tình trạng Hạn trả
+              </h3>
+              <p className="text-xs text-slate-500">
+                Hiển thị thông tin thống kê công nợ trên Dashboard. Để xác nhận thu nợ / tất toán, vui lòng chọn mục 8 trong Menu CMS.
+              </p>
             </div>
-            <h3 className="font-extrabold text-slate-900 text-base mt-1">
-              Tổng quan Dư nợ Khách hàng & Tình trạng Hạn trả
-            </h3>
-            <p className="text-xs text-slate-500">
-              Hiển thị thông tin thống kê công nợ trên Dashboard. Để xác nhận thu nợ / tất toán, vui lòng chọn mục 8 trong Menu CMS.
-            </p>
-          </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="inline-flex rounded-xl bg-slate-100 p-1 border border-slate-200 text-xs font-extrabold">
-              <button
-                type="button"
-                onClick={() => setDebtTab("ORDERS")}
-                className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition ${
-                  debtTab === "ORDERS"
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="inline-flex rounded-xl bg-slate-100 p-1 border border-slate-200 text-xs font-extrabold">
+                <button
+                  type="button"
+                  onClick={() => setDebtTab("ORDERS")}
+                  className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition ${debtTab === "ORDERS"
                     ? "bg-teal-600 text-white shadow-sm"
                     : "text-slate-600 hover:text-slate-900"
-                }`}
-              >
-                <FileText className="w-3.5 h-3.5" />
-                Theo Đơn Công Nợ ({dm?.orders?.length || 0})
-              </button>
-              <button
-                type="button"
-                onClick={() => setDebtTab("CUSTOMERS")}
-                className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition ${
-                  debtTab === "CUSTOMERS"
+                    }`}
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  Theo Đơn Công Nợ ({dm?.orders?.length || 0})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDebtTab("CUSTOMERS")}
+                  className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition ${debtTab === "CUSTOMERS"
                     ? "bg-teal-600 text-white shadow-sm"
                     : "text-slate-600 hover:text-slate-900"
-                }`}
-              >
-                <Users className="w-3.5 h-3.5" />
-                Gom nhóm theo Khách SĐT ({dm?.customers?.length || 0})
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* 4 Thẻ KPI Công nợ */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <div className="rounded-xl bg-slate-50 border border-slate-200 p-3.5">
-            <div className="flex items-center justify-between text-[11px] font-extrabold uppercase text-slate-600">
-              <span>Tổng dư nợ cần thu</span>
-              <Wallet className="w-4 h-4 text-teal-600" />
-            </div>
-            <div className="text-xl font-black font-mono text-slate-900 mt-1">
-              {formatVND(dm?.summary?.totalOutstandingDebt || 0)}
-            </div>
-            <div className="text-[11px] text-slate-600 mt-1">
-              Trên <strong>{dm?.summary?.activeDebtOrdersCount || 0}</strong> đơn đang nợ ·{" "}
-              <strong>{dm?.summary?.activeDebtCustomersCount || 0}</strong> khách hàng
+                    }`}
+                >
+                  <Users className="w-3.5 h-3.5" />
+                  Gom nhóm theo Khách SĐT ({dm?.customers?.length || 0})
+                </button>
+              </div>
             </div>
           </div>
 
-          <div
-            className={`rounded-xl border p-3.5 ${
-              (dm?.summary?.overdueOrdersCount || 0) > 0
+          {/* 4 Thẻ KPI Công nợ */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="rounded-xl bg-slate-50 border border-slate-200 p-3.5">
+              <div className="flex items-center justify-between text-[11px] font-extrabold uppercase text-slate-600">
+                <span>Tổng dư nợ cần thu</span>
+                <Wallet className="w-4 h-4 text-brand-ink" />
+              </div>
+              <div className="text-xl font-black font-mono text-slate-900 mt-1">
+                {formatVND(dm?.summary?.totalOutstandingDebt || 0)}
+              </div>
+              <div className="text-[11px] text-slate-600 mt-1">
+                Trên <strong>{dm?.summary?.activeDebtOrdersCount || 0}</strong> đơn đang nợ ·{" "}
+                <strong>{dm?.summary?.activeDebtCustomersCount || 0}</strong> khách hàng
+              </div>
+            </div>
+
+            <div
+              className={`rounded-xl border p-3.5 ${(dm?.summary?.overdueOrdersCount || 0) > 0
                 ? "bg-red-50 border-red-300"
                 : "bg-slate-50 border-slate-200"
-            }`}
-          >
-            <div className="flex items-center justify-between text-[11px] font-extrabold uppercase text-red-700">
-              <span>Nợ quá hạn hẹn trả</span>
-              <AlertTriangle className="w-4 h-4 text-red-600" />
-            </div>
-            <div className="text-xl font-black font-mono text-red-700 mt-1">
-              {formatVND(dm?.summary?.overdueDebtAmount || 0)}
-            </div>
-            <div className="text-[11px] text-red-700 mt-1 font-semibold">
-              {(dm?.summary?.overdueOrdersCount || 0) > 0
-                ? `⚠️ Có ${dm?.summary?.overdueOrdersCount} đơn đã quá hạn hẹn trả!`
-                : "Không có đơn công nợ quá hạn"}
-            </div>
-          </div>
-
-          <div className="rounded-xl bg-teal-50/70 border border-teal-200 p-3.5">
-            <div className="flex items-center justify-between text-[11px] font-extrabold uppercase text-teal-800">
-              <span>Công nợ phát sinh trong kỳ</span>
-              <Clock className="w-4 h-4 text-teal-600" />
-            </div>
-            <div className="text-xl font-black font-mono text-teal-900 mt-1">
-              {formatVND(s?.initialDebtInPeriod || 0)}
-            </div>
-            <div className="text-[11px] text-teal-800 mt-1">
-              Còn chưa thu trong kỳ:{" "}
-              <strong className="font-mono">{formatVND(s?.outstandingDebtInPeriod || 0)}</strong> (
-              {s?.debtOrdersInPeriod || 0} đơn)
-            </div>
-          </div>
-
-          <div className="rounded-xl bg-teal-50/70 border border-teal-200 p-3.5">
-            <div className="flex items-center justify-between text-[11px] font-extrabold uppercase text-teal-800">
-              <span>Đã thu nợ & Giảm nợ trả hàng</span>
-              <CheckCircle2 className="w-4 h-4 text-teal-600" />
-            </div>
-            <div className="text-xl font-black font-mono text-teal-800 mt-1">
-              {formatVND(dm?.summary?.totalCollectedDebt || 0)}
-            </div>
-            <div className="text-[11px] text-teal-800 mt-1 space-y-0.5">
-              <div>
-                Giảm nợ do trả hàng:{" "}
-                <strong className="font-mono text-purple-700">
-                  {formatVND(dm?.summary?.totalReducedByReturn || 0)}
-                </strong>
+                }`}
+            >
+              <div className="flex items-center justify-between text-[11px] font-extrabold uppercase text-red-700">
+                <span>Nợ quá hạn hẹn trả</span>
+                <AlertTriangle className="w-4 h-4 text-red-600" />
               </div>
-              <div>
-                Đã tất toán xong:{" "}
-                <strong>{dm?.summary?.settledDebtOrdersCount || 0}</strong> đơn công nợ
+              <div className="text-xl font-black font-mono text-red-700 mt-1">
+                {formatVND(dm?.summary?.overdueDebtAmount || 0)}
+              </div>
+              <div className="text-[11px] text-red-700 mt-1 font-semibold">
+                {(dm?.summary?.overdueOrdersCount || 0) > 0
+                  ? `⚠️ Có ${dm?.summary?.overdueOrdersCount} đơn đã quá hạn hẹn trả!`
+                  : "Không có đơn công nợ quá hạn"}
               </div>
             </div>
-          </div>
-        </div>
 
-        {/* Bộ lọc trạng thái nợ & Tìm kiếm */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-          <div className="flex flex-wrap gap-1.5">
-            {(
-              [
-                { id: "HAS_DEBT", label: "Đang còn nợ" },
-                { id: "OVERDUE", label: "Quá hạn hẹn trả" },
-                { id: "UNPAID", label: "Chưa trả đợt nào" },
-                { id: "PARTIAL", label: "Đã trả một phần" },
-                { id: "SETTLED", label: "Đã tất toán xong" },
-                { id: "ALL", label: "Tất cả đơn công nợ" },
-              ] as const
-            ).map((f) => (
-              <button
-                key={f.id}
-                type="button"
-                onClick={() => setDebtFilter(f.id)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
-                  debtFilter === f.id
+            <div className="rounded-xl bg-teal-50/70 border border-teal-200 p-3.5">
+              <div className="flex items-center justify-between text-[11px] font-extrabold uppercase text-brand-ink">
+                <span>Công nợ phát sinh trong kỳ</span>
+                <Clock className="w-4 h-4 text-brand-ink" />
+              </div>
+              <div className="text-xl font-black font-mono text-teal-900 mt-1">
+                {formatVND(s?.initialDebtInPeriod || 0)}
+              </div>
+              <div className="text-[11px] text-brand-ink mt-1">
+                Còn chưa thu trong kỳ:{" "}
+                <strong className="font-mono">{formatVND(s?.outstandingDebtInPeriod || 0)}</strong> (
+                {s?.debtOrdersInPeriod || 0} đơn)
+              </div>
+            </div>
+
+            <div className="rounded-xl bg-teal-50/70 border border-teal-200 p-3.5">
+              <div className="flex items-center justify-between text-[11px] font-extrabold uppercase text-brand-ink">
+                <span>Đã thu nợ & Giảm nợ trả hàng</span>
+                <CheckCircle2 className="w-4 h-4 text-brand-ink" />
+              </div>
+              <div className="text-xl font-black font-mono text-brand-ink mt-1">
+                {formatVND(dm?.summary?.totalCollectedDebt || 0)}
+              </div>
+              <div className="text-[11px] text-brand-ink mt-1 space-y-0.5">
+                <div>
+                  Giảm nợ do trả hàng:{" "}
+                  <strong className="font-mono text-purple-700">
+                    {formatVND(dm?.summary?.totalReducedByReturn || 0)}
+                  </strong>
+                </div>
+                <div>
+                  Đã tất toán xong:{" "}
+                  <strong>{dm?.summary?.settledDebtOrdersCount || 0}</strong> đơn công nợ
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Bộ lọc trạng thái nợ & Tìm kiếm */}
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+            <div className="flex flex-wrap gap-1.5">
+              {(
+                [
+                  { id: "HAS_DEBT", label: "Đang còn nợ" },
+                  { id: "OVERDUE", label: "Quá hạn hẹn trả" },
+                  { id: "UNPAID", label: "Chưa trả đợt nào" },
+                  { id: "PARTIAL", label: "Đã trả một phần" },
+                  { id: "SETTLED", label: "Đã tất toán xong" },
+                  { id: "ALL", label: "Tất cả đơn công nợ" },
+                ] as const
+              ).map((f) => (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => setDebtFilter(f.id)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${debtFilter === f.id
                     ? f.id === "OVERDUE"
                       ? "bg-red-600 text-white shadow-sm"
                       : "bg-teal-600 text-white shadow-sm"
                     : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                }`}
-              >
-                {f.label}
-              </button>
-            ))}
+                    }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="relative w-full sm:w-72">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={debtSearch}
+                onChange={(e) => setDebtSearch(e.target.value)}
+                placeholder="Tìm mã đơn, tên khách, SĐT..."
+                className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-slate-300 text-xs"
+              />
+            </div>
           </div>
 
-          <div className="relative w-full sm:w-72">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={debtSearch}
-              onChange={(e) => setDebtSearch(e.target.value)}
-              placeholder="Tìm mã đơn, tên khách, SĐT..."
-              className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-slate-300 text-xs"
-            />
-          </div>
-        </div>
-
-        {/* TAB 1: DANH SÁCH ĐƠN CÔNG NỢ (CHỈ XEM THÔNG TIN) */}
-        {debtTab === "ORDERS" ? (
-          <div className="overflow-x-auto border border-slate-200 rounded-xl">
-            <table className="w-full text-xs">
-              <thead className="bg-slate-100 text-slate-700 font-bold uppercase text-[11px]">
-                <tr>
-                  <th className="text-left px-3 py-2.5">Mã đơn / Ngày mua</th>
-                  <th className="text-left px-3 py-2.5">Khách hàng</th>
-                  <th className="text-right px-3 py-2.5">Tổng đơn</th>
-                  <th className="text-right px-3 py-2.5">Đã thu / Giảm nợ</th>
-                  <th className="text-right px-3 py-2.5">Còn nợ</th>
-                  <th className="text-center px-3 py-2.5">Hạn hẹn trả</th>
-                  <th className="text-center px-3 py-2.5">Trạng thái & Lịch sử</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200">
-                {filteredDebtOrders.length === 0 ? (
+          {/* TAB 1: DANH SÁCH ĐƠN CÔNG NỢ (CHỈ XEM THÔNG TIN) */}
+          {debtTab === "ORDERS" ? (
+            <div className="overflow-x-auto border border-slate-200 rounded-xl">
+              <table className="w-full text-xs">
+                <thead className="bg-slate-100 text-slate-700 font-bold uppercase text-[11px]">
                   <tr>
-                    <td colSpan={7} className="text-center py-8 text-slate-400">
-                      Không có đơn công nợ nào khớp bộ lọc hiện tại.
-                    </td>
+                    <th className="text-left px-3 py-2.5">Mã đơn / Ngày mua</th>
+                    <th className="text-left px-3 py-2.5">Khách hàng</th>
+                    <th className="text-right px-3 py-2.5">Tổng đơn</th>
+                    <th className="text-right px-3 py-2.5">Đã thu / Giảm nợ</th>
+                    <th className="text-right px-3 py-2.5">Còn nợ</th>
+                    <th className="text-center px-3 py-2.5">Hạn hẹn trả</th>
+                    <th className="text-center px-3 py-2.5">Trạng thái & Lịch sử</th>
                   </tr>
-                ) : (
-                  filteredDebtOrders.map((o) => (
-                    <tr
-                      key={o._id}
-                      className={`hover:bg-slate-50 ${
-                        o.isOverdue && o.debtAmount > 0 ? "bg-red-50/40" : ""
-                      }`}
-                    >
-                      <td className="px-3 py-2.5">
-                        <div className="font-mono font-extrabold text-slate-900">{o.orderCode}</div>
-                        <div className="text-[11px] text-slate-500">
-                          {formatDateTime(o.createdAt)}
-                        </div>
-                        {(o.confirmedByName || o.createdByName) && (
-                          <div className="text-[10px] text-slate-400">
-                            Thu ngân: {o.confirmedByName || o.createdByName}
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-3 py-2.5">
-                        <div className="font-bold text-slate-900">{o.customerName}</div>
-                        <div className="font-mono text-[11px] text-teal-700 font-semibold">
-                          {formatPhone(o.customerPhone)}
-                        </div>
-                        {o.note && (
-                          <div className="text-[11px] text-slate-500 italic mt-0.5 max-w-xs truncate">
-                            Ghi chú: {o.note}
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-3 py-2.5 text-right font-mono font-bold text-slate-900">
-                        {formatVND(o.totalAmount)}
-                        <div className="text-[10px] text-slate-400 font-normal">
-                          Nợ gốc: {formatVND(o.initialDebtAmount)}
-                        </div>
-                      </td>
-                      <td className="px-3 py-2.5 text-right font-mono font-bold text-teal-700">
-                        {formatVND(o.paidAmount)}
-                        {(o.reducedByReturnAmount || 0) > 0 && (
-                          <div className="text-[10px] text-purple-700 font-semibold">
-                            Giảm nợ trả hàng: -{formatVND(o.reducedByReturnAmount || 0)}
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-3 py-2.5 text-right font-mono font-black text-amber-700 text-sm">
-                        {formatVND(o.debtAmount)}
-                      </td>
-                      <td className="px-3 py-2.5 text-center">
-                        {o.debtDueDate ? (
-                          <div>
-                            <div className="font-mono font-bold text-slate-800">
-                              {new Date(o.debtDueDate).toLocaleDateString("vi-VN")}
-                            </div>
-                            {o.isOverdue && o.debtAmount > 0 && (
-                              <span className="inline-block mt-0.5 px-2 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-extrabold">
-                                Quá hạn {o.daysOverdue} ngày
-                              </span>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-slate-400 text-[11px]">Không hẹn</span>
-                        )}
-                      </td>
-                      <td className="px-3 py-2.5 text-center">
-                        <span
-                          className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${
-                            o.debtAmount <= 0 || o.debtStatus === "SETTLED"
-                              ? "bg-teal-100 text-teal-800"
-                              : o.debtStatus === "PARTIAL"
-                              ? "bg-teal-100 text-teal-800"
-                              : "bg-amber-100 text-amber-800"
-                          }`}
-                        >
-                          {o.debtAmount <= 0 || o.debtStatus === "SETTLED"
-                            ? "Đã tất toán"
-                            : o.debtStatus === "PARTIAL"
-                            ? "Trả 1 phần"
-                            : "Chưa trả nợ"}
-                        </span>
-                        {((o.debtPayments && o.debtPayments.length > 0) ||
-                          (o.debtAdjustments && o.debtAdjustments.length > 0)) && (
-                          <div className="mt-1 space-y-0.5 text-[10px] text-slate-600 text-left bg-slate-50 rounded p-1.5 border border-slate-200 max-w-[240px] mx-auto">
-                            {o.debtPayments?.map((dp, i) => (
-                              <div key={`dp-${i}`} className="flex justify-between gap-1">
-                                <span className="font-mono font-bold text-teal-700">
-                                  +{formatVND(dp.amount)} ({dp.method})
-                                </span>
-                                <span className="text-slate-400">
-                                  {new Date(dp.paidAt).toLocaleDateString("vi-VN")}
-                                </span>
-                              </div>
-                            ))}
-                            {o.debtAdjustments?.map((da, i) => (
-                              <div
-                                key={`da-${i}`}
-                                className="flex justify-between gap-1 text-purple-700"
-                                title={da.note || `Cấn trừ nợ từ phiếu trả ${da.returnCode || ""}`}
-                              >
-                                <span className="font-mono font-bold">
-                                  -{formatVND(da.amount)} (Trả {da.returnCode || "hàng"})
-                                </span>
-                                <span className="text-slate-400">
-                                  {da.at || da.adjustedAt
-                                    ? new Date(da.at || da.adjustedAt || "").toLocaleDateString("vi-VN")
-                                    : ""}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                  {filteredDebtOrders.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="text-center py-8 text-slate-400">
+                        Không có đơn công nợ nào khớp bộ lọc hiện tại.
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          /* TAB 2: GOM NHÓM THEO KHÁCH HÀNG (SĐT) — CHỈ XEM THÔNG TIN */
-          <div className="overflow-x-auto border border-slate-200 rounded-xl">
-            <table className="w-full text-xs">
-              <thead className="bg-slate-100 text-slate-700 font-bold uppercase text-[11px]">
-                <tr>
-                  <th className="text-left px-3 py-2.5">Khách hàng / SĐT</th>
-                  <th className="text-center px-3 py-2.5">Số đơn nợ</th>
-                  <th className="text-right px-3 py-2.5">Tổng mua</th>
-                  <th className="text-right px-3 py-2.5">Đã thu / Giảm nợ</th>
-                  <th className="text-right px-3 py-2.5">Tổng dư nợ còn lại</th>
-                  <th className="text-center px-3 py-2.5">Hạn trả gần nhất</th>
-                  <th className="text-right px-3 py-2.5">Chi tiết đơn</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200">
-                {filteredDebtCustomers.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="text-center py-8 text-slate-400">
-                      Không có khách hàng công nợ nào khớp bộ lọc.
-                    </td>
-                  </tr>
-                ) : (
-                  filteredDebtCustomers.map((c) => {
-                    const isExpanded = expandedCustomerPhone === c.phone;
-                    const custOrders = c.orders || [];
-                    return (
-                      <React.Fragment key={c.phone}>
-                        <tr
-                          className={`hover:bg-slate-50 ${
-                            c.overdueOrders > 0 && c.totalDebtAmount > 0 ? "bg-red-50/40" : ""
+                  ) : (
+                    filteredDebtOrders.map((o) => (
+                      <tr
+                        key={o._id}
+                        className={`hover:bg-slate-50 ${o.isOverdue && o.debtAmount > 0 ? "bg-red-50/40" : ""
                           }`}
-                        >
-                          <td className="px-3 py-2.5">
-                            <div className="font-extrabold text-slate-900">{c.customerName}</div>
-                            <div className="font-mono text-xs text-teal-700 font-bold">
-                              {formatPhone(c.phone)}
-                            </div>
-                          </td>
-                          <td className="px-3 py-2.5 text-center">
-                            <span className="font-mono font-extrabold text-amber-800">
-                              {c.activeDebtOrders} đơn đang nợ
-                            </span>
+                      >
+                        <td className="px-3 py-2.5">
+                          <div className="font-mono font-extrabold text-slate-900">{o.orderCode}</div>
+                          <div className="text-[11px] text-slate-500">
+                            {formatDateTime(o.createdAt)}
+                          </div>
+                          {(o.confirmedByName || o.createdByName) && (
                             <div className="text-[10px] text-slate-400">
-                              Tổng lịch sử: {c.totalOrders} đơn
+                              Thu ngân: {o.confirmedByName || o.createdByName}
                             </div>
-                          </td>
-                          <td className="px-3 py-2.5 text-right font-mono font-bold text-slate-800">
-                            {formatVND(c.totalOrderAmount)}
-                          </td>
-                          <td className="px-3 py-2.5 text-right font-mono font-bold text-teal-700">
-                            {formatVND(c.totalPaidAmount)}
-                            {(c.totalReducedByReturn || 0) > 0 && (
-                              <div className="text-[10px] text-purple-700 font-semibold">
-                                Giảm nợ trả hàng: -{formatVND(c.totalReducedByReturn || 0)}
+                          )}
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <div className="font-bold text-slate-900">{o.customerName}</div>
+                          <div className="font-mono text-[11px] text-brand-ink font-semibold">
+                            {formatPhone(o.customerPhone)}
+                          </div>
+                          {o.note && (
+                            <div className="text-[11px] text-slate-500 italic mt-0.5 max-w-xs truncate">
+                              Ghi chú: {o.note}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-3 py-2.5 text-right font-mono font-bold text-slate-900">
+                          {formatVND(o.totalAmount)}
+                          <div className="text-[10px] text-slate-400 font-normal">
+                            Nợ gốc: {formatVND(o.initialDebtAmount)}
+                          </div>
+                        </td>
+                        <td className="px-3 py-2.5 text-right font-mono font-bold text-brand-ink">
+                          {formatVND(o.paidAmount)}
+                          {(o.reducedByReturnAmount || 0) > 0 && (
+                            <div className="text-[10px] text-purple-700 font-semibold">
+                              Giảm nợ trả hàng: -{formatVND(o.reducedByReturnAmount || 0)}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-3 py-2.5 text-right font-mono font-black text-amber-700 text-sm">
+                          {formatVND(o.debtAmount)}
+                        </td>
+                        <td className="px-3 py-2.5 text-center">
+                          {o.debtDueDate ? (
+                            <div>
+                              <div className="font-mono font-bold text-slate-800">
+                                {new Date(o.debtDueDate).toLocaleDateString("vi-VN")}
+                              </div>
+                              {o.isOverdue && o.debtAmount > 0 && (
+                                <span className="inline-block mt-0.5 px-2 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-extrabold">
+                                  Quá hạn {o.daysOverdue} ngày
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-slate-400 text-[11px]">Không hẹn</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2.5 text-center">
+                          <span
+                            className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${o.debtAmount <= 0 || o.debtStatus === "SETTLED"
+                              ? "bg-teal-100 text-brand-ink"
+                              : o.debtStatus === "PARTIAL"
+                                ? "bg-teal-100 text-brand-ink"
+                                : "bg-amber-100 text-amber-800"
+                              }`}
+                          >
+                            {o.debtAmount <= 0 || o.debtStatus === "SETTLED"
+                              ? "Đã tất toán"
+                              : o.debtStatus === "PARTIAL"
+                                ? "Trả 1 phần"
+                                : "Chưa trả nợ"}
+                          </span>
+                          {((o.debtPayments && o.debtPayments.length > 0) ||
+                            (o.debtAdjustments && o.debtAdjustments.length > 0)) && (
+                              <div className="mt-1 space-y-0.5 text-[10px] text-slate-600 text-left bg-slate-50 rounded p-1.5 border border-slate-200 max-w-[240px] mx-auto">
+                                {o.debtPayments?.map((dp, i) => (
+                                  <div key={`dp-${i}`} className="flex justify-between gap-1">
+                                    <span className="font-mono font-bold text-brand-ink">
+                                      +{formatVND(dp.amount)} ({dp.method})
+                                    </span>
+                                    <span className="text-slate-400">
+                                      {new Date(dp.paidAt).toLocaleDateString("vi-VN")}
+                                    </span>
+                                  </div>
+                                ))}
+                                {o.debtAdjustments?.map((da, i) => (
+                                  <div
+                                    key={`da-${i}`}
+                                    className="flex justify-between gap-1 text-purple-700"
+                                    title={da.note || `Cấn trừ nợ từ phiếu trả ${da.returnCode || ""}`}
+                                  >
+                                    <span className="font-mono font-bold">
+                                      -{formatVND(da.amount)} (Trả {da.returnCode || "hàng"})
+                                    </span>
+                                    <span className="text-slate-400">
+                                      {da.at || da.adjustedAt
+                                        ? new Date(da.at || da.adjustedAt || "").toLocaleDateString("vi-VN")
+                                        : ""}
+                                    </span>
+                                  </div>
+                                ))}
                               </div>
                             )}
-                          </td>
-                          <td className="px-3 py-2.5 text-right font-mono font-black text-amber-700 text-sm">
-                            {formatVND(c.totalDebtAmount)}
-                          </td>
-                          <td className="px-3 py-2.5 text-center">
-                            {c.nearestDueDate ? (
-                              <div>
-                                <div className="font-mono font-bold text-slate-800">
-                                  {new Date(c.nearestDueDate).toLocaleDateString("vi-VN")}
-                                </div>
-                                {c.overdueOrders > 0 && (
-                                  <span className="inline-block mt-0.5 px-2 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-extrabold">
-                                    {c.overdueOrders} đơn quá hạn
-                                  </span>
-                                )}
-                              </div>
-                            ) : (
-                              <span className="text-slate-400 text-[11px]">—</span>
-                            )}
-                          </td>
-                          <td className="px-3 py-2.5 text-right">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setExpandedCustomerPhone(isExpanded ? null : c.phone)
-                              }
-                              className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition"
-                            >
-                              {isExpanded ? "Ẩn đơn" : `Xem ${custOrders.length} đơn`}
-                            </button>
-                          </td>
-                        </tr>
-                        {isExpanded && (
-                          <tr className="bg-amber-50/40">
-                            <td colSpan={7} className="p-3">
-                              <div className="rounded-xl bg-white border border-amber-200 p-3 space-y-2">
-                                <div className="text-xs font-extrabold text-slate-800">
-                                  Danh sách đơn công nợ của khách {c.customerName} (
-                                  {formatPhone(c.phone)}):
-                                </div>
-                                <div className="divide-y divide-slate-100">
-                                  {custOrders.map((co) => (
-                                    <div
-                                      key={co._id}
-                                      className="py-2 flex flex-wrap items-center justify-between gap-2 text-xs"
-                                    >
-                                      <div>
-                                        <span className="font-mono font-extrabold text-slate-900">
-                                          {co.orderCode}
-                                        </span>{" "}
-                                        <span className="text-slate-500">
-                                          ({formatDateTime(co.createdAt)})
-                                        </span>
-                                        {co.debtDueDate && (
-                                          <span className="ml-2 text-[11px] font-semibold text-amber-800">
-                                            · Hạn trả:{" "}
-                                            {new Date(co.debtDueDate).toLocaleDateString("vi-VN")}
-                                          </span>
-                                        )}
-                                      </div>
-                                      <div className="flex items-center gap-3">
-                                        <span>
-                                          Tổng: <strong className="font-mono">{formatVND(co.totalAmount)}</strong>
-                                        </span>
-                                        <span className="text-teal-700">
-                                          Đã trả: <strong className="font-mono">{formatVND(co.paidAmount)}</strong>
-                                        </span>
-                                        {(co.reducedByReturnAmount || 0) > 0 && (
-                                          <span className="text-purple-700">
-                                            Giảm nợ trả hàng:{" "}
-                                            <strong className="font-mono">
-                                              -{formatVND(co.reducedByReturnAmount || 0)}
-                                            </strong>
-                                          </span>
-                                        )}
-                                        <span className="text-amber-700">
-                                          Còn nợ: <strong className="font-mono">{formatVND(co.debtAmount)}</strong>
-                                        </span>
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            /* TAB 2: GOM NHÓM THEO KHÁCH HÀNG (SĐT) — CHỈ XEM THÔNG TIN */
+            <div className="overflow-x-auto border border-slate-200 rounded-xl">
+              <table className="w-full text-xs">
+                <thead className="bg-slate-100 text-slate-700 font-bold uppercase text-[11px]">
+                  <tr>
+                    <th className="text-left px-3 py-2.5">Khách hàng / SĐT</th>
+                    <th className="text-center px-3 py-2.5">Số đơn nợ</th>
+                    <th className="text-right px-3 py-2.5">Tổng mua</th>
+                    <th className="text-right px-3 py-2.5">Đã thu / Giảm nợ</th>
+                    <th className="text-right px-3 py-2.5">Tổng dư nợ còn lại</th>
+                    <th className="text-center px-3 py-2.5">Hạn trả gần nhất</th>
+                    <th className="text-right px-3 py-2.5">Chi tiết đơn</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                  {filteredDebtCustomers.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="text-center py-8 text-slate-400">
+                        Không có khách hàng công nợ nào khớp bộ lọc.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredDebtCustomers.map((c) => {
+                      const isExpanded = expandedCustomerPhone === c.phone;
+                      const custOrders = c.orders || [];
+                      return (
+                        <React.Fragment key={c.phone}>
+                          <tr
+                            className={`hover:bg-slate-50 ${c.overdueOrders > 0 && c.totalDebtAmount > 0 ? "bg-red-50/40" : ""
+                              }`}
+                          >
+                            <td className="px-3 py-2.5">
+                              <div className="font-extrabold text-slate-900">{c.customerName}</div>
+                              <div className="font-mono text-xs text-brand-ink font-bold">
+                                {formatPhone(c.phone)}
                               </div>
                             </td>
+                            <td className="px-3 py-2.5 text-center">
+                              <span className="font-mono font-extrabold text-amber-800">
+                                {c.activeDebtOrders} đơn đang nợ
+                              </span>
+                              <div className="text-[10px] text-slate-400">
+                                Tổng lịch sử: {c.totalOrders} đơn
+                              </div>
+                            </td>
+                            <td className="px-3 py-2.5 text-right font-mono font-bold text-slate-800">
+                              {formatVND(c.totalOrderAmount)}
+                            </td>
+                            <td className="px-3 py-2.5 text-right font-mono font-bold text-brand-ink">
+                              {formatVND(c.totalPaidAmount)}
+                              {(c.totalReducedByReturn || 0) > 0 && (
+                                <div className="text-[10px] text-purple-700 font-semibold">
+                                  Giảm nợ trả hàng: -{formatVND(c.totalReducedByReturn || 0)}
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-3 py-2.5 text-right font-mono font-black text-amber-700 text-sm">
+                              {formatVND(c.totalDebtAmount)}
+                            </td>
+                            <td className="px-3 py-2.5 text-center">
+                              {c.nearestDueDate ? (
+                                <div>
+                                  <div className="font-mono font-bold text-slate-800">
+                                    {new Date(c.nearestDueDate).toLocaleDateString("vi-VN")}
+                                  </div>
+                                  {c.overdueOrders > 0 && (
+                                    <span className="inline-block mt-0.5 px-2 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-extrabold">
+                                      {c.overdueOrders} đơn quá hạn
+                                    </span>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-slate-400 text-[11px]">—</span>
+                              )}
+                            </td>
+                            <td className="px-3 py-2.5 text-right">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setExpandedCustomerPhone(isExpanded ? null : c.phone)
+                                }
+                                className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition"
+                              >
+                                {isExpanded ? "Ẩn đơn" : `Xem ${custOrders.length} đơn`}
+                              </button>
+                            </td>
                           </tr>
-                        )}
-                      </React.Fragment>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+                          {isExpanded && (
+                            <tr className="bg-amber-50/40">
+                              <td colSpan={7} className="p-3">
+                                <div className="rounded-xl bg-white border border-amber-200 p-3 space-y-2">
+                                  <div className="text-xs font-extrabold text-slate-800">
+                                    Danh sách đơn công nợ của khách {c.customerName} (
+                                    {formatPhone(c.phone)}):
+                                  </div>
+                                  <div className="divide-y divide-slate-100">
+                                    {custOrders.map((co) => (
+                                      <div
+                                        key={co._id}
+                                        className="py-2 flex flex-wrap items-center justify-between gap-2 text-xs"
+                                      >
+                                        <div>
+                                          <span className="font-mono font-extrabold text-slate-900">
+                                            {co.orderCode}
+                                          </span>{" "}
+                                          <span className="text-slate-500">
+                                            ({formatDateTime(co.createdAt)})
+                                          </span>
+                                          {co.debtDueDate && (
+                                            <span className="ml-2 text-[11px] font-semibold text-amber-800">
+                                              · Hạn trả:{" "}
+                                              {new Date(co.debtDueDate).toLocaleDateString("vi-VN")}
+                                            </span>
+                                          )}
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                          <span>
+                                            Tổng: <strong className="font-mono">{formatVND(co.totalAmount)}</strong>
+                                          </span>
+                                          <span className="text-brand-ink">
+                                            Đã trả: <strong className="font-mono">{formatVND(co.paidAmount)}</strong>
+                                          </span>
+                                          {(co.reducedByReturnAmount || 0) > 0 && (
+                                            <span className="text-purple-700">
+                                              Giảm nợ trả hàng:{" "}
+                                              <strong className="font-mono">
+                                                -{formatVND(co.reducedByReturnAmount || 0)}
+                                              </strong>
+                                            </span>
+                                          )}
+                                          <span className="text-amber-700">
+                                            Còn nợ: <strong className="font-mono">{formatVND(co.debtAmount)}</strong>
+                                          </span>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       )}
 
       {/* TAB 1: TỔNG QUAN & BIỂU ĐỒ DOANH THU TRỰC QUAN + CƠ CẤU THANH TOÁN / CATEGORY */}
       {dashboardView === "OVERVIEW" && (
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
-        {/* Cột trái: Biểu đồ Doanh thu (Cột đứng / Đường miền / Thanh ngang) & Bảng diễn biến */}
-        <div className="xl:col-span-8 bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h3 className="font-extrabold text-slate-900 text-base flex items-center gap-2">
-                <BarChart3 className="w-5 h-5 text-teal-600" />
-                Biểu đồ Doanh thu & Lợi nhuận chi tiết
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-3.5">
+          {/* Cột trái: Biểu đồ Doanh thu (Cột đứng / Đường miền / Thanh ngang) & Bảng diễn biến */}
+          <div className="xl:col-span-8 bg-white rounded-2xl border border-slate-200 p-4 shadow-sm space-y-2.5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
+                <BarChart3 className="w-4 h-4 text-brand-ink" />
+                Biểu đồ Doanh thu &amp; Lợi nhuận chi tiết
               </h3>
-              <p className="text-xs text-slate-500">
-                Theo dõi xu hướng doanh thu thuần, giá vốn và lãi gộp theo Giờ, Ngày hoặc Tháng.
-              </p>
-            </div>
 
-            {/* Bộ nút chuyển đổi Kiểu Biểu đồ & Nhóm thời gian */}
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="inline-flex rounded-lg bg-slate-100 p-0.5 border border-slate-200 text-[11px] font-bold">
-                <button
-                  type="button"
-                  onClick={() => setChartGroupBy("HOUR")}
-                  className={`px-2.5 py-1 rounded-md transition ${
-                    chartGroupBy === "HOUR"
+              {/* Bộ nút chuyển đổi Kiểu Biểu đồ & Nhóm thời gian */}
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="inline-flex rounded-lg bg-slate-100 p-0.5 border border-slate-200 text-[11px] font-bold">
+                  <button
+                    type="button"
+                    onClick={() => setChartGroupBy("HOUR")}
+                    className={`px-2.5 py-1 rounded-md transition ${chartGroupBy === "HOUR"
                       ? "bg-teal-600 text-white shadow-sm"
                       : "text-slate-600 hover:text-slate-900"
-                  }`}
-                >
-                  Theo Giờ
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setChartGroupBy("DAY")}
-                  className={`px-2.5 py-1 rounded-md transition ${
-                    chartGroupBy === "DAY"
+                      }`}
+                  >
+                    Theo Giờ
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setChartGroupBy("DAY")}
+                    className={`px-2.5 py-1 rounded-md transition ${chartGroupBy === "DAY"
                       ? "bg-teal-600 text-white shadow-sm"
                       : "text-slate-600 hover:text-slate-900"
-                  }`}
-                >
-                  Theo Ngày
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setChartGroupBy("MONTH")}
-                  className={`px-2.5 py-1 rounded-md transition ${
-                    chartGroupBy === "MONTH"
+                      }`}
+                  >
+                    Theo Ngày
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setChartGroupBy("MONTH")}
+                    className={`px-2.5 py-1 rounded-md transition ${chartGroupBy === "MONTH"
                       ? "bg-teal-600 text-white shadow-sm"
                       : "text-slate-600 hover:text-slate-900"
-                  }`}
-                >
-                  Theo Tháng
-                </button>
-              </div>
+                      }`}
+                  >
+                    Theo Tháng
+                  </button>
+                </div>
 
-              <div className="inline-flex rounded-lg bg-slate-100 p-0.5 border border-slate-200 text-[11px] font-bold">
-                <button
-                  type="button"
-                  onClick={() => setChartType("COLUMN")}
-                  className={`px-2.5 py-1 rounded-md inline-flex items-center gap-1 transition ${
-                    chartType === "COLUMN"
+                <div className="inline-flex rounded-lg bg-slate-100 p-0.5 border border-slate-200 text-[11px] font-bold">
+                  <button
+                    type="button"
+                    onClick={() => setChartType("COLUMN")}
+                    className={`px-2.5 py-1 rounded-md inline-flex items-center gap-1 transition ${chartType === "COLUMN"
                       ? "bg-teal-600 text-white shadow-sm"
                       : "text-slate-600 hover:text-slate-900"
-                  }`}
-                >
-                  <BarChart3 className="w-3.5 h-3.5" /> Biểu đồ Cột
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setChartType("AREA")}
-                  className={`px-2.5 py-1 rounded-md inline-flex items-center gap-1 transition ${
-                    chartType === "AREA"
+                      }`}
+                  >
+                    <BarChart3 className="w-3.5 h-3.5" /> Biểu đồ Cột
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setChartType("AREA")}
+                    className={`px-2.5 py-1 rounded-md inline-flex items-center gap-1 transition ${chartType === "AREA"
                       ? "bg-teal-600 text-white shadow-sm"
                       : "text-slate-600 hover:text-slate-900"
-                  }`}
-                >
-                  <LineChart className="w-3.5 h-3.5" /> Biểu đồ Đường
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setChartType("HORIZONTAL")}
-                  className={`px-2.5 py-1 rounded-md inline-flex items-center gap-1 transition ${
-                    chartType === "HORIZONTAL"
+                      }`}
+                  >
+                    <LineChart className="w-3.5 h-3.5" /> Biểu đồ Đường
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setChartType("HORIZONTAL")}
+                    className={`px-2.5 py-1 rounded-md inline-flex items-center gap-1 transition ${chartType === "HORIZONTAL"
                       ? "bg-teal-600 text-white shadow-sm"
                       : "text-slate-600 hover:text-slate-900"
-                  }`}
-                >
-                  Thanh ngang
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* KHU VỰC BIỂU ĐỒ DOANH THU */}
-          {chartSeries.length > 0 ? (
-            <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 space-y-3">
-              <div className="text-[11px] font-bold uppercase text-slate-500 flex flex-wrap items-center justify-between gap-2">
-                <span>
-                  {chartGroupBy === "HOUR"
-                    ? `Biểu đồ theo khung giờ (${chartSeries.length} mốc giờ)`
-                    : chartGroupBy === "DAY"
-                    ? `Biểu đồ ${chartSeries.length} ngày trong kỳ`
-                    : `Biểu đồ doanh thu qua ${chartSeries.length} tháng`}{" "}
-                  · TB:{" "}
-                  <strong className="text-slate-800 font-mono">
-                    {formatVND(avgSeriesRevenue)}
-                  </strong>
-                </span>
-                <div className="flex items-center gap-4">
-                  <span className="inline-flex items-center gap-1.5 text-teal-700">
-                    <span className="w-3 h-3 rounded-sm bg-teal-500 inline-block" /> Doanh thu thuần
-                  </span>
-                  <span className="inline-flex items-center gap-1.5 text-indigo-700">
-                    <span className="w-3 h-3 rounded-sm bg-indigo-500 inline-block" /> Lãi gộp
-                  </span>
+                      }`}
+                  >
+                    Thanh ngang
+                  </button>
                 </div>
               </div>
+            </div>
 
-              {/* CHẾ ĐỘ 1: BIỂU ĐỒ CỘT ĐỨNG ĐÔI (COLUMN CHART) */}
-              {chartType === "COLUMN" && (
-                <div className="pt-4 pb-1">
-                  <div className="flex items-stretch gap-2">
-                    {/* Cột nhãn trục Y cố định bên trái */}
-                    <div className="w-11 shrink-0 h-56 flex flex-col justify-between text-right pr-1 pb-1 select-none">
-                      {[1, 0.75, 0.5, 0.25, 0].map((ratio, idx) => (
-                        <span
-                          key={idx}
-                          className="text-[10px] font-mono text-slate-400 leading-none"
-                        >
-                          {formatShortVND(Math.round(maxSeriesRevenue * ratio))}
-                        </span>
-                      ))}
-                    </div>
+            {/* KHU VỰC BIỂU ĐỒ DOANH THU */}
+            {chartSeries.length > 0 ? (
+              <div className="bg-slate-50 rounded-xl p-3 border border-slate-200 space-y-2">
+                <div className="text-[11px] font-bold uppercase text-slate-500 flex flex-wrap items-center justify-between gap-2">
+                  <span>
+                    {chartGroupBy === "HOUR"
+                      ? `Biểu đồ theo khung giờ (${chartSeries.length} mốc giờ)`
+                      : chartGroupBy === "DAY"
+                        ? `Biểu đồ ${chartSeries.length} ngày trong kỳ`
+                        : `Biểu đồ doanh thu qua ${chartSeries.length} tháng`}{" "}
+                    · TB:{" "}
+                    <strong className="text-slate-800 font-mono">
+                      {formatVND(avgSeriesRevenue)}
+                    </strong>
+                  </span>
+                  <div className="flex items-center gap-4">
+                    <span className="inline-flex items-center gap-1.5 text-brand-ink">
+                      <span className="w-3 h-3 rounded-sm bg-teal-500 inline-block" /> Doanh thu thuần
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 text-brand-ink">
+                      <span className="w-3 h-3 rounded-sm bg-[#212121] inline-block" /> Lãi gộp
+                    </span>
+                  </div>
+                </div>
 
-                    {/* Vùng vẽ các cột tràn đều 100% chiều ngang */}
-                    <div className="flex-1 min-w-0">
-                      <div
-                        className={`relative h-56 flex items-end border-b border-slate-300 pb-1 ${
-                          chartSeries.length > 20
+                {/* CHẾ ĐỘ 1: BIỂU ĐỒ CỘT ĐỨNG ĐÔI (COLUMN CHART) */}
+                {chartType === "COLUMN" && (
+                  <div className="pt-4 pb-1">
+                    <div className="flex items-stretch gap-2">
+                      {/* Cột nhãn trục Y cố định bên trái */}
+                      <div className="w-11 shrink-0 h-56 flex flex-col justify-between text-right pr-1 pb-1 select-none">
+                        {[1, 0.75, 0.5, 0.25, 0].map((ratio, idx) => (
+                          <span
+                            key={idx}
+                            className="text-[10px] font-mono text-slate-400 leading-none"
+                          >
+                            {formatShortVND(Math.round(maxSeriesRevenue * ratio))}
+                          </span>
+                        ))}
+                      </div>
+
+                      {/* Vùng vẽ các cột tràn đều 100% chiều ngang */}
+                      <div className="flex-1 min-w-0">
+                        <div
+                          className={`relative h-72 flex items-end border-b border-slate-300 pb-1 ${chartSeries.length > 20
                             ? "gap-0.5 sm:gap-1"
                             : chartSeries.length > 12
-                            ? "gap-1 sm:gap-1.5"
-                            : "gap-2 sm:gap-3"
-                        }`}
-                      >
-                        {/* Đường lưới ngang tham chiếu */}
-                        <div className="absolute inset-0 flex flex-col justify-between pointer-events-none pb-1">
-                          {[1, 0.75, 0.5, 0.25, 0].map((_, idx) => (
-                            <div
-                              key={idx}
-                              className="border-b border-dashed border-slate-200/90 w-full"
-                            />
-                          ))}
-                        </div>
+                              ? "gap-1 sm:gap-1.5"
+                              : "gap-2 sm:gap-3"
+                            }`}
+                        >
+                          {/* Đường lưới ngang tham chiếu */}
+                          <div className="absolute inset-0 flex flex-col justify-between pointer-events-none pb-1">
+                            {[1, 0.75, 0.5, 0.25, 0].map((_, idx) => (
+                              <div
+                                key={idx}
+                                className="border-b border-dashed border-slate-200/90 w-full"
+                              />
+                            ))}
+                          </div>
 
-                        {chartSeries.map((d, barIdx) => {
-                          const hasRev = d.netRevenue > 0;
-                          const hasProf = d.grossProfit > 0;
-                          const revH = hasRev
-                            ? Math.min(
+                          {chartSeries.map((d, barIdx) => {
+                            const hasRev = d.netRevenue > 0;
+                            const hasProf = d.grossProfit > 0;
+                            const revH = hasRev
+                              ? Math.min(
                                 100,
                                 Math.max(6, Math.round((d.netRevenue / maxSeriesRevenue) * 100))
                               )
-                            : 2;
-                          const profH = hasProf
-                            ? Math.min(
+                              : 2;
+                            const profH = hasProf
+                              ? Math.min(
                                 100,
                                 Math.max(4, Math.round((d.grossProfit / maxSeriesRevenue) * 100))
                               )
-                            : 0;
-                          const edgePosClass =
-                            barIdx <= 1
-                              ? "left-0"
-                              : barIdx >= chartSeries.length - 2
-                              ? "right-0"
-                              : "left-1/2 -translate-x-1/2";
-                          const vertPosClass =
-                            revH > 62 ? "top-1" : "bottom-[58%]";
-                          return (
-                            <div
-                              key={d.key}
-                              className="flex-1 min-w-0 h-full flex flex-col justify-end items-center group relative z-10 hover:z-30 rounded-t-lg hover:bg-teal-500/5 transition-colors duration-200"
-                            >
-                              {/* Tooltip chi tiết gọn gàng khi di chuột */}
-                              <div
-                                className={`invisible opacity-0 translate-y-1 group-hover:visible group-hover:opacity-100 group-hover:translate-y-0 pointer-events-none transition-all duration-150 absolute ${vertPosClass} ${edgePosClass} z-40 w-max min-w-[165px] max-w-[215px] bg-slate-900/95 text-white text-[11px] rounded-xl px-2.5 py-2 shadow-xl border border-slate-700`}
-                              >
-                                <div className="font-extrabold text-teal-300 border-b border-slate-700 pb-1 mb-1 truncate">
-                                  {d.fullLabel} · {d.orders} đơn
-                                </div>
-                                <div className="font-mono flex justify-between gap-2.5 text-[10px]">
-                                  <span className="text-slate-300">Doanh thu:</span>
-                                  <strong className="text-teal-400">
-                                    {formatVND(d.netRevenue)}
-                                  </strong>
-                                </div>
-                                <div className="font-mono flex justify-between gap-2.5 text-[10px]">
-                                  <span className="text-slate-300">Giá vốn:</span>
-                                  <span className="text-amber-300">{formatVND(d.cogs)}</span>
-                                </div>
-                                <div className="font-mono flex justify-between gap-2.5 text-[10px]">
-                                  <span className="text-slate-300">Lãi gộp:</span>
-                                  <strong className="text-indigo-300">
-                                    {formatVND(d.grossProfit)}
-                                  </strong>
-                                </div>
-                              </div>
-
-                              {/* Cặp cột Doanh thu & Lãi gộp bám sát đáy */}
-                              <div className="relative w-full max-w-[34px] h-[86%] flex items-end justify-center gap-0.5 sm:gap-1">
-                                {/* Nhãn giá trị nằm ngay trên đỉnh cột có doanh thu */}
-                                {hasRev && (
-                                  <span
-                                    className="
-                                      absolute left-1/2 -translate-x-1/2 mb-1
-                                      text-[9px] sm:text-[10px] font-mono font-extrabold text-teal-800
-                                      whitespace-nowrap pointer-events-none transition-transform duration-200 group-hover:-translate-y-0.5
-                                    "
-                                    style={{ bottom: `${Math.max(revH, profH)}%` }}
-                                  >
-                                    {formatShortVND(d.netRevenue)}
-                                  </span>
-                                )}
-
-                                <div
-                                  className={`flex-1 rounded-t-sm sm:rounded-t-md animate-chart-grow-y transition-all duration-300 ${
-                                    hasRev
-                                      ? "bg-gradient-to-t from-teal-600 to-teal-400 group-hover:from-teal-500 group-hover:to-teal-300 group-hover:scale-x-110 group-hover:shadow-md shadow-sm"
-                                      : "bg-slate-200/80"
-                                  }`}
-                                  style={{
-                                    height: `${revH}%`,
-                                    animationDelay: `${Math.min(barIdx * 25, 350)}ms`,
-                                  }}
-                                />
-                                {(hasProf || chartSeries.length <= 16) && (
-                                  <div
-                                    className={`flex-1 rounded-t-sm sm:rounded-t-md animate-chart-grow-y transition-all duration-300 ${
-                                      hasProf
-                                        ? "bg-gradient-to-t from-indigo-600 to-indigo-400 group-hover:from-indigo-500 group-hover:to-indigo-300 group-hover:scale-x-110 group-hover:shadow-md shadow-sm"
-                                        : "bg-transparent"
-                                    }`}
-                                    style={{
-                                      height: `${profH}%`,
-                                      animationDelay: `${Math.min(barIdx * 25 + 60, 410)}ms`,
-                                    }}
-                                  />
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-
-                      {/* Nhãn trục X tự động giản lược khi có nhiều ngày */}
-                      <div
-                        className={`flex items-center pt-2 ${
-                          chartSeries.length > 20
-                            ? "gap-0.5 sm:gap-1"
-                            : chartSeries.length > 12
-                            ? "gap-1 sm:gap-1.5"
-                            : "gap-2 sm:gap-3"
-                        }`}
-                      >
-                        {chartSeries.map((d, idx) => {
-                          const n = chartSeries.length;
-                          const step = n > 22 ? 3 : n > 12 ? 2 : 1;
-                          const showLabel =
-                            idx === 0 ||
-                            idx === n - 1 ||
-                            (idx % step === 0 && n - 1 - idx >= Math.ceil(step / 2));
-                          return (
-                            <div
-                              key={d.key}
-                              className="flex-1 min-w-0 text-center font-mono text-[9px] sm:text-[10px] font-bold text-slate-600 overflow-visible"
-                            >
-                              {showLabel ? (
-                                <span className="inline-block whitespace-nowrap">
-                                  {d.label}
-                                </span>
-                              ) : (
-                                <span className="text-slate-300">·</span>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* CHẾ ĐỘ 2: BIỂU ĐỒ ĐƯỜNG & MIỀN (SVG AREA / LINE CHART - FULL WIDTH KHÔNG PADDING 2 BÊN) */}
-              {chartType === "AREA" && (
-                <div className="pt-3 pb-1">
-                  <div className="flex items-stretch gap-2">
-                    {/* Cột nhãn trục Y cố định sát lề trái */}
-                    <div className="w-11 shrink-0 h-56 flex flex-col justify-between text-right pr-1 pb-1 select-none">
-                      {[1, 0.75, 0.5, 0.25, 0].map((ratio, idx) => (
-                        <span
-                          key={idx}
-                          className="text-[10px] font-mono text-slate-400 leading-none"
-                        >
-                          {formatShortVND(Math.round(maxSeriesRevenue * ratio))}
-                        </span>
-                      ))}
-                    </div>
-
-                    {/* Vùng đồ thị kéo sát 100% mép trái - phải (bỏ hoàn toàn padding 2 bên) */}
-                    <div className="flex-1 min-w-0">
-                      <div className="relative h-56 w-full border-b border-slate-300">
-                        {/* Đường lưới ngang */}
-                        <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
-                          {[1, 0.75, 0.5, 0.25, 0].map((_, idx) => (
-                            <div
-                              key={idx}
-                              className="border-b border-dashed border-slate-200/90 w-full"
-                            />
-                          ))}
-                        </div>
-
-                        {/* SVG đường & miền phủ kín 100% chiều rộng từ x=0 đến x=1000 */}
-                        <svg
-                          viewBox="0 0 1000 200"
-                          preserveAspectRatio="none"
-                          className="w-full h-full block overflow-visible animate-chart-reveal-x"
-                        >
-                          <defs>
-                            <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor="#10b981" stopOpacity="0.38" />
-                              <stop offset="100%" stopColor="#10b981" stopOpacity="0.02" />
-                            </linearGradient>
-                            <linearGradient id="profGrad" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor="#6366f1" stopOpacity="0.32" />
-                              <stop offset="100%" stopColor="#6366f1" stopOpacity="0.02" />
-                            </linearGradient>
-                          </defs>
-
-                          {(() => {
-                            const n = chartSeries.length;
-                            const getX = (idx: number) =>
-                              n === 1 ? 500 : (idx / (n - 1)) * 1000;
-                            const getRevY = (v: number) =>
-                              196 - (Math.max(0, v) / maxSeriesRevenue) * 184;
-                            const getProfY = (v: number) =>
-                              196 - (Math.max(0, v) / maxSeriesRevenue) * 184;
-
-                            const revPoints =
-                              n === 1
-                                ? `0,${getRevY(chartSeries[0].netRevenue)} 500,${getRevY(
-                                    chartSeries[0].netRevenue
-                                  )} 1000,${getRevY(chartSeries[0].netRevenue)}`
-                                : chartSeries
-                                    .map((d, i) => `${getX(i)},${getRevY(d.netRevenue)}`)
-                                    .join(" ");
-                            const profPoints =
-                              n === 1
-                                ? `0,${getProfY(chartSeries[0].grossProfit)} 500,${getProfY(
-                                    chartSeries[0].grossProfit
-                                  )} 1000,${getProfY(chartSeries[0].grossProfit)}`
-                                : chartSeries
-                                    .map((d, i) => `${getX(i)},${getProfY(d.grossProfit)}`)
-                                    .join(" ");
-
-                            const revArea = `0,200 ${revPoints} 1000,200`;
-                            const profArea = `0,200 ${profPoints} 1000,200`;
-
-                            return (
-                              <>
-                                <polygon points={revArea} fill="url(#revGrad)" />
-                                <polygon points={profArea} fill="url(#profGrad)" />
-                                <polyline
-                                  fill="none"
-                                  stroke="#10b981"
-                                  strokeWidth="2.5"
-                                  vectorEffect="non-scaling-stroke"
-                                  points={revPoints}
-                                />
-                                <polyline
-                                  fill="none"
-                                  stroke="#6366f1"
-                                  strokeWidth="2"
-                                  strokeDasharray="5 3"
-                                  vectorEffect="non-scaling-stroke"
-                                  points={profPoints}
-                                />
-                              </>
-                            );
-                          })()}
-                        </svg>
-
-                        {/* Các nút chấm tròn (Dots) & Tooltip chuẩn tỷ lệ 1:1 không bị méo */}
-                        <div className="absolute inset-0 pointer-events-none">
-                          {chartSeries.map((d, i) => {
-                            const n = chartSeries.length;
-                            const leftPct = n === 1 ? 50 : (i / (n - 1)) * 100;
-                            const revBottomPct =
-                              2 + (Math.max(0, d.netRevenue) / maxSeriesRevenue) * 92;
-                            const profBottomPct =
-                              2 + (Math.max(0, d.grossProfit) / maxSeriesRevenue) * 92;
-                            const hasVal = d.netRevenue > 0 || d.grossProfit > 0;
-
+                              : 0;
+                            const edgePosClass =
+                              barIdx <= 1
+                                ? "left-0"
+                                : barIdx >= chartSeries.length - 2
+                                  ? "right-0"
+                                  : "left-1/2 -translate-x-1/2";
+                            const vertPosClass =
+                              revH > 62 ? "top-1" : "bottom-[58%]";
                             return (
                               <div
                                 key={d.key}
-                                className="absolute top-0 bottom-0 group pointer-events-auto"
-                                style={{
-                                  left: `${leftPct}%`,
-                                  width: n > 20 ? "14px" : "22px",
-                                  transform: "translateX(-50%)",
-                                }}
+                                className="flex-1 min-w-0 h-full flex flex-col justify-end items-center group relative z-10 hover:z-30 rounded-t-lg hover:bg-teal-500/5 transition-colors duration-200"
                               >
-                                {/* Đường gióng dọc khi hover */}
-                                <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-teal-500/50" />
-
-                                {/* Tooltip chi tiết khi hover */}
+                                {/* Tooltip chi tiết gọn gàng khi di chuột */}
                                 <div
-                                  className={`invisible opacity-0 group-hover:visible group-hover:opacity-100 pointer-events-none transition-all duration-150 absolute top-1 ${
-                                    i <= 1
-                                      ? "left-0"
-                                      : i >= n - 2
-                                      ? "right-0"
-                                      : "left-1/2 -translate-x-1/2"
-                                  } z-40 w-max min-w-[165px] max-w-[215px] bg-slate-900/95 text-white text-[11px] rounded-xl px-2.5 py-2 shadow-xl border border-slate-700`}
+                                  className={`invisible opacity-0 translate-y-1 group-hover:visible group-hover:opacity-100 group-hover:translate-y-0 pointer-events-none transition-all duration-150 absolute ${vertPosClass} ${edgePosClass} z-40 w-max min-w-[165px] max-w-[215px] bg-slate-900/95 text-white text-[11px] rounded-xl px-2.5 py-2 shadow-xl border border-slate-700`}
                                 >
                                   <div className="font-extrabold text-teal-300 border-b border-slate-700 pb-1 mb-1 truncate">
                                     {d.fullLabel} · {d.orders} đơn
@@ -3387,690 +3239,915 @@ export default function RevenueDashboardModule({
                                   </div>
                                 </div>
 
-                                {/* Nhãn số trên đỉnh điểm có doanh thu */}
-                                {d.netRevenue > 0 && (
-                                  <span
-                                    className="absolute left-1/2 -translate-x-1/2 mb-2 text-[9px] sm:text-[10px] font-mono font-extrabold text-teal-800 whitespace-nowrap"
-                                    style={{ bottom: `${revBottomPct}%` }}
-                                  >
-                                    {formatShortVND(d.netRevenue)}
-                                  </span>
-                                )}
+                                {/* Cặp cột Doanh thu & Lãi gộp bám sát đáy */}
+                                <div className="relative w-full max-w-[34px] h-[86%] flex items-end justify-center gap-0.5 sm:gap-1">
+                                  {/* Nhãn giá trị nằm ngay trên đỉnh cột có doanh thu */}
+                                  {hasRev && (
+                                    <span
+                                      className="
+                                      absolute left-1/2 -translate-x-1/2 mb-1
+                                      text-[9px] sm:text-[10px] font-mono font-extrabold text-brand-ink
+                                      whitespace-nowrap pointer-events-none transition-transform duration-200 group-hover:-translate-y-0.5
+                                    "
+                                      style={{ bottom: `${Math.max(revH, profH)}%` }}
+                                    >
+                                      {formatShortVND(d.netRevenue)}
+                                    </span>
+                                  )}
 
-                                {/* Điểm tròn Doanh thu */}
-                                <span
-                                  className={`absolute left-1/2 -translate-x-1/2 translate-y-1/2 rounded-full border-2 border-white shadow-sm transition-transform group-hover:scale-125 ${
-                                    hasVal
-                                      ? "w-2.5 h-2.5 bg-teal-600"
-                                      : "w-1.5 h-1.5 bg-teal-400/70"
-                                  }`}
-                                  style={{ bottom: `${revBottomPct}%` }}
-                                />
-
-                                {/* Điểm tròn Lãi gộp */}
-                                {(d.grossProfit > 0 || n <= 14) && (
-                                  <span
-                                    className={`absolute left-1/2 -translate-x-1/2 translate-y-1/2 rounded-full border border-white shadow-sm ${
-                                      d.grossProfit > 0
-                                        ? "w-2 h-2 bg-indigo-600"
-                                        : "w-1.5 h-1.5 bg-indigo-400/60"
-                                    }`}
-                                    style={{ bottom: `${profBottomPct}%` }}
+                                  <div
+                                    className={`flex-1 rounded-t-sm sm:rounded-t-md animate-chart-grow-y transition-all duration-300 ${hasRev
+                                      ? "bg-gradient-to-t from-teal-600 to-teal-400 group-hover:from-teal-500 group-hover:to-teal-300 group-hover:scale-x-110 group-hover:shadow-md shadow-sm"
+                                      : "bg-slate-200/80"
+                                      }`}
+                                    style={{
+                                      height: `${revH}%`,
+                                      animationDelay: `${Math.min(barIdx * 25, 350)}ms`,
+                                    }}
                                   />
+                                  {(hasProf || chartSeries.length <= 16) && (
+                                    <div
+                                      className={`flex-1 rounded-t-sm sm:rounded-t-md animate-chart-grow-y transition-all duration-300 ${hasProf
+                                        ? "bg-gradient-to-t from-[#212121] to-[#474748] group-hover:from-[#2D2D2D] group-hover:to-[#6B6B6B] group-hover:scale-x-110 group-hover:shadow-md shadow-sm"
+                                        : "bg-transparent"
+                                        }`}
+                                      style={{
+                                        height: `${profH}%`,
+                                        animationDelay: `${Math.min(barIdx * 25 + 60, 410)}ms`,
+                                      }}
+                                    />
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Nhãn trục X tự động giản lược khi có nhiều ngày */}
+                        <div
+                          className={`flex items-center pt-2 ${chartSeries.length > 20
+                            ? "gap-0.5 sm:gap-1"
+                            : chartSeries.length > 12
+                              ? "gap-1 sm:gap-1.5"
+                              : "gap-2 sm:gap-3"
+                            }`}
+                        >
+                          {chartSeries.map((d, idx) => {
+                            const n = chartSeries.length;
+                            const step = n > 22 ? 3 : n > 12 ? 2 : 1;
+                            const showLabel =
+                              idx === 0 ||
+                              idx === n - 1 ||
+                              (idx % step === 0 && n - 1 - idx >= Math.ceil(step / 2));
+                            return (
+                              <div
+                                key={d.key}
+                                className="flex-1 min-w-0 text-center font-mono text-[9px] sm:text-[10px] font-bold text-slate-600 overflow-visible"
+                              >
+                                {showLabel ? (
+                                  <span className="inline-block whitespace-nowrap">
+                                    {d.label}
+                                  </span>
+                                ) : (
+                                  <span className="text-slate-300">·</span>
                                 )}
                               </div>
                             );
                           })}
                         </div>
                       </div>
+                    </div>
+                  </div>
+                )}
 
-                      {/* Nhãn trục X bám sát từ mép trái đến mép phải, tự động giản lược khi có 30 ngày */}
-                      <div className="relative h-6 mt-2 w-full select-none">
-                        {chartSeries.map((d, idx) => {
-                          const n = chartSeries.length;
-                          const step = n > 22 ? 3 : n > 12 ? 2 : 1;
-                          const showLabel =
-                            idx === 0 ||
-                            idx === n - 1 ||
-                            (idx % step === 0 && n - 1 - idx >= Math.ceil(step / 2));
-                          if (!showLabel) return null;
-                          const leftPct = n === 1 ? 50 : (idx / (n - 1)) * 100;
-                          const alignClass =
-                            idx === 0
-                              ? "translate-x-0"
-                              : idx === n - 1
-                              ? "-translate-x-full"
-                              : "-translate-x-1/2";
-                          return (
-                            <span
-                              key={d.key}
-                              className={`absolute top-0 font-mono text-[9px] sm:text-[10px] font-bold text-slate-600 whitespace-nowrap ${alignClass}`}
-                              style={{ left: `${leftPct}%` }}
-                            >
-                              {d.label}
-                            </span>
-                          );
-                        })}
+                {/* CHẾ ĐỘ 2: BIỂU ĐỒ ĐƯỜNG & MIỀN (SVG AREA / LINE CHART - FULL WIDTH KHÔNG PADDING 2 BÊN) */}
+                {chartType === "AREA" && (
+                  <div className="pt-3 pb-1">
+                    <div className="flex items-stretch gap-2">
+                      {/* Cột nhãn trục Y cố định sát lề trái */}
+                      <div className="w-11 shrink-0 h-56 flex flex-col justify-between text-right pr-1 pb-1 select-none">
+                        {[1, 0.75, 0.5, 0.25, 0].map((ratio, idx) => (
+                          <span
+                            key={idx}
+                            className="text-[10px] font-mono text-slate-400 leading-none"
+                          >
+                            {formatShortVND(Math.round(maxSeriesRevenue * ratio))}
+                          </span>
+                        ))}
+                      </div>
+
+                      {/* Vùng đồ thị kéo sát 100% mép trái - phải (bỏ hoàn toàn padding 2 bên) */}
+                      <div className="flex-1 min-w-0">
+                        <div className="relative h-56 w-full border-b border-slate-300">
+                          {/* Đường lưới ngang */}
+                          <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
+                            {[1, 0.75, 0.5, 0.25, 0].map((_, idx) => (
+                              <div
+                                key={idx}
+                                className="border-b border-dashed border-slate-200/90 w-full"
+                              />
+                            ))}
+                          </div>
+
+                          {/* SVG đường & miền phủ kín 100% chiều rộng từ x=0 đến x=1000 */}
+                          <svg
+                            viewBox="0 0 1000 200"
+                            preserveAspectRatio="none"
+                            className="w-full h-full block overflow-visible animate-chart-reveal-x"
+                          >
+                            <defs>
+                              <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#E8B020" stopOpacity="0.38" />
+                                <stop offset="100%" stopColor="#E8B020" stopOpacity="0.02" />
+                              </linearGradient>
+                              <linearGradient id="profGrad" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#212121" stopOpacity="0.32" />
+                                <stop offset="100%" stopColor="#212121" stopOpacity="0.02" />
+                              </linearGradient>
+                            </defs>
+
+                            {(() => {
+                              const n = chartSeries.length;
+                              const getX = (idx: number) =>
+                                n === 1 ? 500 : (idx / (n - 1)) * 1000;
+                              const getRevY = (v: number) =>
+                                196 - (Math.max(0, v) / maxSeriesRevenue) * 184;
+                              const getProfY = (v: number) =>
+                                196 - (Math.max(0, v) / maxSeriesRevenue) * 184;
+
+                              const revPoints =
+                                n === 1
+                                  ? `0,${getRevY(chartSeries[0].netRevenue)} 500,${getRevY(
+                                    chartSeries[0].netRevenue
+                                  )} 1000,${getRevY(chartSeries[0].netRevenue)}`
+                                  : chartSeries
+                                    .map((d, i) => `${getX(i)},${getRevY(d.netRevenue)}`)
+                                    .join(" ");
+                              const profPoints =
+                                n === 1
+                                  ? `0,${getProfY(chartSeries[0].grossProfit)} 500,${getProfY(
+                                    chartSeries[0].grossProfit
+                                  )} 1000,${getProfY(chartSeries[0].grossProfit)}`
+                                  : chartSeries
+                                    .map((d, i) => `${getX(i)},${getProfY(d.grossProfit)}`)
+                                    .join(" ");
+
+                              const revArea = `0,200 ${revPoints} 1000,200`;
+                              const profArea = `0,200 ${profPoints} 1000,200`;
+
+                              return (
+                                <>
+                                  <polygon points={revArea} fill="url(#revGrad)" />
+                                  <polygon points={profArea} fill="url(#profGrad)" />
+                                  <polyline
+                                    fill="none"
+                                    stroke="#E8B020"
+                                    strokeWidth="2.5"
+                                    vectorEffect="non-scaling-stroke"
+                                    points={revPoints}
+                                  />
+                                  <polyline
+                                    fill="none"
+                                    stroke="#212121"
+                                    strokeWidth="2"
+                                    strokeDasharray="5 3"
+                                    vectorEffect="non-scaling-stroke"
+                                    points={profPoints}
+                                  />
+                                </>
+                              );
+                            })()}
+                          </svg>
+
+                          {/* Các nút chấm tròn (Dots) & Tooltip chuẩn tỷ lệ 1:1 không bị méo */}
+                          <div className="absolute inset-0 pointer-events-none">
+                            {chartSeries.map((d, i) => {
+                              const n = chartSeries.length;
+                              const leftPct = n === 1 ? 50 : (i / (n - 1)) * 100;
+                              const revBottomPct =
+                                2 + (Math.max(0, d.netRevenue) / maxSeriesRevenue) * 92;
+                              const profBottomPct =
+                                2 + (Math.max(0, d.grossProfit) / maxSeriesRevenue) * 92;
+                              const hasVal = d.netRevenue > 0 || d.grossProfit > 0;
+
+                              return (
+                                <div
+                                  key={d.key}
+                                  className="absolute top-0 bottom-0 group pointer-events-auto"
+                                  style={{
+                                    left: `${leftPct}%`,
+                                    width: n > 20 ? "14px" : "22px",
+                                    transform: "translateX(-50%)",
+                                  }}
+                                >
+                                  {/* Đường gióng dọc khi hover */}
+                                  <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-teal-500/50" />
+
+                                  {/* Tooltip chi tiết khi hover */}
+                                  <div
+                                    className={`invisible opacity-0 group-hover:visible group-hover:opacity-100 pointer-events-none transition-all duration-150 absolute top-1 ${i <= 1
+                                      ? "left-0"
+                                      : i >= n - 2
+                                        ? "right-0"
+                                        : "left-1/2 -translate-x-1/2"
+                                      } z-40 w-max min-w-[165px] max-w-[215px] bg-slate-900/95 text-white text-[11px] rounded-xl px-2.5 py-2 shadow-xl border border-slate-700`}
+                                  >
+                                    <div className="font-extrabold text-teal-300 border-b border-slate-700 pb-1 mb-1 truncate">
+                                      {d.fullLabel} · {d.orders} đơn
+                                    </div>
+                                    <div className="font-mono flex justify-between gap-2.5 text-[10px]">
+                                      <span className="text-slate-300">Doanh thu:</span>
+                                      <strong className="text-teal-400">
+                                        {formatVND(d.netRevenue)}
+                                      </strong>
+                                    </div>
+                                    <div className="font-mono flex justify-between gap-2.5 text-[10px]">
+                                      <span className="text-slate-300">Giá vốn:</span>
+                                      <span className="text-amber-300">{formatVND(d.cogs)}</span>
+                                    </div>
+                                    <div className="font-mono flex justify-between gap-2.5 text-[10px]">
+                                      <span className="text-slate-300">Lãi gộp:</span>
+                                      <strong className="text-indigo-300">
+                                        {formatVND(d.grossProfit)}
+                                      </strong>
+                                    </div>
+                                  </div>
+
+                                  {/* Nhãn số trên đỉnh điểm có doanh thu */}
+                                  {d.netRevenue > 0 && (
+                                    <span
+                                      className="absolute left-1/2 -translate-x-1/2 mb-2 text-[9px] sm:text-[10px] font-mono font-extrabold text-brand-ink whitespace-nowrap"
+                                      style={{ bottom: `${revBottomPct}%` }}
+                                    >
+                                      {formatShortVND(d.netRevenue)}
+                                    </span>
+                                  )}
+
+                                  {/* Điểm tròn Doanh thu */}
+                                  <span
+                                    className={`absolute left-1/2 -translate-x-1/2 translate-y-1/2 rounded-full border-2 border-white shadow-sm transition-transform group-hover:scale-125 ${hasVal
+                                      ? "w-2.5 h-2.5 bg-teal-600"
+                                      : "w-1.5 h-1.5 bg-teal-400/70"
+                                      }`}
+                                    style={{ bottom: `${revBottomPct}%` }}
+                                  />
+
+                                  {/* Điểm tròn Lãi gộp */}
+                                  {(d.grossProfit > 0 || n <= 14) && (
+                                    <span
+                                      className={`absolute left-1/2 -translate-x-1/2 translate-y-1/2 rounded-full border border-white shadow-sm ${d.grossProfit > 0
+                                        ? "w-2 h-2 bg-[#212121]"
+                                        : "w-1.5 h-1.5 bg-[#212121]/60"
+                                        }`}
+                                      style={{ bottom: `${profBottomPct}%` }}
+                                    />
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Nhãn trục X bám sát từ mép trái đến mép phải, tự động giản lược khi có 30 ngày */}
+                        <div className="relative h-6 mt-2 w-full select-none">
+                          {chartSeries.map((d, idx) => {
+                            const n = chartSeries.length;
+                            const step = n > 22 ? 3 : n > 12 ? 2 : 1;
+                            const showLabel =
+                              idx === 0 ||
+                              idx === n - 1 ||
+                              (idx % step === 0 && n - 1 - idx >= Math.ceil(step / 2));
+                            if (!showLabel) return null;
+                            const leftPct = n === 1 ? 50 : (idx / (n - 1)) * 100;
+                            const alignClass =
+                              idx === 0
+                                ? "translate-x-0"
+                                : idx === n - 1
+                                  ? "-translate-x-full"
+                                  : "-translate-x-1/2";
+                            return (
+                              <span
+                                key={d.key}
+                                className={`absolute top-0 font-mono text-[9px] sm:text-[10px] font-bold text-slate-600 whitespace-nowrap ${alignClass}`}
+                                style={{ left: `${leftPct}%` }}
+                              >
+                                {d.label}
+                              </span>
+                            );
+                          })}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* CHẾ ĐỘ 3: BIỂU ĐỒ THANH NGANG (BẢN CŨ QUEN THUỘC) */}
-              {chartType === "HORIZONTAL" && (
-                <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
-                  {[...chartSeries].reverse().map((d, barIdx) => {
-                    const revPct = Math.min(
-                      100,
-                      Math.max(2, Math.round((Math.max(0, d.netRevenue) / maxSeriesRevenue) * 100))
-                    );
-                    const profPct = Math.min(
-                      100,
-                      Math.max(
-                        d.grossProfit !== 0 ? 3 : 0,
-                        Math.round((Math.abs(d.grossProfit) / maxSeriesRevenue) * 100)
-                      )
-                    );
-                    return (
-                      <div
-                        key={d.key}
-                        className="text-xs space-y-1.5 bg-white p-2.5 rounded-lg border border-slate-200/80 hover:border-teal-300 hover:shadow-sm transition-all duration-200"
-                      >
-                        <div className="flex items-center justify-between gap-2 font-mono">
-                          <span className="font-bold text-slate-800 flex items-center gap-1.5 min-w-0 truncate">
-                            <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                            <span className="truncate">{d.fullLabel}</span>
-                            <span className="text-[10px] font-sans font-semibold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 shrink-0">
-                              {d.orders} đơn · {d.unitsSold} SP
+                {/* CHẾ ĐỘ 3: BIỂU ĐỒ THANH NGANG (BẢN CŨ QUEN THUỘC) */}
+                {chartType === "HORIZONTAL" && (
+                  <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
+                    {[...chartSeries].reverse().map((d, barIdx) => {
+                      const revPct = Math.min(
+                        100,
+                        Math.max(2, Math.round((Math.max(0, d.netRevenue) / maxSeriesRevenue) * 100))
+                      );
+                      const profPct = Math.min(
+                        100,
+                        Math.max(
+                          d.grossProfit !== 0 ? 3 : 0,
+                          Math.round((Math.abs(d.grossProfit) / maxSeriesRevenue) * 100)
+                        )
+                      );
+                      return (
+                        <div
+                          key={d.key}
+                          className="text-xs space-y-1.5 bg-white p-2.5 rounded-lg border border-slate-200/80 hover:border-teal-300 hover:shadow-sm transition-all duration-200"
+                        >
+                          <div className="flex items-center justify-between gap-2 font-mono">
+                            <span className="font-bold text-slate-800 flex items-center gap-1.5 min-w-0 truncate">
+                              <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                              <span className="truncate">{d.fullLabel}</span>
+                              <span className="text-[10px] font-sans font-semibold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 shrink-0">
+                                {d.orders} đơn · {d.unitsSold} SP
+                              </span>
                             </span>
-                          </span>
-                          <span className="text-right shrink-0 whitespace-nowrap">
-                            <strong className="text-teal-700">{formatVND(d.netRevenue)}</strong>
-                            <span className="text-slate-400 mx-1">·</span>
-                            <span className={`font-bold ${d.grossProfit >= 0 ? "text-teal-600" : "text-red-600"}`}>
-                              Lãi: {formatVND(d.grossProfit)}
+                            <span className="text-right shrink-0 whitespace-nowrap">
+                              <strong className="text-brand-ink">{formatVND(d.netRevenue)}</strong>
+                              <span className="text-slate-400 mx-1">·</span>
+                              <span className={`font-bold ${d.grossProfit >= 0 ? "text-brand-ink" : "text-red-600"}`}>
+                                Lãi: {formatVND(d.grossProfit)}
+                              </span>
                             </span>
-                          </span>
+                          </div>
+                          <div className="space-y-1">
+                            <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-teal-500 rounded-full animate-chart-grow-x transition-all duration-500"
+                                style={{
+                                  width: `${revPct}%`,
+                                  animationDelay: `${Math.min(barIdx * 35, 350)}ms`,
+                                }}
+                              />
+                            </div>
+                            <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full rounded-full animate-chart-grow-x transition-all duration-500 ${d.grossProfit >= 0 ? "bg-teal-600" : "bg-red-500"
+                                  }`}
+                                style={{
+                                  width: `${profPct}%`,
+                                  animationDelay: `${Math.min(barIdx * 35 + 70, 420)}ms`,
+                                }}
+                              />
+                            </div>
+                          </div>
                         </div>
-                        <div className="space-y-1">
-                          <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-teal-500 rounded-full animate-chart-grow-x transition-all duration-500"
-                              style={{
-                                width: `${revPct}%`,
-                                animationDelay: `${Math.min(barIdx * 35, 350)}ms`,
-                              }}
-                            />
-                          </div>
-                          <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
-                            <div
-                              className={`h-full rounded-full animate-chart-grow-x transition-all duration-500 ${
-                                d.grossProfit >= 0 ? "bg-teal-600" : "bg-red-500"
-                              }`}
-                              style={{
-                                width: `${profPct}%`,
-                                animationDelay: `${Math.min(barIdx * 35 + 70, 420)}ms`,
-                              }}
-                            />
-                          </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="py-8 text-center text-xs text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                Chưa có dữ liệu giao dịch trong khoảng thời gian này.
+              </div>
+            )}
+
+            {/* Bảng chi tiết theo ngày (Thu gọn mặc định để Overview vừa 1 màn hình) */}
+            {reversedDaily.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowDailyTable((v) => !v)}
+                    className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold inline-flex items-center gap-1.5 transition"
+                  >
+                    <Calendar className="w-3.5 h-3.5 text-brand-ink" />
+                    <span>
+                      {showDailyTable
+                        ? `Ẩn bảng chi tiết theo ngày (${reversedDaily.length} ngày)`
+                        : `Xem bảng chi tiết theo ngày (${reversedDaily.length} ngày)`}
+                    </span>
+                  </button>
+                </div>
+
+                {showDailyTable && (
+                  <>
+                    <div className="overflow-x-auto border border-slate-200 rounded-xl">
+                      <table className="w-full text-xs text-left">
+                        <thead className="bg-slate-100 text-slate-700 border-b border-slate-200 uppercase">
+                          <tr>
+                            <th className="py-2.5 px-3">Ngày</th>
+                            <th className="py-2.5 px-2.5 text-right">Số đơn</th>
+                            <th className="py-2.5 px-2.5 text-right">SL bán</th>
+                            <th className="py-2.5 px-3 text-right">Tiền hàng</th>
+                            <th className="py-2.5 px-3 text-right text-amber-700">Giảm giá</th>
+                            <th className="py-2.5 px-3 text-right text-brand-ink">Doanh thu thuần</th>
+                            <th className="py-2.5 px-3 text-right text-brand-ink">Thực thu</th>
+                            <th className="py-2.5 px-3 text-right">Giá vốn</th>
+                            <th className="py-2.5 px-3 text-right text-brand-ink">Lãi gộp</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200">
+                          {pagedDaily.map((d) => (
+                            <tr key={d.date} className="hover:bg-slate-50 font-mono">
+                              <td className="py-2 px-3 font-bold text-slate-900 whitespace-nowrap">
+                                {d.date.split("-").reverse().join("/")}
+                              </td>
+                              <td className="py-2 px-2.5 text-right font-bold">{d.orders}</td>
+                              <td className="py-2 px-2.5 text-right">{d.unitsSold}</td>
+                              <td className="py-2 px-3 text-right text-slate-700 whitespace-nowrap">
+                                {formatVND(d.grossRevenue)}
+                              </td>
+                              <td className="py-2 px-3 text-right text-amber-700 whitespace-nowrap">
+                                {d.discountTotal > 0 ? `-${formatVND(d.discountTotal)}` : "0 VND"}
+                              </td>
+                              <td className="py-2 px-3 text-right font-extrabold text-brand-ink whitespace-nowrap">
+                                {formatVND(d.netRevenue)}
+                              </td>
+                              <td className="py-2 px-3 text-right font-bold text-brand-ink whitespace-nowrap">
+                                {d.cashCollected !== undefined ? formatVND(d.cashCollected) : "—"}
+                              </td>
+                              <td className="py-2 px-3 text-right text-slate-600 whitespace-nowrap">
+                                {formatVND(d.cogs)}
+                              </td>
+                              <td
+                                className={`py-2 px-3 text-right font-extrabold whitespace-nowrap ${d.grossProfit >= 0 ? "text-brand-ink" : "text-red-600"
+                                  }`}
+                              >
+                                {formatVND(d.grossProfit)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {dailyTotalPages > 1 && (
+                      <div className="flex items-center justify-between text-xs text-slate-600">
+                        <span>
+                          Trang <strong>{dailyPage}</strong> / {dailyTotalPages} ({reversedDaily.length} ngày)
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            disabled={dailyPage <= 1}
+                            onClick={() => setDailyPage((p) => Math.max(1, p - 1))}
+                            className="px-2.5 py-1 rounded border border-slate-300 disabled:opacity-40 hover:bg-slate-100 font-bold"
+                          >
+                            Trước
+                          </button>
+                          <button
+                            type="button"
+                            disabled={dailyPage >= dailyTotalPages}
+                            onClick={() => setDailyPage((p) => Math.min(dailyTotalPages, p + 1))}
+                            className="px-2.5 py-1 rounded border border-slate-300 disabled:opacity-40 hover:bg-slate-100 font-bold"
+                          >
+                            Tiếp
+                          </button>
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="py-8 text-center text-xs text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200">
-              Chưa có dữ liệu giao dịch trong khoảng thời gian này.
-            </div>
-          )}
-
-          {/* Bảng chi tiết theo ngày (Thu gọn mặc định để Overview vừa 1 màn hình) */}
-          {reversedDaily.length > 0 && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between pt-1">
-                <button
-                  type="button"
-                  onClick={() => setShowDailyTable((v) => !v)}
-                  className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold inline-flex items-center gap-1.5 transition"
-                >
-                  <Calendar className="w-3.5 h-3.5 text-teal-600" />
-                  <span>
-                    {showDailyTable
-                      ? `Ẩn bảng chi tiết theo ngày (${reversedDaily.length} ngày)`
-                      : `Xem bảng chi tiết theo ngày (${reversedDaily.length} ngày)`}
-                  </span>
-                </button>
+                    )}
+                  </>
+                )}
               </div>
-
-              {showDailyTable && (
-                <>
-                  <div className="overflow-x-auto border border-slate-200 rounded-xl">
-                    <table className="w-full text-xs text-left">
-                      <thead className="bg-slate-100 text-slate-700 border-b border-slate-200 uppercase">
-                        <tr>
-                          <th className="py-2.5 px-3">Ngày</th>
-                          <th className="py-2.5 px-2.5 text-right">Số đơn</th>
-                          <th className="py-2.5 px-2.5 text-right">SL bán</th>
-                          <th className="py-2.5 px-3 text-right">Tiền hàng</th>
-                          <th className="py-2.5 px-3 text-right text-amber-700">Giảm giá</th>
-                          <th className="py-2.5 px-3 text-right text-teal-700">Doanh thu thuần</th>
-                          <th className="py-2.5 px-3 text-right text-teal-700">Thực thu</th>
-                          <th className="py-2.5 px-3 text-right">Giá vốn</th>
-                          <th className="py-2.5 px-3 text-right text-indigo-700">Lãi gộp</th>
-                        </tr>
-                      </thead>
-                  <tbody className="divide-y divide-slate-200">
-                    {pagedDaily.map((d) => (
-                      <tr key={d.date} className="hover:bg-slate-50 font-mono">
-                        <td className="py-2 px-3 font-bold text-slate-900 whitespace-nowrap">
-                          {d.date.split("-").reverse().join("/")}
-                        </td>
-                        <td className="py-2 px-2.5 text-right font-bold">{d.orders}</td>
-                        <td className="py-2 px-2.5 text-right">{d.unitsSold}</td>
-                        <td className="py-2 px-3 text-right text-slate-700 whitespace-nowrap">
-                          {formatVND(d.grossRevenue)}
-                        </td>
-                        <td className="py-2 px-3 text-right text-amber-700 whitespace-nowrap">
-                          {d.discountTotal > 0 ? `-${formatVND(d.discountTotal)}` : "0 VND"}
-                        </td>
-                        <td className="py-2 px-3 text-right font-extrabold text-teal-700 whitespace-nowrap">
-                          {formatVND(d.netRevenue)}
-                        </td>
-                        <td className="py-2 px-3 text-right font-bold text-teal-700 whitespace-nowrap">
-                          {d.cashCollected !== undefined ? formatVND(d.cashCollected) : "—"}
-                        </td>
-                        <td className="py-2 px-3 text-right text-slate-600 whitespace-nowrap">
-                          {formatVND(d.cogs)}
-                        </td>
-                        <td
-                          className={`py-2 px-3 text-right font-extrabold whitespace-nowrap ${
-                            d.grossProfit >= 0 ? "text-indigo-700" : "text-red-600"
-                          }`}
-                        >
-                          {formatVND(d.grossProfit)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {dailyTotalPages > 1 && (
-                <div className="flex items-center justify-between text-xs text-slate-600">
-                  <span>
-                    Trang <strong>{dailyPage}</strong> / {dailyTotalPages} ({reversedDaily.length} ngày)
-                  </span>
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      disabled={dailyPage <= 1}
-                      onClick={() => setDailyPage((p) => Math.max(1, p - 1))}
-                      className="px-2.5 py-1 rounded border border-slate-300 disabled:opacity-40 hover:bg-slate-100 font-bold"
-                    >
-                      Trước
-                    </button>
-                    <button
-                      type="button"
-                      disabled={dailyPage >= dailyTotalPages}
-                      onClick={() => setDailyPage((p) => Math.min(dailyTotalPages, p + 1))}
-                      className="px-2.5 py-1 rounded border border-slate-300 disabled:opacity-40 hover:bg-slate-100 font-bold"
-                    >
-                      Tiếp
-                    </button>
-                  </div>
-                </div>
-              )}
-                </>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Cột phải: Cơ cấu Thanh toán & Danh mục gộp gọn 1 Card có nút chuyển */}
-        <div className="xl:col-span-4 bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
-              {structureView === "PAYMENT" ? (
-                <>
-                  <CreditCard className="w-4 h-4 text-teal-600" />
-                  Cơ cấu Thanh toán
-                </>
-              ) : (
-                <>
-                  <Layers className="w-4 h-4 text-teal-600" />
-                  Tỷ trọng Danh mục
-                </>
-              )}
-            </h3>
-
-            <div className="inline-flex rounded-lg bg-slate-100 p-0.5 border border-slate-200 text-[11px] font-bold">
-              <button
-                type="button"
-                onClick={() => setStructureView("PAYMENT")}
-                className={`px-2.5 py-1 rounded-md transition ${
-                  structureView === "PAYMENT"
-                    ? "bg-teal-600 text-white shadow-xs"
-                    : "text-slate-600 hover:text-slate-900"
-                }`}
-              >
-                Thanh toán
-              </button>
-              <button
-                type="button"
-                onClick={() => setStructureView("CATEGORY")}
-                className={`px-2.5 py-1 rounded-md transition ${
-                  structureView === "CATEGORY"
-                    ? "bg-teal-600 text-white shadow-xs"
-                    : "text-slate-600 hover:text-slate-900"
-                }`}
-              >
-                Danh mục
-              </button>
-            </div>
+            )}
           </div>
 
-          {structureView === "PAYMENT" ? (
-            <div className="space-y-3">
+          {/* Cột phải: Cơ cấu Thanh toán & Danh mục gộp gọn 1 Card có nút chuyển */}
+          <div className="xl:col-span-4 bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
+                {structureView === "PAYMENT" ? (
+                  <>
+                    <CreditCard className="w-4 h-4 text-brand-ink" />
+                    Cơ cấu Thanh toán
+                  </>
+                ) : (
+                  <>
+                    <Layers className="w-4 h-4 text-brand-ink" />
+                    Tỷ trọng Danh mục
+                  </>
+                )}
+              </h3>
 
-            <SvgDonutChart
-              stacked
-              centerLabel="Tổng đơn thu"
-              centerValue={formatShortVND(s?.orderRevenue || 0)}
-              items={(data?.byPaymentMethod || []).map((pm, idx) => ({
-                label: pm.label,
-                value: pm.revenue,
-                sharePercent: pm.sharePercent,
-                sub: `${pm.orders} đơn`,
-                color: CHART_COLORS[idx % CHART_COLORS.length],
-              }))}
-            />
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
-              {(data?.byPaymentMethod || []).map((pm) => (
-                <div
-                  key={pm.method}
-                  className="p-3 rounded-xl border border-slate-200 bg-slate-50/70 hover:bg-white hover:border-teal-300 hover:shadow-xs transition-all space-y-1 min-w-0"
+              <div className="inline-flex rounded-lg bg-slate-100 p-0.5 border border-slate-200 text-[11px] font-bold">
+                <button
+                  type="button"
+                  onClick={() => setStructureView("PAYMENT")}
+                  className={`px-2.5 py-1 rounded-md transition ${structureView === "PAYMENT"
+                    ? "bg-teal-600 text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                    }`}
                 >
-                  <div className="flex items-center justify-between gap-1.5 text-xs">
-                    <span className="font-bold text-slate-800 truncate">{pm.label}</span>
-                    <span className="font-mono text-[11px] px-2 py-0.5 rounded-full bg-teal-100 text-teal-800 font-bold shrink-0">
-                      {pm.sharePercent}%
-                    </span>
-                  </div>
-                  <div className="font-mono font-extrabold text-sm text-slate-900 truncate">
-                    {formatVND(pm.revenue)}
-                  </div>
-                  <div className="text-[11px] text-slate-500">{pm.orders} đơn hàng</div>
-                </div>
-              ))}
+                  Thanh toán
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStructureView("CATEGORY")}
+                  className={`px-2.5 py-1 rounded-md transition ${structureView === "CATEGORY"
+                    ? "bg-teal-600 text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                    }`}
+                >
+                  Danh mục
+                </button>
+              </div>
             </div>
-            </div>
-          ) : (
-            <div className="space-y-3">
-            {data?.byCategory && data.byCategory.length > 0 ? (
-              <>
+
+            {structureView === "PAYMENT" ? (
+              <div className="space-y-3">
+
                 <SvgDonutChart
                   stacked
-                  centerLabel="Danh mục"
-                  centerValue={`${data.byCategory.length} nhóm`}
-                  items={data.byCategory.map((c, idx) => ({
-                    label: c.categoryName,
-                    value: c.revenue,
-                    sharePercent: c.sharePercent,
-                    sub: `${c.unitsSold} SP`,
+                  centerLabel="Tổng đơn thu"
+                  centerValue={formatShortVND(s?.orderRevenue || 0)}
+                  items={(data?.byPaymentMethod || []).map((pm, idx) => ({
+                    label: pm.label,
+                    value: pm.revenue,
+                    sharePercent: pm.sharePercent,
+                    sub: `${pm.orders} đơn`,
                     color: CHART_COLORS[idx % CHART_COLORS.length],
                   }))}
                 />
 
-                <div className="space-y-2 max-h-64 overflow-y-auto pr-1 pt-1">
-                  {data.byCategory.map((c, idx) => (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                  {(data?.byPaymentMethod || []).map((pm) => (
                     <div
-                      key={c.categoryId}
-                      className="p-3 rounded-xl border border-slate-200 hover:border-teal-300 hover:shadow-xs transition-all space-y-1.5 min-w-0"
+                      key={pm.method}
+                      className="p-3 rounded-xl border border-slate-200 bg-slate-50/70 hover:bg-white hover:border-teal-300 hover:shadow-xs transition-all space-y-1 min-w-0"
                     >
-                      <div className="flex items-center justify-between gap-2 text-xs min-w-0">
-                        <span className="font-extrabold text-slate-900 flex items-center gap-1.5 min-w-0">
-                          <span
-                            className="w-2.5 h-2.5 rounded-full shrink-0"
-                            style={{ backgroundColor: CHART_COLORS[idx % CHART_COLORS.length] }}
-                          />
-                          <span className="truncate">{c.categoryName}</span>
-                          <span className="font-mono text-slate-500 font-normal shrink-0 whitespace-nowrap">
-                            ({c.unitsSold} SP)
-                          </span>
-                        </span>
-                        <span className="font-mono font-bold text-teal-700 shrink-0 whitespace-nowrap">
-                          {formatShortVND(c.revenue)} ({c.sharePercent}%)
+                      <div className="flex items-center justify-between gap-1.5 text-xs">
+                        <span className="font-bold text-slate-800 truncate">{pm.label}</span>
+                        <span className="font-mono text-[11px] px-2 py-0.5 rounded-full bg-teal-100 text-brand-ink font-bold shrink-0">
+                          {pm.sharePercent}%
                         </span>
                       </div>
-                      <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-                        <div
-                          className="h-full rounded-full animate-chart-grow-x"
-                          style={{
-                            width: `${Math.min(100, Math.max(3, c.sharePercent))}%`,
-                            backgroundColor: CHART_COLORS[idx % CHART_COLORS.length],
-                            animationDelay: `${Math.min(idx * 45, 360)}ms`,
-                          }}
-                        />
+                      <div className="font-mono font-extrabold text-sm text-slate-900 truncate">
+                        {formatVND(pm.revenue)}
                       </div>
-                      <div className="flex flex-wrap justify-between gap-x-3 gap-y-0.5 text-[11px] text-slate-500 font-mono">
-                        <span>Giá vốn: {formatVND(c.cogs)}</span>
-                        <span className="font-bold text-indigo-700">
-                          Lãi gộp: {formatVND(c.grossProfit)}
-                        </span>
-                      </div>
+                      <div className="text-[11px] text-slate-500">{pm.orders} đơn hàng</div>
                     </div>
                   ))}
                 </div>
-              </>
+              </div>
             ) : (
-              <div className="py-6 text-center text-xs text-slate-400">
-                Chưa có doanh thu theo danh mục trong kỳ này.
+              <div className="space-y-3">
+                {data?.byCategory && data.byCategory.length > 0 ? (
+                  <>
+                    <SvgDonutChart
+                      stacked
+                      centerLabel="Danh mục"
+                      centerValue={`${data.byCategory.length} nhóm`}
+                      items={data.byCategory.map((c, idx) => ({
+                        label: c.categoryName,
+                        value: c.revenue,
+                        sharePercent: c.sharePercent,
+                        sub: `${c.unitsSold} SP`,
+                        color: CHART_COLORS[idx % CHART_COLORS.length],
+                      }))}
+                    />
+
+                    <div className="space-y-2 max-h-64 overflow-y-auto pr-1 pt-1">
+                      {data.byCategory.map((c, idx) => (
+                        <div
+                          key={c.categoryId}
+                          className="p-3 rounded-xl border border-slate-200 hover:border-teal-300 hover:shadow-xs transition-all space-y-1.5 min-w-0"
+                        >
+                          <div className="flex items-center justify-between gap-2 text-xs min-w-0">
+                            <span className="font-extrabold text-slate-900 flex items-center gap-1.5 min-w-0">
+                              <span
+                                className="w-2.5 h-2.5 rounded-full shrink-0"
+                                style={{ backgroundColor: CHART_COLORS[idx % CHART_COLORS.length] }}
+                              />
+                              <span className="truncate">{c.categoryName}</span>
+                              <span className="font-mono text-slate-500 font-normal shrink-0 whitespace-nowrap">
+                                ({c.unitsSold} SP)
+                              </span>
+                            </span>
+                            <span className="font-mono font-bold text-brand-ink shrink-0 whitespace-nowrap">
+                              {formatShortVND(c.revenue)} ({c.sharePercent}%)
+                            </span>
+                          </div>
+                          <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                            <div
+                              className="h-full rounded-full animate-chart-grow-x"
+                              style={{
+                                width: `${Math.min(100, Math.max(3, c.sharePercent))}%`,
+                                backgroundColor: CHART_COLORS[idx % CHART_COLORS.length],
+                                animationDelay: `${Math.min(idx * 45, 360)}ms`,
+                              }}
+                            />
+                          </div>
+                          <div className="flex flex-wrap justify-between gap-x-3 gap-y-0.5 text-[11px] text-slate-500 font-mono">
+                            <span>Giá vốn: {formatVND(c.cogs)}</span>
+                            <span className="font-bold text-brand-ink">
+                              Lãi gộp: {formatVND(c.grossProfit)}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <div className="py-6 text-center text-xs text-slate-400">
+                    Chưa có doanh thu theo danh mục trong kỳ này.
+                  </div>
+                )}
               </div>
             )}
-            </div>
-          )}
+          </div>
         </div>
-      </div>
       )}
 
       {/* TAB 2: PHÂN TÍCH SẢN PHẨM BÁN CHẠY & ĐÓNG GÓP DOANH THU */}
       {dashboardView === "PRODUCTS" && (
-      <div className="space-y-5">
-      {/* HÀNG 2.5: BIỂU ĐỒ TOP 8 SẢN PHẨM MANG LẠI DOANH THU & LÃI GỘP CAO NHẤT */}
-      {top8RevenueProducts.length > 0 && (
-        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <h3 className="font-extrabold text-slate-900 text-base flex items-center gap-2">
-                <PieChart className="w-5 h-5 text-teal-600" />
-                Biểu đồ Top Sản Phẩm Đóng Góp Doanh Thu & Lãi Gộp Cao Nhất
-              </h3>
-              <p className="text-xs text-slate-500">
-                So sánh trực quan doanh thu thuần và lợi nhuận gộp của các mặt hàng chủ lực trong kỳ.
-              </p>
-            </div>
-            <div className="flex items-center gap-4 text-xs font-bold">
-              <span className="inline-flex items-center gap-1.5 text-teal-700">
-                <span className="w-3 h-3 rounded-sm bg-teal-500 inline-block" /> Doanh thu thuần
-              </span>
-              <span className="inline-flex items-center gap-1.5 text-teal-600">
-                <span className="w-3 h-3 rounded-sm bg-teal-600 inline-block" /> Lãi gộp thực tế
-              </span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
-            {top8RevenueProducts.map((p, idx) => {
-              const revPct = Math.min(100, Math.max(4, Math.round((p.revenue / maxTop8Rev) * 100)));
-              const profPct = Math.min(
-                100,
-                Math.max(
-                  p.grossProfit !== 0 ? 4 : 0,
-                  Math.round((Math.abs(p.grossProfit) / maxTop8Rev) * 100)
-                )
-              );
-              return (
-                <div
-                  key={p.productId || p.productCode}
-                  className="bg-white p-3 rounded-xl border border-slate-200/80 hover:border-teal-300 hover:shadow-md transition-all duration-200 space-y-2 text-xs shadow-sm"
-                >
-                  <div className="flex items-center justify-between gap-2 min-w-0">
-                    <span className="font-bold text-slate-900 truncate min-w-0">
-                      <span className="font-mono text-teal-700 mr-1.5">#{idx + 1}</span>
-                      {p.productName}{" "}
-                      <span className="font-mono text-[11px] text-slate-500 font-normal">
-                        ({p.netSoldQty} {p.unit})
-                      </span>
-                    </span>
-                    <span className="font-mono shrink-0 whitespace-nowrap">
-                      <strong className="text-teal-700">{formatShortVND(p.revenue)}</strong>
-                      <span className="text-slate-300 mx-1.5">|</span>
-                      <strong className={p.grossProfit >= 0 ? "text-teal-600" : "text-red-600"}>
-                        Lãi {formatShortVND(p.grossProfit)}
-                      </strong>
-                    </span>
-                  </div>
-
-                  {/* 2 Thanh riêng biệt đồng nhất chiều cao (h-2.5): Thanh 1 (Doanh thu) & Thanh 2 (Lãi gộp) */}
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-2">
-                      <span className="w-16 text-[10px] font-semibold text-slate-500 shrink-0">
-                        Doanh thu
-                      </span>
-                      <div className="flex-1 h-2.5 bg-slate-100 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-teal-500 rounded-full animate-chart-grow-x transition-all duration-500"
-                          style={{
-                            width: `${revPct}%`,
-                            animationDelay: `${Math.min(idx * 45, 360)}ms`,
-                          }}
-                        />
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-16 text-[10px] font-semibold text-slate-500 shrink-0">
-                        Lãi gộp
-                      </span>
-                      <div className="flex-1 h-2.5 bg-slate-100 rounded-full overflow-hidden">
-                        <div
-                          className={`h-full rounded-full animate-chart-grow-x transition-all duration-500 ${
-                            p.grossProfit >= 0 ? "bg-teal-600" : "bg-red-500"
-                          }`}
-                          style={{
-                            width: `${profPct}%`,
-                            animationDelay: `${Math.min(idx * 45 + 70, 430)}ms`,
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </div>
+        <div className="space-y-5">
+          {/* HÀNG 2.5: BIỂU ĐỒ TOP 8 SẢN PHẨM MANG LẠI DOANH THU & LÃI GỘP CAO NHẤT */}
+          {top8RevenueProducts.length > 0 && (
+            <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h3 className="font-extrabold text-slate-900 text-base flex items-center gap-2">
+                    <PieChart className="w-5 h-5 text-brand-ink" />
+                    Biểu đồ Top Sản Phẩm Đóng Góp Doanh Thu & Lãi Gộp Cao Nhất
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    So sánh trực quan doanh thu thuần và lợi nhuận gộp của các mặt hàng chủ lực trong kỳ.
+                  </p>
                 </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+                <div className="flex items-center gap-4 text-xs font-bold">
+                  <span className="inline-flex items-center gap-1.5 text-brand-ink">
+                    <span className="w-3 h-3 rounded-sm bg-teal-500 inline-block" /> Doanh thu thuần
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 text-brand-ink">
+                    <span className="w-3 h-3 rounded-sm bg-[#212121] inline-block" /> Lãi gộp thực tế
+                  </span>
+                </div>
+              </div>
 
-      {/* HÀNG 3: BẢNG 1 — TOP SẢN PHẨM ĐANG BÁN CHẠY (BEST SELLERS) */}
-      <div className="bg-white rounded-2xl border-2 border-teal-200 shadow-sm p-5 space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-teal-100 text-teal-800 mb-1">
-              <Flame className="w-3.5 h-3.5 text-orange-500" />
-              TOP BEST SELLERS
-            </div>
-            <h3 className="font-extrabold text-slate-900 text-base">
-              Các Sản Phẩm Đang Bán Chạy Nhất ({sortedTopProducts.length} sản phẩm phát sinh doanh số)
-            </h3>
-            <p className="text-xs text-slate-500">
-              Xếp hạng mặt hàng chủ lực mang lại doanh số cao nhất, kèm kiểm tra tồn kho Kho Tầng 1 / Tầng 2 để kịp thời bổ sung hàng lên kệ.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative w-full sm:w-60">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
-              <input
-                type="text"
-                value={topSearch}
-                onChange={(e) => setTopSearch(e.target.value)}
-                placeholder="Tìm mã hoặc tên SP bán chạy..."
-                className="w-full pl-8 pr-3 py-1.5 rounded-lg border border-slate-300 text-xs"
-              />
-            </div>
-
-            <select
-              value={topSortBy}
-              onChange={(e) => setTopSortBy(e.target.value as any)}
-              className="px-3 py-1.5 rounded-lg border border-slate-300 text-xs bg-white font-bold text-slate-800"
-            >
-              <option value="QTY">Xếp theo: Số lượng bán nhiều nhất</option>
-              <option value="REVENUE">Xếp theo: Doanh thu cao nhất</option>
-              <option value="PROFIT">Xếp theo: Lãi gộp cao nhất</option>
-            </select>
-
-            <select
-              value={topPageSize}
-              onChange={(e) => setTopPageSize(Number(e.target.value))}
-              className="px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs bg-white font-semibold"
-            >
-              <option value={10}>10 dòng / trang</option>
-              <option value={20}>20 dòng / trang</option>
-              <option value={50}>50 dòng / trang</option>
-            </select>
-          </div>
-        </div>
-
-        <div className="overflow-x-auto border border-slate-200 rounded-xl">
-          <table className="w-full text-xs text-left">
-            <thead className="bg-slate-100 text-slate-700 border-b border-slate-200 uppercase">
-              <tr>
-                <th className="py-3 px-3 text-center w-14">Hạng</th>
-                <th className="py-3 px-3">Mã & Tên sản phẩm</th>
-                <th className="py-3 px-3">Category</th>
-                <th className="py-3 px-3 text-right bg-teal-950 text-teal-300">
-                  SL Đã bán
-                </th>
-                <th className="py-3 px-3 text-right">Số đơn</th>
-                <th className="py-3 px-3 text-right">Doanh thu thuần</th>
-                <th className="py-3 px-3 text-right">Lãi gộp (Biên %)</th>
-                <th className="py-3 px-3 text-right">Tồn Tầng 1 / Tầng 2</th>
-                <th className="py-3 px-3">Tình trạng tồn & Gợi ý bổ sung</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200">
-              {pagedTopProducts.length === 0 ? (
-                <tr>
-                  <td colSpan={9} className="py-8 text-center text-slate-400">
-                    Chưa có sản phẩm nào phát sinh doanh số khớp bộ lọc.
-                  </td>
-                </tr>
-              ) : (
-                pagedTopProducts.map((p, idx) => {
-                  const rank = (topPage - 1) * topPageSize + idx + 1;
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                {top8RevenueProducts.map((p, idx) => {
+                  const revPct = Math.min(100, Math.max(4, Math.round((p.revenue / maxTop8Rev) * 100)));
+                  const profPct = Math.min(
+                    100,
+                    Math.max(
+                      p.grossProfit !== 0 ? 4 : 0,
+                      Math.round((Math.abs(p.grossProfit) / maxTop8Rev) * 100)
+                    )
+                  );
                   return (
-                    <tr key={p.productId || p.productCode} className="hover:bg-slate-50">
-                      <td className="py-3 px-3 text-center font-mono font-black">
-                        <span
-                          className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs ${
-                            rank === 1
-                              ? "bg-amber-400 text-slate-950 shadow"
-                              : rank === 2
-                              ? "bg-slate-300 text-slate-900"
-                              : rank === 3
-                              ? "bg-amber-700 text-white"
-                              : "bg-slate-100 text-slate-700"
-                          }`}
-                        >
-                          #{rank}
-                        </span>
-                      </td>
-                      <td className="py-3 px-3">
-                        <div className="font-bold text-slate-900">{p.productName}</div>
-                        <div className="font-mono text-[11px] text-slate-500">{p.productCode}</div>
-                      </td>
-                      <td className="py-3 px-3">
-                        <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-semibold text-[11px]">
-                          {p.categoryName}
-                        </span>
-                      </td>
-                      <td className="py-3 px-3 text-right font-mono bg-teal-50/40">
-                        <div className="font-black text-sm text-teal-700">
-                          {p.netSoldQty} {p.unit}
-                        </div>
-                        {p.giftQty > 0 && (
-                          <div className="text-[10px] text-purple-700 font-semibold">
-                            (+{p.giftQty} tặng 0đ)
-                          </div>
-                        )}
-                      </td>
-                      <td className="py-3 px-3 text-right font-mono font-bold text-slate-700">
-                        {p.orderCount} đơn
-                      </td>
-                      <td className="py-3 px-3 text-right font-mono font-extrabold text-slate-900 whitespace-nowrap">
-                        {formatVND(p.revenue)}
-                      </td>
-                      <td className="py-3 px-3 text-right font-mono whitespace-nowrap">
-                        <div
-                          className={`font-extrabold ${
-                            p.grossProfit >= 0 ? "text-indigo-700" : "text-red-600"
-                          }`}
-                        >
-                          {formatVND(p.grossProfit)}
-                        </div>
-                        <div className="text-[10px] text-slate-500">
-                          Biên lãi: <strong>{p.marginPercent}%</strong>
-                        </div>
-                      </td>
-                      <td className="py-3 px-3 text-right font-mono whitespace-nowrap">
-                        <div className="font-bold text-slate-900">
-                          Tổng: {p.stock} {p.unit}
-                        </div>
-                        <div className="text-[11px] text-slate-500">
-                          🏢 T1: <b className="text-teal-700">{p.stockFloor1}</b> · 🏬 T2:{" "}
-                          <b className="text-purple-700">{p.stockFloor2}</b>
-                        </div>
-                      </td>
-                      <td className="py-3 px-3">
-                        {p.restockAlert ? (
-                          <div className="flex items-start gap-1.5 text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-1.5 rounded-lg">
-                            <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
-                            <span>{p.restockAlert}</span>
-                          </div>
-                        ) : (
-                          <span className="px-2.5 py-1 rounded-full bg-teal-50 text-teal-700 font-bold text-[11px]">
-                            ✓ Đủ hàng bán tại Tầng 1
+                    <div
+                      key={p.productId || p.productCode}
+                      className="bg-white p-3 rounded-xl border border-slate-200/80 hover:border-teal-300 hover:shadow-md transition-all duration-200 space-y-2 text-xs shadow-sm"
+                    >
+                      <div className="flex items-center justify-between gap-2 min-w-0">
+                        <span className="font-bold text-slate-900 truncate min-w-0">
+                          <span className="font-mono text-brand-ink mr-1.5">#{idx + 1}</span>
+                          {p.productName}{" "}
+                          <span className="font-mono text-[11px] text-slate-500 font-normal">
+                            ({p.netSoldQty} {p.unit})
                           </span>
-                        )}
+                        </span>
+                        <span className="font-mono shrink-0 whitespace-nowrap">
+                          <strong className="text-brand-ink">{formatShortVND(p.revenue)}</strong>
+                          <span className="text-slate-300 mx-1.5">|</span>
+                          <strong className={p.grossProfit >= 0 ? "text-brand-ink" : "text-red-600"}>
+                            Lãi {formatShortVND(p.grossProfit)}
+                          </strong>
+                        </span>
+                      </div>
+
+                      {/* 2 Thanh riêng biệt đồng nhất chiều cao (h-2.5): Thanh 1 (Doanh thu) & Thanh 2 (Lãi gộp) */}
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-2">
+                          <span className="w-16 text-[10px] font-semibold text-slate-500 shrink-0">
+                            Doanh thu
+                          </span>
+                          <div className="flex-1 h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-teal-500 rounded-full animate-chart-grow-x transition-all duration-500"
+                              style={{
+                                width: `${revPct}%`,
+                                animationDelay: `${Math.min(idx * 45, 360)}ms`,
+                              }}
+                            />
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="w-16 text-[10px] font-semibold text-slate-500 shrink-0">
+                            Lãi gộp
+                          </span>
+                          <div className="flex-1 h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full animate-chart-grow-x transition-all duration-500 ${p.grossProfit >= 0 ? "bg-[#212121]" : "bg-red-500"
+                                }`}
+                              style={{
+                                width: `${profPct}%`,
+                                animationDelay: `${Math.min(idx * 45 + 70, 430)}ms`,
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* HÀNG 3: BẢNG 1 — TOP SẢN PHẨM ĐANG BÁN CHẠY (BEST SELLERS) */}
+          <div className="bg-white rounded-2xl border-2 border-teal-200 shadow-sm p-5 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-teal-100 text-brand-ink mb-1">
+                  <Flame className="w-3.5 h-3.5 text-orange-500" />
+                  TOP BEST SELLERS
+                </div>
+                <h3 className="font-extrabold text-slate-900 text-base">
+                  Các Sản Phẩm Đang Bán Chạy Nhất ({sortedTopProducts.length} sản phẩm phát sinh doanh số)
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Xếp hạng mặt hàng chủ lực mang lại doanh số cao nhất, kèm kiểm tra tồn kho Kho Tầng 1 / Tầng 2 để kịp thời bổ sung hàng lên kệ.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="relative w-full sm:w-60">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+                  <input
+                    type="text"
+                    value={topSearch}
+                    onChange={(e) => setTopSearch(e.target.value)}
+                    placeholder="Tìm mã hoặc tên SP bán chạy..."
+                    className="w-full pl-8 pr-3 py-1.5 rounded-lg border border-slate-300 text-xs"
+                  />
+                </div>
+
+                <select
+                  value={topSortBy}
+                  onChange={(e) => setTopSortBy(e.target.value as any)}
+                  className="px-3 py-1.5 rounded-lg border border-slate-300 text-xs bg-white font-bold text-slate-800"
+                >
+                  <option value="QTY">Xếp theo: Số lượng bán nhiều nhất</option>
+                  <option value="REVENUE">Xếp theo: Doanh thu cao nhất</option>
+                  <option value="PROFIT">Xếp theo: Lãi gộp cao nhất</option>
+                </select>
+
+                <select
+                  value={topPageSize}
+                  onChange={(e) => setTopPageSize(Number(e.target.value))}
+                  className="px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs bg-white font-semibold"
+                >
+                  <option value={10}>10 dòng / trang</option>
+                  <option value={20}>20 dòng / trang</option>
+                  <option value={50}>50 dòng / trang</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto border border-slate-200 rounded-xl">
+              <table className="w-full text-xs text-left">
+                <thead className="bg-slate-100 text-slate-700 border-b border-slate-200 uppercase">
+                  <tr>
+                    <th className="py-3 px-3 text-center w-14">Hạng</th>
+                    <th className="py-3 px-3">Mã & Tên sản phẩm</th>
+                    <th className="py-3 px-3">Category</th>
+                    <th className="py-3 px-3 text-right bg-teal-950 text-teal-300">
+                      SL Đã bán
+                    </th>
+                    <th className="py-3 px-3 text-right">Số đơn</th>
+                    <th className="py-3 px-3 text-right">Doanh thu thuần</th>
+                    <th className="py-3 px-3 text-right">Lãi gộp (Biên %)</th>
+                    <th className="py-3 px-3 text-right">Tồn Tầng 1 / Tầng 2</th>
+                    <th className="py-3 px-3">Tình trạng tồn & Gợi ý bổ sung</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                  {pagedTopProducts.length === 0 ? (
+                    <tr>
+                      <td colSpan={9} className="py-8 text-center text-slate-400">
+                        Chưa có sản phẩm nào phát sinh doanh số khớp bộ lọc.
                       </td>
                     </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Phân trang bảng Bán chạy */}
-        {sortedTopProducts.length > 0 && (
-          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600 pt-1">
-            <span>
-              Hiển thị{" "}
-              <strong>
-                {(topPage - 1) * topPageSize + 1}–
-                {Math.min(topPage * topPageSize, sortedTopProducts.length)}
-              </strong>{" "}
-              trên tổng <strong>{sortedTopProducts.length}</strong> sản phẩm bán chạy
-            </span>
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                disabled={topPage <= 1}
-                onClick={() => setTopPage((p) => Math.max(1, p - 1))}
-                className="px-3 py-1.5 rounded-lg border border-slate-300 disabled:opacity-40 hover:bg-slate-100 font-bold inline-flex items-center gap-1"
-              >
-                <ChevronLeft className="w-3.5 h-3.5" /> Trước
-              </button>
-              <span className="px-3 py-1.5 font-mono font-bold text-slate-900">
-                Trang {topPage} / {topTotalPages}
-              </span>
-              <button
-                type="button"
-                disabled={topPage >= topTotalPages}
-                onClick={() => setTopPage((p) => Math.min(topTotalPages, p + 1))}
-                className="px-3 py-1.5 rounded-lg border border-slate-300 disabled:opacity-40 hover:bg-slate-100 font-bold inline-flex items-center gap-1"
-              >
-                Tiếp <ChevronRight className="w-3.5 h-3.5" />
-              </button>
+                  ) : (
+                    pagedTopProducts.map((p, idx) => {
+                      const rank = (topPage - 1) * topPageSize + idx + 1;
+                      return (
+                        <tr key={p.productId || p.productCode} className="hover:bg-slate-50">
+                          <td className="py-3 px-3 text-center font-mono font-black">
+                            <span
+                              className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs ${rank === 1
+                                ? "bg-amber-400 text-slate-950 shadow"
+                                : rank === 2
+                                  ? "bg-slate-300 text-slate-900"
+                                  : rank === 3
+                                    ? "bg-amber-700 text-white"
+                                    : "bg-slate-100 text-slate-700"
+                                }`}
+                            >
+                              #{rank}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3">
+                            <div className="font-bold text-slate-900">{p.productName}</div>
+                            <div className="font-mono text-[11px] text-slate-500">{p.productCode}</div>
+                          </td>
+                          <td className="py-3 px-3">
+                            <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-semibold text-[11px]">
+                              {p.categoryName}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 text-right font-mono bg-teal-50/40">
+                            <div className="font-black text-sm text-brand-ink">
+                              {p.netSoldQty} {p.unit}
+                            </div>
+                            {p.giftQty > 0 && (
+                              <div className="text-[10px] text-purple-700 font-semibold">
+                                (+{p.giftQty} tặng 0đ)
+                              </div>
+                            )}
+                          </td>
+                          <td className="py-3 px-3 text-right font-mono font-bold text-slate-700">
+                            {p.orderCount} đơn
+                          </td>
+                          <td className="py-3 px-3 text-right font-mono font-extrabold text-slate-900 whitespace-nowrap">
+                            {formatVND(p.revenue)}
+                          </td>
+                          <td className="py-3 px-3 text-right font-mono whitespace-nowrap">
+                            <div
+                              className={`font-extrabold ${p.grossProfit >= 0 ? "text-brand-ink" : "text-red-600"
+                                }`}
+                            >
+                              {formatVND(p.grossProfit)}
+                            </div>
+                            <div className="text-[10px] text-slate-500">
+                              Biên lãi: <strong>{p.marginPercent}%</strong>
+                            </div>
+                          </td>
+                          <td className="py-3 px-3 text-right font-mono whitespace-nowrap">
+                            <div className="font-bold text-slate-900">
+                              Tổng: {p.stock} {p.unit}
+                            </div>
+                            <div className="text-[11px] text-slate-500">
+                              🏢 T1: <b className="text-brand-ink">{p.stockFloor1}</b> · 🏬 T2:{" "}
+                              <b className="text-purple-700">{p.stockFloor2}</b>
+                            </div>
+                          </td>
+                          <td className="py-3 px-3">
+                            {p.restockAlert ? (
+                              <div className="flex items-start gap-1.5 text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-1.5 rounded-lg">
+                                <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+                                <span>{p.restockAlert}</span>
+                              </div>
+                            ) : (
+                              <span className="px-2.5 py-1 rounded-full bg-teal-50 text-brand-ink font-bold text-[11px]">
+                                ✓ Đủ hàng bán tại Tầng 1
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
             </div>
+
+            {/* Phân trang bảng Bán chạy */}
+            {sortedTopProducts.length > 0 && (
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600 pt-1">
+                <span>
+                  Hiển thị{" "}
+                  <strong>
+                    {(topPage - 1) * topPageSize + 1}–
+                    {Math.min(topPage * topPageSize, sortedTopProducts.length)}
+                  </strong>{" "}
+                  trên tổng <strong>{sortedTopProducts.length}</strong> sản phẩm bán chạy
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    disabled={topPage <= 1}
+                    onClick={() => setTopPage((p) => Math.max(1, p - 1))}
+                    className="px-3 py-1.5 rounded-lg border border-slate-300 disabled:opacity-40 hover:bg-slate-100 font-bold inline-flex items-center gap-1"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" /> Trước
+                  </button>
+                  <span className="px-3 py-1.5 font-mono font-bold text-slate-900">
+                    Trang {topPage} / {topTotalPages}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={topPage >= topTotalPages}
+                    onClick={() => setTopPage((p) => Math.min(topTotalPages, p + 1))}
+                    className="px-3 py-1.5 rounded-lg border border-slate-300 disabled:opacity-40 hover:bg-slate-100 font-bold inline-flex items-center gap-1"
+                  >
+                    Tiếp <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
-        )}
-      </div>
-      </div>
+        </div>
       )}
     </div>
   );

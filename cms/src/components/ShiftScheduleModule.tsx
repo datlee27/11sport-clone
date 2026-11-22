@@ -462,15 +462,15 @@ export default function ShiftScheduleModule({ onScheduleUpdated }: { onScheduleU
       <div className="flex flex-wrap items-center justify-between gap-3 pb-3.5 border-b border-slate-100">
         <div>
           <h2 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
-            <Users className="w-5 h-5 text-teal-600" />
+            <Users className="w-5 h-5 text-brand-ink" />
             Xếp Ca Tuần – Khối Bán Hàng
             {weekStart === nextMonday && (
-              <span className="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 text-[11px] font-bold">
+              <span className="px-2 py-0.5 rounded-full bg-indigo-100 text-brand-ink text-[11px] font-bold">
                 Tuần sau
               </span>
             )}
             {weekStart === currentMonday && (
-              <span className="px-2 py-0.5 rounded-full bg-teal-100 text-teal-700 text-[11px] font-bold">
+              <span className="px-2 py-0.5 rounded-full bg-teal-100 text-brand-ink text-[11px] font-bold">
                 Tuần này
               </span>
             )}
@@ -511,7 +511,7 @@ export default function ShiftScheduleModule({ onScheduleUpdated }: { onScheduleU
             onClick={() => changeWeek(currentMonday)}
             className={`px-2.5 py-1.5 rounded-lg border text-xs font-semibold cursor-pointer transition ${
               weekStart === currentMonday
-                ? "border-teal-600 bg-teal-50 text-teal-800"
+                ? "border-teal-600 bg-teal-50 text-brand-ink"
                 : "border-slate-200 hover:bg-slate-50 text-slate-700"
             }`}
           >
@@ -523,7 +523,7 @@ export default function ShiftScheduleModule({ onScheduleUpdated }: { onScheduleU
             onClick={() => changeWeek(nextMonday)}
             className={`relative px-2.5 py-1.5 rounded-lg border text-xs font-semibold cursor-pointer transition flex items-center gap-1.5 ${
               weekStart === nextMonday
-                ? "border-indigo-600 bg-indigo-50 text-indigo-800"
+                ? "border-indigo-600 bg-indigo-50 text-brand-ink"
                 : "border-slate-200 hover:bg-slate-50 text-slate-700"
             }`}
           >
@@ -629,15 +629,15 @@ export default function ShiftScheduleModule({ onScheduleUpdated }: { onScheduleU
       {/* Trạng thái đăng ký ca của nhân viên & cảnh báo trùng lịch */}
       <div className="flex flex-wrap items-center gap-2 text-[11px]">
         {pendingConfirmStaffList.length > 0 && (
-          <span className="px-2.5 py-1 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-800 font-semibold flex items-center gap-1.5">
+          <span className="px-2.5 py-1 rounded-lg bg-indigo-50 border border-indigo-200 text-brand-ink font-semibold flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse" />
             NV đã đăng ký chờ HR xác nhận ({pendingConfirmStaffList.length}):{" "}
             {pendingConfirmStaffList.map((st) => st.fullName).join(", ")}
           </span>
         )}
         {confirmedStaffList.length > 0 && pendingConfirmStaffList.length === 0 && (
-          <span className="px-2.5 py-1 rounded-lg bg-teal-50 border border-teal-200 text-teal-800 font-semibold flex items-center gap-1">
-            <CheckCircle2 className="w-3.5 h-3.5 text-teal-600" />
+          <span className="px-2.5 py-1 rounded-lg bg-teal-50 border border-teal-200 text-brand-ink font-semibold flex items-center gap-1">
+            <CheckCircle2 className="w-3.5 h-3.5 text-brand-ink" />
             HR đã xác nhận lịch tuần cho {confirmedStaffList.length}/{staffList.length} nhân viên
           </span>
         )}
@@ -773,21 +773,21 @@ export default function ShiftScheduleModule({ onScheduleUpdated }: { onScheduleU
                               {isWorkingBoth ? (
                                 <span
                                   title="Nhân viên làm cả 2 ca trong ngày (Ca 1 + Ca 2)"
-                                  className="shrink-0 px-1 py-0.2 rounded bg-teal-100 text-teal-800 text-[9px] font-extrabold"
+                                  className="shrink-0 px-1 py-0.2 rounded bg-teal-100 text-brand-ink text-[9px] font-extrabold"
                                 >
                                   {isStaffRegistered ? "ĐK 2 ca" : "2 ca"}
                                 </span>
                               ) : isStaffRegistered ? (
                                 <span
                                   title="Nhân viên tự đăng ký, chờ HR xác nhận"
-                                  className="shrink-0 px-1 py-0.2 rounded bg-indigo-100 text-indigo-700 text-[9px] font-extrabold"
+                                  className="shrink-0 px-1 py-0.2 rounded bg-indigo-100 text-brand-ink text-[9px] font-extrabold"
                                 >
                                   ĐK
                                 </span>
                               ) : null}
                             </div>
                             {isRandomFromBoth && (
-                              <div className="text-[9px] font-medium text-indigo-600 truncate">
+                              <div className="text-[9px] font-medium text-brand-ink truncate">
                                 ĐK 2 ca • Random 1 ca
                               </div>
                             )}
@@ -822,7 +822,7 @@ export default function ShiftScheduleModule({ onScheduleUpdated }: { onScheduleU
                           <button
                             type="button"
                             onClick={() => setAddMenu((m) => (m === cellKey ? null : cellKey))}
-                            className="w-full py-0.5 rounded-md border border-dashed border-slate-300 text-[10px] font-semibold text-slate-400 hover:text-teal-700 hover:border-teal-400 flex items-center justify-center gap-0.5 cursor-pointer"
+                            className="w-full py-0.5 rounded-md border border-dashed border-slate-300 text-[10px] font-semibold text-slate-400 hover:text-brand-ink hover:border-teal-400 flex items-center justify-center gap-0.5 cursor-pointer"
                           >
                             <Plus className="w-3 h-3" />
                             Thêm
@@ -861,7 +861,7 @@ export default function ShiftScheduleModule({ onScheduleUpdated }: { onScheduleU
                                           setCode(s._id, d.date, "BOTH");
                                           setAddMenu(null);
                                         }}
-                                        className="w-full px-1.5 py-0.5 rounded bg-teal-50 hover:bg-teal-100 text-teal-700 font-bold text-[10px] text-center cursor-pointer"
+                                        className="w-full px-1.5 py-0.5 rounded bg-teal-50 hover:bg-teal-100 text-brand-ink font-bold text-[10px] text-center cursor-pointer"
                                       >
                                         + Gộp làm cả 2 ca (Ca 1 + Ca 2)
                                       </button>
@@ -898,7 +898,7 @@ export default function ShiftScheduleModule({ onScheduleUpdated }: { onScheduleU
         <div className="border border-slate-200 rounded-xl p-3.5 bg-slate-50 space-y-3 h-fit">
           <div className="flex items-center justify-between">
             <h3 className="font-bold text-sm text-slate-800 flex items-center gap-2">
-              <Users className="w-4 h-4 text-teal-600" />
+              <Users className="w-4 h-4 text-brand-ink" />
               Nhân sự showroom
             </h3>
             <span className="text-[11px] font-bold text-slate-500">{staffList.length} người</span>
@@ -940,19 +940,19 @@ export default function ShiftScheduleModule({ onScheduleUpdated }: { onScheduleU
                     <div className="flex items-center gap-1.5">
                       <span className="text-[10px] text-slate-400 font-mono">{s.code}</span>
                       {regStatus === "PENDING_HR" && (
-                        <span className="px-1.5 py-0.2 rounded bg-indigo-100 text-indigo-700 text-[9px] font-bold">
+                        <span className="px-1.5 py-0.2 rounded bg-indigo-100 text-brand-ink text-[9px] font-bold">
                           Đã ĐK • Chờ duyệt
                         </span>
                       )}
                       {regStatus === "CONFIRMED_HR" && (
-                        <span className="px-1.5 py-0.2 rounded bg-teal-100 text-teal-700 text-[9px] font-bold">
+                        <span className="px-1.5 py-0.2 rounded bg-teal-100 text-brand-ink text-[9px] font-bold">
                           ✓ HR đã chốt
                         </span>
                       )}
                     </div>
                   </div>
                   <div className="text-right shrink-0">
-                    <div className="text-[11px] font-extrabold text-teal-700">
+                    <div className="text-[11px] font-extrabold text-brand-ink">
                       {totalShiftUnits > workDays
                         ? `${workDays} ngày (${totalShiftUnits} ca) • ${offDays} nghỉ`
                         : `${workDays} ca • ${offDays} nghỉ`}
@@ -966,7 +966,7 @@ export default function ShiftScheduleModule({ onScheduleUpdated }: { onScheduleU
                             OFF tháng: {c.monthUsedAfterWeek}/{c.monthLimit} ngày
                           </div>
                           {c.ok ? (
-                            <div className="text-[10px] font-bold text-teal-600">✓ Đúng quy định</div>
+                            <div className="text-[10px] font-bold text-brand-ink">✓ Đúng quy định</div>
                           ) : (
                             <div className={`text-[10px] font-bold ${c.assigned === 0 ? "text-amber-600" : "text-rose-600"}`}>
                               ⚠ {c.message}

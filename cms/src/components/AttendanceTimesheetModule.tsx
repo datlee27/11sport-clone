@@ -436,7 +436,7 @@ export default function AttendanceTimesheetModule() {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3 pb-3.5 border-b border-slate-100">
         <div className="flex items-center gap-2.5">
-          <Clock className="w-5 h-5 text-teal-600" />
+          <Clock className="w-5 h-5 text-brand-ink" />
           <h2 className="text-base sm:text-lg font-bold text-slate-900">Bảng Chấm Công Toàn Công Ty</h2>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -556,7 +556,7 @@ export default function AttendanceTimesheetModule() {
               <span>
                 Chuẩn tháng: <b>{monthInfo.standardDays} công</b>
               </span>
-              <span className="text-teal-700 font-normal">
+              <span className="text-brand-ink font-normal">
                 ({monthInfo.daysInMonth} ngày
                 {month === 2 ? (monthInfo.isLeapYear ? " • Năm nhuận" : " • Không nhuận") : ""} −{" "}
                 {monthInfo.sundaysCount} CN)
@@ -785,7 +785,7 @@ export default function AttendanceTimesheetModule() {
             </span>
             {totals.overtimeMinutes > 0 && (
               <span>
-                Tăng ca duyệt: <b className="text-indigo-700">{formatMinutes(totals.overtimeMinutes)}</b>
+                Tăng ca duyệt: <b className="text-brand-ink">{formatMinutes(totals.overtimeMinutes)}</b>
               </span>
             )}
             <span>
@@ -849,7 +849,7 @@ function KpiCard({
 }) {
   const toneMap = {
     slate: "bg-slate-50 border-slate-200 text-slate-700",
-    blue: "bg-teal-50 border-teal-200 text-teal-700",
+    blue: "bg-teal-50 border-teal-200 text-brand-ink",
     amber: "bg-amber-50 border-amber-200 text-amber-800",
     rose: "bg-rose-50 border-rose-200 text-rose-700",
     red: "bg-red-50 border-red-200 text-red-700",
@@ -907,15 +907,15 @@ function MatrixView({
                 </th>
               );
             })}
-            <th className="sticky top-0 right-[60px] z-30 bg-teal-50 border-b border-l border-slate-200 px-2 py-1.5 text-center font-bold text-teal-800 min-w-[70px]">
+            <th className="sticky top-0 right-[60px] z-30 bg-teal-50 border-b border-l border-slate-200 px-2 py-1.5 text-center font-bold text-brand-ink min-w-[70px]">
               <div>Công</div>
-              <div className="text-[9px] font-semibold text-teal-600 leading-none mt-0.5">
+              <div className="text-[9px] font-semibold text-brand-ink leading-none mt-0.5">
                 /{rows[0]?.summary.standardDays ?? (data.monthMeta?.standardDays || 26)} chuẩn
               </div>
             </th>
-            <th className="sticky top-0 right-0 z-30 bg-teal-50 border-b border-slate-200 px-2 py-1.5 text-center font-bold text-teal-800 min-w-[60px]">
+            <th className="sticky top-0 right-0 z-30 bg-teal-50 border-b border-slate-200 px-2 py-1.5 text-center font-bold text-brand-ink min-w-[60px]">
               <div>Giờ</div>
-              <div className="text-[9px] font-semibold text-indigo-600 leading-none mt-0.5">&amp; TC</div>
+              <div className="text-[9px] font-semibold text-brand-ink leading-none mt-0.5">&amp; TC</div>
             </th>
           </tr>
         </thead>
@@ -929,7 +929,7 @@ function MatrixView({
                   <div className="flex items-center gap-1.5 text-[10px] text-slate-400">
                     <span className="font-mono">{row.staffCode}</span>
                     <span
-                      className={`px-1.5 rounded font-semibold ${row.department === "OFFICE" ? "bg-indigo-50 text-indigo-600" : "bg-amber-50 text-amber-700"
+                      className={`px-1.5 rounded font-semibold ${row.department === "OFFICE" ? "bg-indigo-50 text-brand-ink" : "bg-amber-50 text-amber-700"
                         }`}
                     >
                       {row.department === "OFFICE" ? "VP" : "BH"}
@@ -1025,7 +1025,7 @@ function MatrixView({
                         </span>
                       )}
                       {(row.summary.paidLeaveUsed || 0) > 0 && (
-                        <span className="px-1 rounded bg-teal-100 text-teal-700 text-[8px] font-bold leading-tight">
+                        <span className="px-1 rounded bg-teal-100 text-brand-ink text-[8px] font-bold leading-tight">
                           +{row.summary.paidLeaveUsed}PL
                         </span>
                       )}
@@ -1039,10 +1039,10 @@ function MatrixView({
                   </div>
                 </td>
                 <td className="sticky right-0 z-10 bg-white group-hover:bg-slate-50 border-b border-slate-200 px-2 py-1.5 text-center min-w-[60px]">
-                  <div className="font-bold text-teal-700 leading-tight">{row.summary.totalHours.toFixed(1)}</div>
+                  <div className="font-bold text-brand-ink leading-tight">{row.summary.totalHours.toFixed(1)}</div>
                   {(row.summary.overtimeMinutes || 0) > 0 && (
                     <div
-                      className="mt-0.5 px-1 rounded bg-indigo-100 text-indigo-700 text-[8px] font-bold leading-tight inline-block"
+                      className="mt-0.5 px-1 rounded bg-indigo-100 text-brand-ink text-[8px] font-bold leading-tight inline-block"
                       title={`Tăng ca đã duyệt: ${row.summary.overtimeMinutes} phút (${row.summary.overtimeDays || 1} ngày)`}
                     >
                       +{formatMinutes(row.summary.overtimeMinutes || 0)} TC
@@ -1104,7 +1104,7 @@ function SummaryView({ rows }: { rows: TimesheetRow[] }) {
                       <span className="text-fuchsia-700 font-semibold"> + Lễ {s.holidayPaidDays}</span>
                     )}
                     {(s.paidLeaveUsed || 0) > 0 && (
-                      <span className="text-teal-700 font-semibold"> + Phép {s.paidLeaveUsed}</span>
+                      <span className="text-brand-ink font-semibold"> + Phép {s.paidLeaveUsed}</span>
                     )}
                   </div>
                   <div className="h-1.5 rounded bg-slate-100 mt-1 overflow-hidden">
@@ -1114,10 +1114,10 @@ function SummaryView({ rows }: { rows: TimesheetRow[] }) {
                     />
                   </div>
                 </td>
-                <td className="px-2 py-2 text-center font-bold text-teal-700">{s.totalHours.toFixed(1)}h</td>
+                <td className="px-2 py-2 text-center font-bold text-brand-ink">{s.totalHours.toFixed(1)}h</td>
                 <td className="px-2 py-2 text-center">
                   {(s.overtimeMinutes || 0) > 0 ? (
-                    <span className="px-2 py-0.5 rounded bg-indigo-100 text-indigo-800 font-bold">
+                    <span className="px-2 py-0.5 rounded bg-indigo-100 text-brand-ink font-bold">
                       {s.overtimeDays || 1} ngày • {formatMinutes(s.overtimeMinutes || 0)}
                     </span>
                   ) : (
@@ -1172,7 +1172,7 @@ function SummaryView({ rows }: { rows: TimesheetRow[] }) {
                       <span
                         className={`px-2 py-0.5 rounded font-bold ${
                           (s.paidLeaveUsed || 0) > 0
-                            ? "bg-teal-100 text-teal-800"
+                            ? "bg-teal-100 text-brand-ink"
                             : (s.paidLeaveRemaining ?? (s.paidLeaveEntitled || 0)) > 0
                             ? "bg-amber-100 text-amber-800"
                             : "bg-slate-100 text-slate-600"
@@ -1182,7 +1182,7 @@ function SummaryView({ rows }: { rows: TimesheetRow[] }) {
                         {s.paidLeaveRemaining ?? Math.max(0, (s.paidLeaveEntitled || 0) - (s.paidLeaveUsed || 0))}
                       </span>
                       {(s.paidLeaveFromProbation || 0) > 0 && (
-                        <span className="text-[9px] text-teal-600 font-semibold">
+                        <span className="text-[9px] text-brand-ink font-semibold">
                           (Gồm +{s.paidLeaveFromProbation} ngày TV)
                         </span>
                       )}
@@ -1458,7 +1458,7 @@ function CellDetailModal({
             </div>
             <div>
               <div className="text-slate-400">Giờ công</div>
-              <div className="font-mono font-bold text-teal-700">{cell.hours ? `${cell.hours}h` : "—"}</div>
+              <div className="font-mono font-bold text-brand-ink">{cell.hours ? `${cell.hours}h` : "—"}</div>
             </div>
             {(cell.lateMinutes || cell.earlyMinutes) ? (
               <div className="col-span-3 text-[11px] text-slate-600">
@@ -1528,7 +1528,7 @@ function CellDetailModal({
                   >
                     <span className="text-xs font-bold leading-tight whitespace-nowrap">{title}</span>
                     <span
-                      className={`text-[11px] font-mono mt-0.5 whitespace-nowrap ${active ? "text-teal-700 font-semibold" : "text-slate-400"
+                      className={`text-[11px] font-mono mt-0.5 whitespace-nowrap ${active ? "text-brand-ink font-semibold" : "text-slate-400"
                         }`}
                     >
                       {timeRange}
@@ -1547,7 +1547,7 @@ function CellDetailModal({
               >
                 <span className="text-xs font-bold leading-tight whitespace-nowrap">Ca Hành chính</span>
                 <span
-                  className={`text-[11px] font-mono mt-0.5 whitespace-nowrap ${shiftCode !== "OFF" ? "text-teal-700 font-semibold" : "text-slate-400"
+                  className={`text-[11px] font-mono mt-0.5 whitespace-nowrap ${shiftCode !== "OFF" ? "text-brand-ink font-semibold" : "text-slate-400"
                     }`}
                 >
                   08:30 – 17:30
@@ -1998,7 +1998,7 @@ function ManualAttendanceModal({
                     >
                       <span className="text-xs font-bold leading-tight whitespace-nowrap">{title}</span>
                       <span
-                        className={`text-[11px] font-mono mt-0.5 whitespace-nowrap ${active ? "text-teal-700 font-semibold" : "text-slate-400"
+                        className={`text-[11px] font-mono mt-0.5 whitespace-nowrap ${active ? "text-brand-ink font-semibold" : "text-slate-400"
                           }`}
                       >
                         {timeRange}
@@ -2017,7 +2017,7 @@ function ManualAttendanceModal({
                 >
                   <span className="text-xs font-bold leading-tight whitespace-nowrap">Ca Hành chính</span>
                   <span
-                    className={`text-[11px] font-mono mt-0.5 whitespace-nowrap ${shiftCode !== "OFF" ? "text-teal-700 font-semibold" : "text-slate-400"
+                    className={`text-[11px] font-mono mt-0.5 whitespace-nowrap ${shiftCode !== "OFF" ? "text-brand-ink font-semibold" : "text-slate-400"
                       }`}
                   >
                     08:30 – 17:30

@@ -394,8 +394,8 @@ export default function ShiftHandoverModal({
           )}
 
           {savedNotice && (
-            <div className="p-3.5 bg-blue-50 border border-blue-200 text-blue-800 text-xs font-bold rounded-xl flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />
+            <div className="p-3.5 bg-blue-50 border border-blue-200 text-brand-ink text-xs font-bold rounded-xl flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-brand-ink shrink-0" />
               <span>{savedNotice}</span>
             </div>
           )}
@@ -407,7 +407,7 @@ export default function ShiftHandoverModal({
                 <div className="text-xs font-extrabold text-blue-950">
                   1. Tổng Số Lượng Mặt Hàng Kiểm Hôm Nay ({dailyCheck?.date || "Hôm nay"})
                 </div>
-                <p className="text-[11px] text-blue-800 mt-0.5">
+                <p className="text-[11px] text-brand-ink mt-0.5">
                   Chỉ cần nhập <b>tổng số lượng</b> của từng nhóm (đã gộp tất cả mã, size, màu tại Tầng 1):
                 </p>
               </div>
@@ -470,7 +470,7 @@ export default function ShiftHandoverModal({
                                   : `Thiếu ${diff} ${item.unit || "Cái"}`}
                               </span>
                             ) : (
-                              <span className="px-2 py-0.5 rounded-md bg-blue-100 text-blue-800 font-bold text-[11px]">
+                              <span className="px-2 py-0.5 rounded-md bg-blue-100 text-brand-ink font-bold text-[11px]">
                                 Khớp tồn Tầng 1
                               </span>
                             )}
@@ -518,7 +518,7 @@ export default function ShiftHandoverModal({
                               value={actual}
                               onChange={(e) => handleDirectTotalChange(key, e.target.value)}
                               className={`w-16 text-center font-mono text-sm font-black bg-transparent outline-none ${
-                                isDiff ? "text-amber-700" : "text-blue-700"
+                                isDiff ? "text-amber-700" : "text-brand-ink"
                               }`}
                             />
                             <button
@@ -546,12 +546,12 @@ export default function ShiftHandoverModal({
                   className="w-full px-4 py-2.5 bg-slate-50 hover:bg-slate-100/80 flex items-center justify-between gap-2 text-xs font-extrabold text-slate-800 transition cursor-pointer"
                 >
                   <span className="flex items-center gap-2">
-                    <Filter className="w-3.5 h-3.5 text-blue-600" />
+                    <Filter className="w-3.5 h-3.5 text-brand-ink" />
                     <span>Lọc Sản Phẩm Kiểm Tầng 1 Theo ĐVT ({allCheckProducts.length} mã)</span>
                   </span>
                   <span className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500">
                     {selectedUnitFilter !== "ALL" && (
-                      <span className="px-2 py-0.5 rounded-md bg-blue-100 text-blue-800">
+                      <span className="px-2 py-0.5 rounded-md bg-blue-100 text-brand-ink">
                         ĐVT: {selectedUnitFilter}
                       </span>
                     )}
@@ -639,7 +639,7 @@ export default function ShiftHandoverModal({
 
                       <div className="text-[11px] font-bold text-slate-600 ml-auto">
                         Tổng lọc:{" "}
-                        <span className="font-mono text-blue-700">
+                        <span className="font-mono text-brand-ink">
                           {filteredTotalQty}{" "}
                           {selectedUnitFilter !== "ALL" ? selectedUnitFilter : "SP"}
                         </span>{" "}
@@ -681,7 +681,7 @@ export default function ShiftHandoverModal({
                                     {p.unit || "Cái"}
                                   </span>
                                 </td>
-                                <td className="py-1.5 px-2.5 text-right font-mono font-extrabold text-blue-700 whitespace-nowrap">
+                                <td className="py-1.5 px-2.5 text-right font-mono font-extrabold text-brand-ink whitespace-nowrap">
                                   {p.stockQtyFloor1}
                                 </td>
                               </tr>
@@ -759,7 +759,7 @@ export default function ShiftHandoverModal({
 
           {/* Thông báo quy tắc tính giờ */}
           <div className="p-3 rounded-xl bg-slate-100 text-[11px] text-slate-600 flex items-start gap-2">
-            <Clock className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+            <Clock className="w-4 h-4 text-brand-ink shrink-0 mt-0.5" />
             <div>
               {isReachedCheckoutTime ? (
                 <>

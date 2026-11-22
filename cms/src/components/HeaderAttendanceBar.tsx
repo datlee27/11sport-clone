@@ -266,7 +266,7 @@ export default function HeaderAttendanceBar({ currentUser, onOpenMyAttendance }:
                   isLunchPaused ? "bg-amber-500" : "bg-teal-600 animate-pulse"
                 }`}
               />
-              <span className="font-mono font-black text-sm sm:text-base text-teal-600 tracking-wider">
+              <span className="font-mono font-black text-sm sm:text-base text-brand-ink tracking-wider">
                 {elapsedText}
               </span>
             </div>
@@ -276,8 +276,8 @@ export default function HeaderAttendanceBar({ currentUser, onOpenMyAttendance }:
         {/* Đã Check-out hoàn tất trong ngày: Chỉ hiện icon hoàn tất + Đồng hồ tổng giờ */}
         {isCompleted && (
           <div className="flex items-center gap-2 px-2 py-0.5 text-xs">
-            <CheckCircle2 className="w-4 h-4 text-teal-600 shrink-0" />
-            <span className="font-mono font-black text-sm sm:text-base text-teal-700 tracking-wider">
+            <CheckCircle2 className="w-4 h-4 text-brand-ink shrink-0" />
+            <span className="font-mono font-black text-sm sm:text-base text-brand-ink tracking-wider">
               {elapsedText}
             </span>
           </div>
@@ -285,7 +285,7 @@ export default function HeaderAttendanceBar({ currentUser, onOpenMyAttendance }:
 
         {loading && (
           <div className="flex items-center gap-1.5 px-2 py-1 text-xs text-slate-500 font-mono">
-            <Clock className="w-3.5 h-3.5 animate-spin text-teal-600" />
+            <Clock className="w-3.5 h-3.5 animate-spin text-brand-ink" />
             <span>--:--:--</span>
           </div>
         )}

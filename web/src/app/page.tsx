@@ -82,7 +82,7 @@ const TABS_CONFIG: TabConfig[] = [
   },
   {
     id: "RETURN",
-    label: "Trả / Đổi hàng",
+    label: "Đổi hàng",
     icon: RotateCcw,
     allowedRoles: ["SALES", "ADMIN", "CEO"],
     roleHint: "NV Bán hàng / Quản lý / Giám đốc",
@@ -431,7 +431,7 @@ export default function WebPosHomePage() {
             <div className="min-w-0 hidden sm:block">
               <div className="font-extrabold text-sm md:text-base tracking-tight text-slate-900 flex items-center gap-2 truncate">
                 <span className="truncate">11SPORT POS & KHO VẬN</span>
-                <span className="hidden lg:inline text-[11px] font-mono bg-blue-50 text-blue-600 border border-blue-200 px-2 py-0.5 rounded font-bold">
+                <span className="hidden lg:inline text-[11px] font-mono bg-blue-50 text-brand-ink border border-blue-200 px-2 py-0.5 rounded font-bold">
                   v2.0
                 </span>
               </div>
@@ -456,7 +456,7 @@ export default function WebPosHomePage() {
                   : "bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-800"
               }`}
             >
-              <ShieldCheck className="w-4 h-4 text-blue-600" />
+              <ShieldCheck className="w-4 h-4 text-brand-ink" />
               <div className="text-xs">
                 <span className="text-slate-500">Nhân sự: </span>
                 <strong className="text-slate-900">{currentUser.fullName}</strong>{" "}
@@ -473,7 +473,7 @@ export default function WebPosHomePage() {
               aria-label="Mở tiện ích nhân sự"
               className="relative min-h-[40px] min-w-[40px] px-2.5 md:px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200/80 text-xs font-bold text-slate-800 border border-slate-200 flex items-center justify-center gap-1.5 transition cursor-pointer"
             >
-              <User className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-blue-600" />
+              <User className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-brand-ink" />
               <span className="hidden sm:inline">Tiện ích</span>
               {hasUnseenShiftSchedule && (
                 <span
@@ -621,7 +621,7 @@ export default function WebPosHomePage() {
                 <div
                   className={`p-3 rounded-xl border text-xs font-bold flex items-start gap-2 ${
                     pwdMessage.type === "success"
-                      ? "bg-blue-50 border-blue-200 text-blue-800"
+                      ? "bg-blue-50 border-blue-200 text-brand-ink"
                       : "bg-red-50 border-red-200 text-red-700"
                   }`}
                 >

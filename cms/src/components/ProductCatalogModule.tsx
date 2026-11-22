@@ -444,7 +444,7 @@ export default function ProductCatalogModule() {
       {/* Banner hướng dẫn */}
       <div className="bg-white text-slate-900 rounded-xl border border-slate-200 p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-start gap-3">
-          <div className="p-2 rounded-xl bg-teal-50 text-teal-600 border border-teal-100 shrink-0">
+          <div className="p-2 rounded-xl bg-teal-50 text-brand-ink border border-teal-100 shrink-0">
             <Sparkles className="w-5 h-5" />
           </div>
           <div className="text-xs space-y-0.5">
@@ -453,7 +453,7 @@ export default function ProductCatalogModule() {
             </div>
             <p className="text-slate-600">
               Khai báo trước Mã gốc, các biến thể (Màu • Size), Giá vốn &amp; Giá niêm yết tại đây. Khi hàng về kho, chỉ cần vào{" "}
-              <strong className="text-teal-700">Quản lý Kho → + Nhập kho</strong> để chọn sẵn sản phẩm và nhập số lượng.
+              <strong className="text-brand-ink">Quản lý Kho → + Nhập kho</strong> để chọn sẵn sản phẩm và nhập số lượng.
             </p>
           </div>
         </div>
@@ -472,7 +472,7 @@ export default function ProductCatalogModule() {
           role={statusMsg.type === "error" ? "alert" : "status"}
           className={`p-3.5 rounded-xl border text-xs font-bold flex items-center justify-between gap-2 ${
             statusMsg.type === "success"
-              ? "bg-teal-50 border-teal-200 text-teal-800"
+              ? "bg-teal-50 border-teal-200 text-brand-ink"
               : "bg-red-50 border-red-200 text-red-700"
           }`}
         >
@@ -499,7 +499,7 @@ export default function ProductCatalogModule() {
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h3 className="font-bold text-slate-900 text-base flex items-center gap-2">
-            <Package className="w-5 h-5 text-teal-600" />
+            <Package className="w-5 h-5 text-brand-ink" />
             <span>Danh sách Sản phẩm ({visibleProducts.length}/{products.length} mã gốc)</span>
           </h3>
 
@@ -697,7 +697,7 @@ export default function ProductCatalogModule() {
                             className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-extrabold transition cursor-pointer ${
                               isExpanded
                                 ? "bg-indigo-600 text-white border-indigo-700"
-                                : "bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border-indigo-200"
+                                : "bg-indigo-50 hover:bg-indigo-100 text-brand-ink border-indigo-200"
                             }`}
                           >
                             <span>
@@ -714,7 +714,7 @@ export default function ProductCatalogModule() {
                                 title={`Mã con: ${vCode}`}
                               >
                                 <span className="font-bold text-slate-900">{v.color}</span>
-                                {v.size && <span className="text-indigo-700 font-mono">• {v.size}</span>}
+                                {v.size && <span className="text-brand-ink font-mono">• {v.size}</span>}
                                 <span className="font-mono text-slate-500">[{vCode}]</span>
                               </span>
                             );
@@ -741,7 +741,7 @@ export default function ProductCatalogModule() {
                           <div className="text-[11px] text-slate-600">
                             Version: <strong className="text-slate-900">{p.versionName || "—"}</strong>{" "}
                             {p.versionCode && (
-                              <span className="font-mono font-bold text-indigo-700">({p.versionCode})</span>
+                              <span className="font-mono font-bold text-brand-ink">({p.versionCode})</span>
                             )}
                           </div>
                         )}
@@ -795,7 +795,7 @@ export default function ProductCatalogModule() {
                         <span
                           className={`px-2 py-0.5 rounded-full text-[11px] ${
                             totalStock > 0
-                              ? "bg-teal-100 text-teal-800"
+                              ? "bg-teal-100 text-brand-ink"
                               : "bg-slate-100 text-slate-500"
                           }`}
                         >
@@ -807,7 +807,7 @@ export default function ProductCatalogModule() {
                           <button
                             type="button"
                             onClick={() => setEditingProductModal(p)}
-                            className="px-2.5 py-1.5 rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-700 border border-teal-200 font-bold text-[11px] inline-flex items-center gap-1 cursor-pointer"
+                            className="px-2.5 py-1.5 rounded-lg bg-teal-50 hover:bg-teal-100 text-brand-ink border border-teal-200 font-bold text-[11px] inline-flex items-center gap-1 cursor-pointer"
                             title="Sửa đầy đủ Danh mục, Thương hiệu, Version, Mã Version, Tên SP, Giá và các Biến thể Màu/Size"
                           >
                             <Pencil className="w-3.5 h-3.5" /> Sửa
@@ -847,7 +847,7 @@ export default function ProductCatalogModule() {
                           <button
                             type="button"
                             onClick={() => handleOpenPrintLabel(p)}
-                            className="px-2.5 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-bold text-[11px] inline-flex items-center gap-1 cursor-pointer"
+                            className="px-2.5 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-brand-ink border border-indigo-200 font-bold text-[11px] inline-flex items-center gap-1 cursor-pointer"
                             title="In tem nhãn mã vạch cho sản phẩm này"
                           >
                             <Printer className="w-3.5 h-3.5" /> In tem
@@ -872,7 +872,7 @@ export default function ProductCatalogModule() {
                               <div>
                                 <h4 className="font-extrabold text-indigo-950 text-xs">
                                   Danh sách Biến thể (Màu • Size • Mã con) của SP:{" "}
-                                  <span className="font-mono text-indigo-700">{p.code}</span> — {p.name}
+                                  <span className="font-mono text-brand-ink">{p.code}</span> — {p.name}
                                 </h4>
                                 <p className="text-[11px] text-slate-500">
                                   Giá riêng của biến thể nếu để trống (hoặc 0) sẽ tự động dùng Giá vốn (
@@ -922,12 +922,12 @@ export default function ProductCatalogModule() {
                                           <td className="py-2 px-3 text-center font-mono text-slate-400">
                                             {vIdx + 1}
                                           </td>
-                                          <td className="py-2 px-3 font-mono font-extrabold text-indigo-700">
+                                          <td className="py-2 px-3 font-mono font-extrabold text-brand-ink">
                                             {vCode}
                                           </td>
                                           <td className="py-2 px-3">
                                             <div
-                                              style={getColorBoxBorderStyle(hexes, "#f8fafc", 2)}
+                                              style={getColorBoxBorderStyle(hexes, "var(--box-bg, #f8fafc)", 2)}
                                               className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded border border-slate-200 bg-slate-50"
                                             >
                                               <ColorSwatchBadge hexes={hexes} colorName={v.color} size="xs" />
@@ -995,7 +995,7 @@ export default function ProductCatalogModule() {
                                             <button
                                               type="button"
                                               onClick={() => handleOpenPrintLabel(p, v)}
-                                              className="px-2.5 py-1 rounded bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-bold text-[11px] inline-flex items-center gap-1 cursor-pointer"
+                                              className="px-2.5 py-1 rounded bg-indigo-50 hover:bg-indigo-100 text-brand-ink border border-indigo-200 font-bold text-[11px] inline-flex items-center gap-1 cursor-pointer"
                                             >
                                               <Printer className="w-3 h-3" /> In tem
                                             </button>

@@ -242,7 +242,7 @@ export default function InvoicePdfModal({ order, onClose }: InvoicePdfModalProps
             {/* Header cửa hàng 11Sport với Logo */}
             <div className="text-center border-b-2 border-dashed border-black pb-3 mb-3 text-black">
               <img
-                src="/logo-11sport.svg"
+                data-keep-logo src="/logo-11sport.svg"
                 alt="11SPORT"
                 className="mx-auto object-contain mb-1.5 h-16 w-auto"
               />
@@ -434,35 +434,35 @@ export default function InvoicePdfModal({ order, onClose }: InvoicePdfModalProps
 
               {((Number(order.debtAmount) || 0) > 0 ||
                 (Number(order.initialDebtAmount) || 0) > 0) && (
-                <div className="pt-1.5 border-t border-dashed border-black space-y-1 text-[11px]">
-                  <div className="flex justify-between items-center whitespace-nowrap gap-2">
-                    <span className="font-semibold">Đã thanh toán:</span>
-                    <span className="font-mono font-bold">
-                      {formatVND(
-                        Math.max(
-                          0,
-                          Number(order.paidAmount) ||
-                            calcTotalAmount - (Number(order.debtAmount) || 0)
-                        )
-                      )}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center whitespace-nowrap gap-2 font-extrabold">
-                    <span>CÒN NỢ (TRẢ SAU):</span>
-                    <span className="font-mono font-black">
-                      {formatVND(Math.max(0, Number(order.debtAmount) || 0))}
-                    </span>
-                  </div>
-                  {order.debtDueDate && (Number(order.debtAmount) || 0) > 0 && (
+                  <div className="pt-1.5 border-t border-dashed border-black space-y-1 text-[11px]">
                     <div className="flex justify-between items-center whitespace-nowrap gap-2">
-                      <span className="font-semibold">Hạn hẹn trả:</span>
+                      <span className="font-semibold">Đã thanh toán:</span>
                       <span className="font-mono font-bold">
-                        {new Date(order.debtDueDate).toLocaleDateString("vi-VN")}
+                        {formatVND(
+                          Math.max(
+                            0,
+                            Number(order.paidAmount) ||
+                            calcTotalAmount - (Number(order.debtAmount) || 0)
+                          )
+                        )}
                       </span>
                     </div>
-                  )}
-                </div>
-              )}
+                    <div className="flex justify-between items-center whitespace-nowrap gap-2 font-extrabold">
+                      <span>CÒN NỢ (TRẢ SAU):</span>
+                      <span className="font-mono font-black">
+                        {formatVND(Math.max(0, Number(order.debtAmount) || 0))}
+                      </span>
+                    </div>
+                    {order.debtDueDate && (Number(order.debtAmount) || 0) > 0 && (
+                      <div className="flex justify-between items-center whitespace-nowrap gap-2">
+                        <span className="font-semibold">Hạn hẹn trả:</span>
+                        <span className="font-mono font-bold">
+                          {new Date(order.debtDueDate).toLocaleDateString("vi-VN")}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
             </div>
 
             {/* Ghi chú thuế & lời cảm ơn */}
@@ -471,7 +471,7 @@ export default function InvoicePdfModal({ order, onClose }: InvoicePdfModalProps
                 Ghi chú: {order.note || "Giá đã bao gồm thuế"}
               </div>
               <div className="text-[10px] font-semibold leading-snug">
-                Cảm ơn Quý khách đã mua sắm tại 11Sport! Vui lòng giữ hóa đơn khi cần đổi/trả hàng.
+                Cảm ơn Quý khách đã mua sắm tại 11Sport! Vui lòng giữ hóa đơn khi cần đổi hàng.
               </div>
             </div>
           </div>

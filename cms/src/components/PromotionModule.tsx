@@ -488,21 +488,21 @@ export default function PromotionModule() {
     switch (promo.effectiveStatus) {
       case "RUNNING_PERMANENT":
         return (
-          <span className="inline-flex items-center gap-1 text-[11px] font-extrabold px-2.5 py-1 rounded-full bg-teal-100 text-teal-800 border border-teal-300">
+          <span className="inline-flex items-center gap-1 text-[11px] font-extrabold px-2.5 py-1 rounded-full bg-teal-100 text-brand-ink border border-teal-300">
             <InfinityIcon className="w-3.5 h-3.5" />
             Đang chạy (Vĩnh viễn)
           </span>
         );
       case "RUNNING":
         return (
-          <span className="inline-flex items-center gap-1 text-[11px] font-extrabold px-2.5 py-1 rounded-full bg-teal-100 text-teal-800 border border-teal-300">
+          <span className="inline-flex items-center gap-1 text-[11px] font-extrabold px-2.5 py-1 rounded-full bg-teal-100 text-brand-ink border border-teal-300">
             <CheckCircle2 className="w-3.5 h-3.5" />
             Đang chạy (Còn hạn)
           </span>
         );
       case "UPCOMING":
         return (
-          <span className="inline-flex items-center gap-1 text-[11px] font-extrabold px-2.5 py-1 rounded-full bg-teal-100 text-teal-800 border border-teal-300">
+          <span className="inline-flex items-center gap-1 text-[11px] font-extrabold px-2.5 py-1 rounded-full bg-teal-100 text-brand-ink border border-teal-300">
             <Clock className="w-3.5 h-3.5" />
             Sắp diễn ra
           </span>
@@ -570,13 +570,13 @@ export default function PromotionModule() {
           </div>
 
           <div className="p-3.5 rounded-xl bg-teal-50/70 border border-teal-200">
-            <div className="text-[11px] font-bold uppercase text-teal-800">
+            <div className="text-[11px] font-bold uppercase text-brand-ink">
               Đang chạy hiệu lực
             </div>
-            <div className="text-2xl font-extrabold text-teal-700 mt-1 font-mono">
+            <div className="text-2xl font-extrabold text-brand-ink mt-1 font-mono">
               {kpiStats.activeNow}
             </div>
-            <div className="text-[11px] text-teal-700 mt-0.5">
+            <div className="text-[11px] text-brand-ink mt-0.5">
               Tự động kích hoạt tại quầy POS
             </div>
           </div>
@@ -614,7 +614,7 @@ export default function PromotionModule() {
         )}
 
         {successMsg && (
-          <div className="p-3 rounded-xl bg-teal-50 border border-teal-200 text-teal-800 text-xs font-bold flex items-center gap-2">
+          <div className="p-3 rounded-xl bg-teal-50 border border-teal-200 text-brand-ink text-xs font-bold flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 shrink-0" />
             <span>{successMsg}</span>
           </div>
@@ -714,12 +714,12 @@ export default function PromotionModule() {
                       <span className="text-xs text-slate-500 flex items-center gap-1">
                         {promo.isPermanent ? (
                           <>
-                            <InfinityIcon className="w-3.5 h-3.5 text-teal-600" />
+                            <InfinityIcon className="w-3.5 h-3.5 text-brand-ink" />
                             <span>Thời gian: Chạy vĩnh viễn</span>
                           </>
                         ) : (
                           <>
-                            <Calendar className="w-3.5 h-3.5 text-teal-600" />
+                            <Calendar className="w-3.5 h-3.5 text-brand-ink" />
                             <span>
                               {promo.startDate
                                 ? formatDateTime(promo.startDate)
@@ -748,9 +748,9 @@ export default function PromotionModule() {
                     {/* Điều kiện áp dụng */}
                     <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/90 space-y-1.5 text-xs">
                       <div className="font-bold text-slate-700 flex items-center gap-1.5">
-                        <ShoppingBag className="w-3.5 h-3.5 text-teal-600" />
+                        <ShoppingBag className="w-3.5 h-3.5 text-brand-ink" />
                         <span>Điều kiện khi Sales thêm giỏ hàng:</span>
-                        <span className="text-teal-700 font-extrabold">
+                        <span className="text-brand-ink font-extrabold">
                           {promo.conditionType === "BUY_PRODUCTS" &&
                             `Mua từ ${promo.minQuantity} sản phẩm chỉ định`}
                           {promo.conditionType === "BUY_CATEGORY" &&
@@ -759,7 +759,7 @@ export default function PromotionModule() {
                             `Áp dụng mọi sản phẩm (SL tối thiểu: ${promo.minQuantity})`}
                         </span>
                         {promo.minOrderAmount > 0 && (
-                          <span className="px-2 py-0.5 rounded bg-teal-100 text-teal-800 font-mono text-[11px] font-bold">
+                          <span className="px-2 py-0.5 rounded bg-teal-100 text-brand-ink font-mono text-[11px] font-bold">
                             Đơn tối thiểu: {formatVND(promo.minOrderAmount)}
                           </span>
                         )}
@@ -785,7 +785,7 @@ export default function PromotionModule() {
                             {promo.conditionCategories.map((cc) => (
                               <span
                                 key={cc.categoryId}
-                                className="px-2.5 py-1 rounded-lg bg-teal-50 border border-teal-200 text-teal-800 text-[11px] font-bold"
+                                className="px-2.5 py-1 rounded-lg bg-teal-50 border border-teal-200 text-brand-ink text-[11px] font-bold"
                               >
                                 📂 Danh mục: {cc.categoryName}
                               </span>
@@ -827,7 +827,7 @@ export default function PromotionModule() {
                                 </span>
                                 <span
                                   className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${(g.stockFloor1 ?? 0) > 0
-                                      ? "bg-teal-50 text-teal-700"
+                                      ? "bg-teal-50 text-brand-ink"
                                       : "bg-red-50 text-red-600 font-bold"
                                     }`}
                                 >
@@ -959,7 +959,7 @@ export default function PromotionModule() {
               {/* PHẦN 1: THÔNG TIN CƠ BẢN & THỜI GIAN CHƯƠNG TRÌNH */}
               <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-4">
                 <div className="text-xs font-extrabold uppercase text-slate-800 flex items-center gap-1.5">
-                  <Calendar className="w-4 h-4 text-teal-600" />
+                  <Calendar className="w-4 h-4 text-brand-ink" />
                   1. Thông tin Chương trình & Thời gian hiệu lực
                 </div>
 
@@ -1069,14 +1069,14 @@ export default function PromotionModule() {
                           <button
                             type="button"
                             onClick={() => applyQuickDuration(7)}
-                            className="px-2.5 py-1 rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-700 text-[11px] font-bold border border-teal-200"
+                            className="px-2.5 py-1 rounded-lg bg-teal-50 hover:bg-teal-100 text-brand-ink text-[11px] font-bold border border-teal-200"
                           >
                             + 7 ngày tới
                           </button>
                           <button
                             type="button"
                             onClick={() => applyQuickDuration(30)}
-                            className="px-2.5 py-1 rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-700 text-[11px] font-bold border border-teal-200"
+                            className="px-2.5 py-1 rounded-lg bg-teal-50 hover:bg-teal-100 text-brand-ink text-[11px] font-bold border border-teal-200"
                           >
                             + 30 ngày tới
                           </button>
@@ -1114,7 +1114,7 @@ export default function PromotionModule() {
               {/* PHẦN 2: ĐIỀU KIỆN MUA SẢN PHẨM GÌ */}
               <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-4">
                 <div className="text-xs font-extrabold uppercase text-slate-800 flex items-center gap-1.5">
-                  <ShoppingBag className="w-4 h-4 text-teal-600" />
+                  <ShoppingBag className="w-4 h-4 text-brand-ink" />
                   2. Điều kiện áp dụng (Khi khách mua sản phẩm gì?)
                 </div>
 
@@ -1196,7 +1196,7 @@ export default function PromotionModule() {
                                 Array.from(new Set([...prev, ...ids]))
                               );
                             }}
-                            className="text-[11px] font-bold text-teal-700 hover:underline"
+                            className="text-[11px] font-bold text-brand-ink hover:underline"
                           >
                             + Chọn tất cả SP đang lọc ({filteredConditionProducts.length})
                           </button>

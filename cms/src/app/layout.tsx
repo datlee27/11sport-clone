@@ -1,19 +1,12 @@
 import type { Metadata } from "next";
-import { Be_Vietnam_Pro, JetBrains_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import VersionChecker from "@/components/VersionChecker";
 
-const beVietnamPro = Be_Vietnam_Pro({
+const inter = Inter({
   subsets: ["vietnamese", "latin"],
   weight: ["400", "500", "600", "700", "800"],
   variable: "--font-sans",
-  display: "swap",
-});
-
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ["vietnamese", "latin"],
-  weight: ["500", "600", "700", "800"],
-  variable: "--font-mono",
   display: "swap",
 });
 
@@ -37,7 +30,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="vi" className={`${beVietnamPro.variable} ${jetbrainsMono.variable}`}>
+    <html lang="vi" className={`${inter.variable} `} suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "try{if(localStorage.getItem('11sport-theme')==='dark')document.documentElement.classList.add('dark')}catch(e){}",
+          }}
+        />
+      </head>
       <body className="min-h-screen antialiased font-sans font-medium text-base">
         {children}
         <VersionChecker />

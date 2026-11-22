@@ -213,7 +213,7 @@ export default function WiseCalculatorStash() {
           {/* Header gọn */}
           <div className="bg-blue-600 text-white px-3.5 py-2.5 border-b border-blue-700 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-full bg-white text-blue-600 flex items-center justify-center font-bold shadow-xs">
+              <div className="w-7 h-7 rounded-full bg-white text-brand-ink flex items-center justify-center font-bold shadow-xs">
                 <Calculator className="w-4 h-4 stroke-[2.5]" />
               </div>
               <div>
@@ -289,7 +289,7 @@ export default function WiseCalculatorStash() {
               />
 
               {hasOperator && (
-                <div className="text-xs font-mono text-blue-600 font-bold pt-0.5 border-t border-slate-200">
+                <div className="text-xs font-mono text-brand-ink font-bold pt-0.5 border-t border-slate-200">
                   = {formatNumber(numericInput, sourceCurrency === "VND" ? 0 : 2)}{" "}
                   {sourceCurrency}
                 </div>
@@ -301,7 +301,7 @@ export default function WiseCalculatorStash() {
               <button
                 type="button"
                 onClick={handleSwap}
-                className="px-3 py-1 rounded-full bg-white hover:bg-blue-50 text-blue-700 border border-blue-200 text-[11px] font-bold flex items-center gap-1 transition shadow-xs"
+                className="px-3 py-1 rounded-full bg-white hover:bg-blue-50 text-brand-ink border border-blue-200 text-[11px] font-bold flex items-center gap-1 transition shadow-xs"
               >
                 <ArrowUpDown className="w-3 h-3" />
                 <span>
@@ -313,7 +313,7 @@ export default function WiseCalculatorStash() {
             {/* Ô 2: Kết quả quy đổi (Tách dòng riêng toàn chiều ngang để không bao giờ bị cắt mất số) */}
             <div className="bg-blue-50/80 rounded-xl p-3 border border-blue-200 space-y-1.5">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-[11px] font-bold uppercase tracking-wide text-blue-700">
+                <span className="text-[11px] font-bold uppercase tracking-wide text-brand-ink">
                   Thành tiền quy đổi
                 </span>
 
@@ -331,7 +331,7 @@ export default function WiseCalculatorStash() {
                 </select>
               </div>
 
-              <div className="w-full text-2xl sm:text-3xl font-black font-mono text-blue-600 break-all leading-tight">
+              <div className="w-full text-2xl sm:text-3xl font-black font-mono text-brand-ink break-all leading-tight">
                 {rate !== null
                   ? `${formatNumber(convertedValue, targetDecimals)} ${targetCurrency}`
                   : "..."}
@@ -357,7 +357,7 @@ export default function WiseCalculatorStash() {
                   label: "000",
                   value: "000",
                   style:
-                    "bg-white text-blue-600 hover:bg-blue-50 border-slate-200",
+                    "bg-white text-brand-ink hover:bg-blue-50 border-slate-200",
                 },
                 {
                   label: ":",

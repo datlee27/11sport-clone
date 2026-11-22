@@ -394,7 +394,7 @@ export default function AccountProfileModule({
           >
             <div className="flex items-center justify-between gap-2 pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-teal-50 border border-teal-200 text-teal-600 flex items-center justify-center shrink-0">
+                <div className="w-9 h-9 rounded-xl bg-teal-50 border border-teal-200 text-brand-ink flex items-center justify-center shrink-0">
                   <User className="w-4 h-4" />
                 </div>
                 <div>
@@ -411,12 +411,12 @@ export default function AccountProfileModule({
             {profileMsg && (
               <div
                 className={`p-3 rounded-xl text-xs font-medium flex items-start gap-2 border ${profileMsg.type === "success"
-                  ? "bg-teal-50 border-teal-200 text-teal-800"
+                  ? "bg-teal-50 border-teal-200 text-brand-ink"
                   : "bg-red-50 border-red-200 text-red-700"
                   }`}
               >
                 {profileMsg.type === "success" ? (
-                  <CheckCircle2 className="w-4 h-4 text-teal-600 shrink-0 mt-0.5" />
+                  <CheckCircle2 className="w-4 h-4 text-brand-ink shrink-0 mt-0.5" />
                 ) : (
                   <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
                 )}
@@ -722,9 +722,9 @@ export default function AccountProfileModule({
                 <div className="mt-1">
                   <span
                     className={`inline-block px-2 py-0.5 rounded-md text-xs font-bold ${contractType === "FULLTIME"
-                      ? "bg-teal-100 text-teal-800"
+                      ? "bg-teal-100 text-brand-ink"
                       : contractType === "INTERN"
-                        ? "bg-teal-100 text-teal-800"
+                        ? "bg-teal-100 text-brand-ink"
                         : "bg-amber-100 text-amber-800"
                       }`}
                   >
@@ -785,7 +785,7 @@ export default function AccountProfileModule({
             {/* Chế độ Lương, Trợ cấp, Thưởng & BHXH */}
             <div className="space-y-2">
               <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase">
-                <Wallet className="w-3.5 h-3.5 text-teal-600" />
+                <Wallet className="w-3.5 h-3.5 text-brand-ink" />
                 <span>Chế độ Lương, Trợ cấp, Thưởng &amp; BHXH</span>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -857,7 +857,7 @@ export default function AccountProfileModule({
               {contractFileUrl ? (
                 <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 rounded-xl border border-teal-200 bg-teal-50/70">
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <FileText className="w-4 h-4 text-teal-600 shrink-0" />
+                    <FileText className="w-4 h-4 text-brand-ink shrink-0" />
                     <span className="text-xs font-bold text-slate-800 truncate">
                       {contractFileName || "Hop-dong-lao-dong"}
                     </span>
@@ -882,7 +882,7 @@ export default function AccountProfileModule({
           {/* Card 3: Quyền lợi hợp đồng & Lưu ý nhân sự */}
           <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-3">
             <div className="flex items-center gap-2 text-xs font-extrabold text-slate-800 uppercase">
-              <Info className="w-4 h-4 text-teal-600 shrink-0" />
+              <Info className="w-4 h-4 text-brand-ink shrink-0" />
               <span>Quyền lợi &amp; Quy định Hồ sơ Nhân sự</span>
             </div>
             <ul className="space-y-2 text-xs text-slate-600 leading-relaxed">
