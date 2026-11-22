@@ -157,7 +157,7 @@ export default function CustomerTab({ onOpenInvoice }: CustomerTabProps) {
                     userTypedRef.current = false;
                     handleLookup(cPhone);
                   }}
-                  className="min-h-[36px] max-w-full truncate px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-xs font-mono font-semibold text-slate-700 transition"
+                  className="min-h-[36px] max-w-full truncate px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-blue-50 hover:text-brand-ink text-xs font-mono font-semibold text-slate-700 transition"
                 >
                   {cName} ({formatPhone(cPhone)})
                 </button>
@@ -182,7 +182,7 @@ export default function CustomerTab({ onOpenInvoice }: CustomerTabProps) {
                 <User className="w-6 h-6 text-white" />
               </div>
               <div className="min-w-0">
-                <div className="text-xs uppercase text-blue-600 font-bold">
+                <div className="text-xs uppercase text-brand-ink font-bold">
                   Hồ sơ Khách hàng 11Sport
                 </div>
                 <div className="text-lg sm:text-xl font-extrabold break-words text-slate-900">
@@ -203,7 +203,7 @@ export default function CustomerTab({ onOpenInvoice }: CustomerTabProps) {
               </div>
               <div className="md:text-right">
                 <div className="text-xs text-slate-500">Tổng chi tiêu tích lũy</div>
-                <div className="text-xl sm:text-2xl font-mono font-extrabold text-blue-600 break-all">
+                <div className="text-xl sm:text-2xl font-mono font-extrabold text-brand-ink break-all">
                   {formatVND(
                     orders
                       .filter((o) => o.status !== "DRAFT")
@@ -218,7 +218,7 @@ export default function CustomerTab({ onOpenInvoice }: CustomerTabProps) {
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-3 sm:p-5">
             <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
               <h3 className="font-bold text-slate-900 text-base flex items-center gap-2">
-                <ShoppingBag className="w-5 h-5 text-blue-600" />
+                <ShoppingBag className="w-5 h-5 text-brand-ink" />
                 {`Lịch sử Đơn hàng (${orders.length})`}
               </h3>
             </div>
@@ -264,15 +264,15 @@ export default function CustomerTab({ onOpenInvoice }: CustomerTabProps) {
                         <td className="py-3 px-4 text-right font-mono text-xs text-amber-700">
                           {formatVND(ord.cardFee)}
                         </td>
-                        <td className="py-3 px-4 text-right font-mono font-extrabold text-blue-700 whitespace-nowrap">
+                        <td className="py-3 px-4 text-right font-mono font-extrabold text-brand-ink whitespace-nowrap">
                           {formatVND(ord.totalAmount)}
                         </td>
                         <td className="py-3 px-4 text-center">
                           <span
                             className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full whitespace-nowrap ${ord.status === "DRAFT"
-                                ? "bg-indigo-100 text-indigo-800 border border-indigo-300"
+                                ? "bg-indigo-100 text-brand-ink border border-indigo-300"
                                 : ord.status === "PAID"
-                                  ? "bg-blue-100 text-blue-800"
+                                  ? "bg-blue-100 text-brand-ink"
                                   : ord.status === "PARTIALLY_RETURNED"
                                     ? "bg-amber-100 text-amber-800"
                                     : "bg-red-100 text-red-700"

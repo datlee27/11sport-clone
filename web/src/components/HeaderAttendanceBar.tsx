@@ -657,7 +657,7 @@ export default function HeaderAttendanceBar({ currentUser }: Props) {
                     : "bg-blue-600 animate-pulse"
                 }`}
               />
-              <span className="font-mono font-black text-sm sm:text-base text-blue-600 tracking-wider">
+              <span className="font-mono font-black text-sm sm:text-base text-brand-ink tracking-wider">
                 {elapsedText}
               </span>
             </div>
@@ -671,13 +671,13 @@ export default function HeaderAttendanceBar({ currentUser }: Props) {
                   title="Mở bảng Kiểm hàng (Tổng số lượng mặt hàng kiểm trong ngày, Tiền mặt trong quầy & Lý do)"
                   className={`px-2.5 py-1 rounded-xl text-[11px] font-extrabold flex items-center gap-1.5 shadow-2xs transition cursor-pointer ${
                     isAwaitingNextShiftConfirm
-                      ? "bg-blue-50 border border-blue-300 text-blue-700 hover:bg-blue-100"
+                      ? "bg-blue-50 border border-blue-300 text-brand-ink hover:bg-blue-100"
                       : currentShiftHandover?.status === "DRAFT"
-                      ? "bg-blue-50 border border-blue-300 text-blue-700 hover:bg-blue-100"
+                      ? "bg-blue-50 border border-blue-300 text-brand-ink hover:bg-blue-100"
                       : "bg-white hover:bg-blue-50 text-slate-800 border border-slate-200 hover:border-blue-300"
                   }`}
                 >
-                  <Boxes className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                  <Boxes className="w-3.5 h-3.5 text-brand-ink shrink-0" />
                   <span className="truncate max-w-[200px]">
                     Kiểm hàng: {checkButtonSummaryText}
                   </span>
@@ -706,8 +706,8 @@ export default function HeaderAttendanceBar({ currentUser }: Props) {
         {/* Đã Check-out hoàn tất trong ngày: Chỉ hiện icon hoàn tất + Đồng hồ tổng giờ */}
         {isCompleted && (
           <div className="flex items-center gap-2 px-2 py-0.5 text-xs">
-            <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />
-            <span className="font-mono font-black text-sm sm:text-base text-blue-700 tracking-wider">
+            <CheckCircle2 className="w-4 h-4 text-brand-ink shrink-0" />
+            <span className="font-mono font-black text-sm sm:text-base text-brand-ink tracking-wider">
               {elapsedText}
             </span>
           </div>
@@ -848,7 +848,7 @@ export default function HeaderAttendanceBar({ currentUser }: Props) {
                       Đang lệch {incomingDiffCount} nhóm
                     </span>
                   ) : (
-                    <span className="px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 font-bold text-[11px]">
+                    <span className="px-2.5 py-0.5 rounded-full bg-blue-100 text-brand-ink font-bold text-[11px]">
                       Khớp tồn Tầng 1
                     </span>
                   )}
@@ -898,7 +898,7 @@ export default function HeaderAttendanceBar({ currentUser }: Props) {
                                 {item.unit || "Cái"}
                               </span>
                               {typeof prevReported === "number" && (
-                                <span className="text-blue-800 font-semibold">
+                                <span className="text-brand-ink font-semibold">
                                   • Ca trước đếm:{" "}
                                   <b className="font-mono">{prevReported}</b>
                                 </span>
@@ -929,7 +929,7 @@ export default function HeaderAttendanceBar({ currentUser }: Props) {
                                 setIncomingActualTotals((prev) => ({ ...prev, [key]: val }));
                               }}
                               className={`w-14 text-center font-mono font-black text-sm outline-none ${
-                                isDiff ? "text-amber-700" : "text-blue-700"
+                                isDiff ? "text-amber-700" : "text-brand-ink"
                               }`}
                             />
                             <button

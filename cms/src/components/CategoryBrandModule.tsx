@@ -104,7 +104,7 @@ export default function CategoryBrandModule() {
                 <h2 className="font-extrabold text-slate-900 text-base sm:text-lg tracking-tight">
                    Trung tâm Danh mục, Thương hiệu &amp; Sản phẩm
                 </h2>
-                <span className="px-2.5 py-0.5 rounded-full bg-teal-50 border border-teal-200 text-teal-800 font-mono text-[11px] font-bold">
+                <span className="px-2.5 py-0.5 rounded-full bg-teal-50 border border-teal-200 text-brand-ink font-mono text-[11px] font-bold">
                   Chuẩn SKU v5.0
                 </span>
               </div>
@@ -116,18 +116,18 @@ export default function CategoryBrandModule() {
                 <ArrowRight className="w-3 h-3 inline mx-1 text-slate-400" />
                 <strong className="font-mono text-slate-700">[VERSION]</strong>
                 <ArrowRight className="w-3 h-3 inline mx-1 text-slate-400" />
-                <strong className="font-mono text-indigo-700">[MÀU + SIZE]</strong>
+                <strong className="font-mono text-brand-ink">[MÀU + SIZE]</strong>
               </p>
             </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <div className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-teal-600" />
+              <Sparkles className="w-3.5 h-3.5 text-brand-ink" />
               <span>Tổng quan:</span>
               <strong className="font-mono text-slate-900">{counts.categories}</strong> Danh mục ·{" "}
               <strong className="font-mono text-slate-900">{counts.brands}</strong> Thương hiệu ·{" "}
-              <strong className="font-mono text-teal-700">{counts.products}</strong> Sản phẩm
+              <strong className="font-mono text-brand-ink">{counts.products}</strong> Sản phẩm
             </div>
           </div>
         </div>

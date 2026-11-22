@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect } from "react";
+import ThemeToggle from "./ThemeToggle";
 import { StaffUser, UserRole } from "@/lib/api";
 import {
   ShieldCheck,
@@ -109,7 +110,7 @@ export default function DrawerMenu({
 
       {/* Nội dung Drawer (trái: 5 tab chức năng, phải: tiện ích nhân sự) */}
       <aside
-        className={`fixed top-0 bottom-0 w-80 max-w-[85vw] bg-white text-slate-900 shadow-2xl border-slate-200 flex flex-col z-10 duration-200 ${
+        className={`fixed top-0 bottom-0 w-80 max-w-[85vw] drawer-dark bg-white text-slate-900 shadow-2xl border-slate-200 flex flex-col z-10 duration-200 ${
           isLeft
             ? "left-0 border-r animate-in slide-in-from-left"
             : "right-0 border-l animate-in slide-in-from-right"
@@ -121,7 +122,7 @@ export default function DrawerMenu({
             <img
               src="/logo-11sport.svg"
               alt="11Sport Logo"
-              className="h-9 w-auto object-contain shrink-0"
+              className="h-10 w-auto object-contain shrink-0"
             />
             <div className="min-w-0">
               <div className="font-extrabold text-xs tracking-tight text-slate-900 truncate">
@@ -148,7 +149,7 @@ export default function DrawerMenu({
           <div className="p-3 border-b border-slate-200 bg-slate-50/70">
             <div className="bg-white border border-slate-200 rounded-xl p-2.5 flex items-center gap-2.5 shadow-2xs">
               <div className="w-9 h-9 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center shrink-0">
-                <ShieldCheck className="w-4 h-4 text-blue-600" />
+                <ShieldCheck className="w-4 h-4 text-brand-ink" />
               </div>
               <div className="min-w-0 flex-1">
                 <div className="font-extrabold text-xs text-slate-900 truncate">
@@ -207,7 +208,7 @@ export default function DrawerMenu({
                         ? "opacity-45 cursor-not-allowed text-slate-400 bg-slate-50"
                         : isActive
                           ? "bg-blue-600 text-white font-extrabold shadow-xs"
-                          : "text-slate-700 hover:bg-blue-50 hover:text-blue-700"
+                          : "text-slate-700 hover:bg-blue-50 hover:text-brand-ink"
                     }`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
@@ -215,7 +216,7 @@ export default function DrawerMenu({
                         className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
                           isActive
                             ? "bg-white/20 text-white"
-                            : "bg-blue-50 text-blue-600"
+                            : "bg-blue-50 text-brand-ink"
                         }`}
                       >
                         {isAllowed ? (
@@ -256,7 +257,7 @@ export default function DrawerMenu({
                         activeDrawerPage === "NONE" &&
                         activeTab === "PUSH_PRODUCTS"
                           ? "bg-blue-600 text-white font-extrabold shadow-xs"
-                          : "text-slate-700 hover:bg-blue-50 hover:text-blue-700"
+                          : "text-slate-700 hover:bg-blue-50 hover:text-brand-ink"
                       }`}
                     >
                       <span
@@ -292,7 +293,7 @@ export default function DrawerMenu({
                   className={`w-full text-left px-2.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2.5 transition ${
                     activeDrawerPage === "ATTENDANCE"
                       ? "bg-blue-600 text-white font-extrabold shadow-xs"
-                      : "text-slate-700 hover:bg-blue-50 hover:text-blue-700"
+                      : "text-slate-700 hover:bg-blue-50 hover:text-brand-ink"
                   }`}
                 >
                   <span
@@ -341,14 +342,14 @@ export default function DrawerMenu({
                   className={`w-full text-left px-2.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2.5 transition ${
                     activeDrawerPage === "PROFILE"
                       ? "bg-blue-600 text-white font-extrabold shadow-xs"
-                      : "text-slate-700 hover:bg-blue-50 hover:text-blue-700"
+                      : "text-slate-700 hover:bg-blue-50 hover:text-brand-ink"
                   }`}
                 >
                   <span
                     className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
                       activeDrawerPage === "PROFILE"
                         ? "bg-white/20 text-white"
-                        : "bg-blue-50 text-blue-600"
+                        : "bg-blue-50 text-brand-ink"
                     }`}
                   >
                     <UserCog className="w-4 h-4" />
@@ -363,6 +364,9 @@ export default function DrawerMenu({
                   />
                 </button>
 
+                {/* Chế độ sáng/tối */}
+                <ThemeToggle />
+
                 {/* 3. Đổi mật khẩu */}
                 {onOpenChangePassword && (
                   <button
@@ -372,7 +376,7 @@ export default function DrawerMenu({
                       onClose();
                       onOpenChangePassword();
                     }}
-                    className="w-full text-left px-2.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2.5 text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition"
+                    className="w-full text-left px-2.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2.5 text-slate-700 hover:bg-blue-50 hover:text-brand-ink transition"
                   >
                     <span className="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
                       <KeyRound className="w-4 h-4" />
@@ -393,7 +397,7 @@ export default function DrawerMenu({
                     target="_blank"
                     rel="noreferrer"
                     onClick={onClose}
-                    className="w-full px-2.5 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-xs font-bold text-blue-700 border border-blue-200 flex items-center justify-between gap-2 transition"
+                    className="w-full px-2.5 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-xs font-bold text-brand-ink border border-blue-200 flex items-center justify-between gap-2 transition"
                   >
                     <span>Mở trang Quản trị CMS</span>
                     <ExternalLink className="w-4 h-4 shrink-0" />

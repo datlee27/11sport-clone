@@ -195,9 +195,9 @@ export default function AttendanceIpConfigModule({
           }`}
         >
           <div className="flex items-center gap-2">
-            {toastMessage.type === "success" && <CheckCircle2 className="w-5 h-5 text-teal-600 shrink-0" />}
+            {toastMessage.type === "success" && <CheckCircle2 className="w-5 h-5 text-brand-ink shrink-0" />}
             {toastMessage.type === "error" && <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0" />}
-            {toastMessage.type === "info" && <Info className="w-5 h-5 text-teal-600 shrink-0" />}
+            {toastMessage.type === "info" && <Info className="w-5 h-5 text-brand-ink shrink-0" />}
             <span>{toastMessage.text}</span>
           </div>
           <button
@@ -214,7 +214,7 @@ export default function AttendanceIpConfigModule({
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2.5">
-              <div className="p-2 bg-teal-50 text-teal-600 rounded-xl border border-teal-200">
+              <div className="p-2 bg-teal-50 text-brand-ink rounded-xl border border-teal-200">
                 <Wifi className="w-5 h-5" />
               </div>
               <h2 className="text-lg sm:text-xl font-extrabold tracking-tight text-slate-900">
@@ -234,7 +234,7 @@ export default function AttendanceIpConfigModule({
               disabled={loading}
               className="px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-teal-600" : "text-teal-600"}`} />
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-brand-ink" : "text-brand-ink"}`} />
               <span>Làm mới</span>
             </button>
             {isModal && onClose && (
@@ -253,27 +253,27 @@ export default function AttendanceIpConfigModule({
         <div className="mt-4 pt-4 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-slate-600">IP Public hiện tại của bạn:</span>
-            <span className="font-mono font-bold bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200 text-teal-700">
+            <span className="font-mono font-bold bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200 text-brand-ink">
               {detectedClientIp || "Đang kiểm tra..."}
             </span>
             <button
               type="button"
               onClick={handleCopyIp}
               title="Sao chép IP"
-              className="p-1.5 hover:bg-teal-50 rounded-md text-slate-600 hover:text-teal-600 transition cursor-pointer"
+              className="p-1.5 hover:bg-teal-50 rounded-md text-slate-600 hover:text-brand-ink transition cursor-pointer"
             >
               <Copy className="w-3.5 h-3.5" />
             </button>
             <span
               className={`px-2 py-0.5 rounded-full font-bold text-[11px] flex items-center gap-1 ${
                 isCurrentIpAllowed
-                  ? "bg-teal-50 text-teal-700 border border-teal-200"
+                  ? "bg-teal-50 text-brand-ink border border-teal-200"
                   : "bg-amber-50 text-amber-700 border border-amber-200"
               }`}
             >
               {isCurrentIpAllowed ? (
                 <>
-                  <CheckCircle2 className="w-3 h-3 text-teal-600" />
+                  <CheckCircle2 className="w-3 h-3 text-brand-ink" />
                   Mạng công ty hợp lệ
                 </>
               ) : (
@@ -312,7 +312,7 @@ export default function AttendanceIpConfigModule({
           {/* CỘT 1: CƠ SỞ 1 */}
           <div className="bg-white rounded-2xl p-5 shadow-xs border border-slate-200 space-y-4">
             <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
-              <div className="p-2 rounded-xl bg-teal-50 text-teal-700">
+              <div className="p-2 rounded-xl bg-teal-50 text-brand-ink">
                 <Building2 className="w-5 h-5" />
               </div>
               <div>
@@ -340,7 +340,7 @@ export default function AttendanceIpConfigModule({
                 </label>
                 <p className="text-[11px] text-slate-500 mb-1.5">
                   Mỗi IP hoặc dải IP trên một dòng (hoặc ngăn cách bởi dấu phẩy). Hỗ trợ dải tiền tố (VD:{" "}
-                  <code className="text-teal-700 font-mono">113.22.236.</code>).
+                  <code className="text-brand-ink font-mono">113.22.236.</code>).
                 </p>
                 <textarea
                   rows={4}
@@ -375,7 +375,7 @@ export default function AttendanceIpConfigModule({
           {/* CỘT 2: CƠ SỞ 2 */}
           <div className="bg-white rounded-2xl p-5 shadow-xs border border-slate-200 space-y-4">
             <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
-              <div className="p-2 rounded-xl bg-teal-50 text-teal-700">
+              <div className="p-2 rounded-xl bg-teal-50 text-brand-ink">
                 <Building2 className="w-5 h-5" />
               </div>
               <div>
@@ -403,7 +403,7 @@ export default function AttendanceIpConfigModule({
                 </label>
                 <p className="text-[11px] text-slate-500 mb-1.5">
                   Mỗi IP hoặc dải IP trên một dòng (hoặc ngăn cách bởi dấu phẩy). Hỗ trợ dải tiền tố (VD:{" "}
-                  <code className="text-teal-700 font-mono">116.110.151.</code>).
+                  <code className="text-brand-ink font-mono">116.110.151.</code>).
                 </p>
                 <textarea
                   rows={4}
@@ -445,7 +445,7 @@ export default function AttendanceIpConfigModule({
                 checked={requireIp}
                 onChange={(e) => setRequireIp(e.target.checked)}
                 disabled={!canEdit}
-                className="w-4 h-4 rounded text-teal-600 focus:ring-teal-500 border-slate-300"
+                className="w-4 h-4 rounded text-brand-ink focus:ring-teal-500 border-slate-300"
               />
               <span className="font-extrabold text-sm text-slate-800">
                 Bắt buộc kiểm tra IP Wi-Fi công ty khi chấm công (Khuyến nghị BẬT)

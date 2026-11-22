@@ -107,7 +107,7 @@ export default function StaffActivityModule() {
     <span
       className={`px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap ${
         role === "SALES"
-          ? "bg-teal-100 text-teal-800"
+          ? "bg-teal-100 text-brand-ink"
           : role === "ACCOUNTANT"
           ? "bg-amber-100 text-amber-800"
           : role === "ADMIN" || role === "CEO"
@@ -128,7 +128,7 @@ export default function StaffActivityModule() {
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
           <div>
             <h3 className="font-bold text-slate-900 text-base flex items-center gap-2">
-              <Activity className="w-5 h-5 text-teal-600" />
+              <Activity className="w-5 h-5 text-brand-ink" />
               Hoạt động Nhân viên — Ai bán hàng, ai kiểm kho
             </h3>
             <p className="text-xs text-slate-500">
@@ -186,14 +186,14 @@ export default function StaffActivityModule() {
         {/* Thẻ tổng quan */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <div className="p-3 rounded-xl bg-teal-50 border border-teal-100">
-            <div className="text-[11px] font-bold uppercase text-teal-700 flex items-center gap-1">
+            <div className="text-[11px] font-bold uppercase text-brand-ink flex items-center gap-1">
               <ShoppingBag className="w-3.5 h-3.5" /> Đơn bán
             </div>
             <div className="text-xl font-extrabold text-slate-900 font-mono">{totals.orders}</div>
             <div className="text-[11px] text-slate-500">{totals.sellers} nhân viên có bán hàng</div>
           </div>
           <div className="p-3 rounded-xl bg-teal-50 border border-teal-100">
-            <div className="text-[11px] font-bold uppercase text-teal-700 flex items-center gap-1">
+            <div className="text-[11px] font-bold uppercase text-brand-ink flex items-center gap-1">
               <TrendingUp className="w-3.5 h-3.5" /> Doanh thu
             </div>
             <div className="text-xl font-extrabold text-slate-900 font-mono">{formatVND(totals.revenue)}</div>
@@ -218,13 +218,13 @@ export default function StaffActivityModule() {
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sm:p-5 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-            <Users className="w-4 h-4 text-teal-600" /> Tổng hợp theo nhân viên ({staffRows.length})
+            <Users className="w-4 h-4 text-brand-ink" /> Tổng hợp theo nhân viên ({staffRows.length})
           </h3>
           {selectedStaff ? (
             <button
               type="button"
               onClick={() => setSelectedStaffId(null)}
-              className="text-xs font-bold text-teal-700 underline"
+              className="text-xs font-bold text-brand-ink underline"
             >
               Đang xem: {selectedStaff.fullName} — Bỏ chọn
             </button>
@@ -286,7 +286,7 @@ export default function StaffActivityModule() {
                       </div>
                     </td>
                     <td className="py-2.5 px-3 text-center">{roleBadge(s.role)}</td>
-                    <td className="py-2.5 px-3 text-right font-mono font-bold text-teal-800">{s.sales.orders}</td>
+                    <td className="py-2.5 px-3 text-right font-mono font-bold text-brand-ink">{s.sales.orders}</td>
                     <td className="py-2.5 px-3 text-right font-mono font-bold whitespace-nowrap">
                       {formatVND(s.sales.revenue)}
                     </td>
@@ -296,7 +296,7 @@ export default function StaffActivityModule() {
                       {s.warehouse.unitsScanned} / {s.warehouse.rowsChecked}
                     </td>
                     <td className="py-2.5 px-3 text-right font-mono">{s.warehouse.importsCompleted}</td>
-                    <td className="py-2.5 px-3 text-right font-mono font-bold text-indigo-800 whitespace-nowrap">
+                    <td className="py-2.5 px-3 text-right font-mono font-bold text-brand-ink whitespace-nowrap">
                       {s.warehouse.transfers || 0} phiếu ({s.warehouse.unitsTransferred || 0} SP)
                     </td>
                     <td className="py-2.5 px-3 text-right font-mono">{s.warehouse.adjustments}</td>
@@ -362,7 +362,7 @@ export default function StaffActivityModule() {
                     <td className="py-2.5 px-3">
                       <span
                         className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          a.type === "ORDER" ? "bg-teal-100 text-teal-800" : "bg-amber-100 text-amber-800"
+                          a.type === "ORDER" ? "bg-teal-100 text-brand-ink" : "bg-amber-100 text-amber-800"
                         }`}
                       >
                         {SALES_ACTIVITY_LABEL[a.type] || a.type}
@@ -405,9 +405,9 @@ export default function StaffActivityModule() {
                           a.type === "IMPORT_CHECKED"
                             ? "bg-amber-100 text-amber-800"
                             : a.type === "IMPORT_COMPLETED"
-                            ? "bg-teal-100 text-teal-800"
+                            ? "bg-teal-100 text-brand-ink"
                             : a.type === "EXPORT_TRANSFER"
-                            ? "bg-indigo-100 text-indigo-800"
+                            ? "bg-indigo-100 text-brand-ink"
                             : a.type === "ADJUSTMENT"
                             ? "bg-purple-100 text-purple-800"
                             : "bg-slate-100 text-slate-700"

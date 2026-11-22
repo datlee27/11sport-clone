@@ -449,7 +449,7 @@ export default function MarketingPushProductsTab() {
       <div className="bg-white text-slate-900 rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-sm space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <div className="text-[11px] font-bold uppercase text-blue-600 flex items-center gap-1.5">
+            <div className="text-[11px] font-bold uppercase text-brand-ink flex items-center gap-1.5">
               <Rocket className="w-3.5 h-3.5" />
               Phân hệ Marketing & Chiến dịch Đẩy hàng — 11Sport
             </div>
@@ -467,7 +467,7 @@ export default function MarketingPushProductsTab() {
             disabled={loading}
             className="px-3 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-xs font-bold text-slate-700 border border-slate-200 flex items-center gap-1.5 cursor-pointer"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-blue-600" : "text-blue-600"}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-brand-ink" : "text-brand-ink"}`} />
             Làm mới dữ liệu
           </button>
         </div>
@@ -557,7 +557,7 @@ export default function MarketingPushProductsTab() {
 
         <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-blue-50 border border-blue-200 text-blue-700 font-bold">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-blue-50 border border-blue-200 text-brand-ink font-bold">
               <Calendar className="w-3.5 h-3.5" />
               Kỳ đang quan sát:{" "}
               {fromDate || toDate
@@ -788,7 +788,7 @@ export default function MarketingPushProductsTab() {
                         {p.stock} {p.unit}
                       </div>
                       <div className="text-[11px] text-slate-500">
-                        🏢 T1: <b className="text-blue-700">{p.stockFloor1}</b> · 🏬 T2:{" "}
+                        🏢 T1: <b className="text-brand-ink">{p.stockFloor1}</b> · 🏬 T2:{" "}
                         <b className="text-purple-700">{p.stockFloor2}</b>
                       </div>
                     </td>
@@ -797,7 +797,7 @@ export default function MarketingPushProductsTab() {
                     </td>
                     <td className="py-3 px-3 text-right font-mono whitespace-nowrap">
                       <div className="text-slate-600">Gốc: {formatVND(p.costPrice)}</div>
-                      <div className="font-bold text-blue-700">
+                      <div className="font-bold text-brand-ink">
                         Bán: {formatVND(p.sellingPrice)}
                       </div>
                     </td>

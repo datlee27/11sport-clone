@@ -49,7 +49,7 @@ const isPaidLeaveEligible = (contractType?: string | null) => contractType === "
 
 const LEAVE_STATUS: Record<string, { label: string; cls: string }> = {
   PENDING: { label: "Chờ HR duyệt", cls: "bg-amber-100 text-amber-800" },
-  APPROVED: { label: "Đã duyệt", cls: "bg-teal-100 text-teal-800" },
+  APPROVED: { label: "Đã duyệt", cls: "bg-teal-100 text-brand-ink" },
   REJECTED: { label: "Từ chối", cls: "bg-rose-100 text-rose-800" },
 };
 
@@ -360,14 +360,14 @@ export default function MyAttendanceCalendar({
             <div>
               <h2 className="text-base sm:text-lg font-extrabold text-slate-900 flex items-center gap-2">
                 Lịch Chấm Công Của Tôi
-                <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-indigo-100 text-indigo-700">
+                <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-indigo-100 text-brand-ink">
                   Khối Văn phòng
                 </span>
                 {data?.row?.contractType && (
                   <span
                     className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
                       data.row.contractType === "FULLTIME"
-                        ? "bg-teal-100 text-teal-800"
+                        ? "bg-teal-100 text-brand-ink"
                         : "bg-slate-100 text-slate-600"
                     }`}
                   >
@@ -468,7 +468,7 @@ export default function MyAttendanceCalendar({
                     <span className="text-rose-600 font-semibold"> + Lễ {s.holidayPaidDays}</span>
                   )}
                   {(s.paidLeaveUsed ?? 0) > 0 && (
-                    <span className="text-teal-600 font-semibold"> + Phép {s.paidLeaveUsed}</span>
+                    <span className="text-brand-ink font-semibold"> + Phép {s.paidLeaveUsed}</span>
                   )}
                 </div>
               </div>
@@ -1014,7 +1014,7 @@ function DayDetailModal({
             )}
             {!!cell.overtimeMinutes && (
               <Row
-                icon={<Timer className="w-3.5 h-3.5 text-indigo-600" />}
+                icon={<Timer className="w-3.5 h-3.5 text-brand-ink" />}
                 text={`Tăng ca ${fmtMinutes(cell.overtimeMinutes)} (Đã được HR phê duyệt)`}
               />
             )}
@@ -1071,7 +1071,7 @@ function DayDetailModal({
             <button
               type="button"
               onClick={() => onRequestChangeOff(day.date, activeOffLeave?.id)}
-              className="w-full py-2.5 rounded-xl border-2 border-indigo-200 bg-indigo-50 text-indigo-800 hover:bg-indigo-100 text-xs font-bold flex items-center justify-center gap-1.5 transition"
+              className="w-full py-2.5 rounded-xl border-2 border-indigo-200 bg-indigo-50 text-brand-ink hover:bg-indigo-100 text-xs font-bold flex items-center justify-center gap-1.5 transition"
             >
               <RefreshCw className="w-3.5 h-3.5" />
               Xin chuyển ngày off {dd}/{mm} sang ngày khác
@@ -1082,7 +1082,7 @@ function DayDetailModal({
             <button
               type="button"
               onClick={() => setShowForm(true)}
-              className="w-full py-2.5 rounded-xl border-2 border-dashed border-teal-300 text-teal-700 hover:bg-teal-50 text-xs font-bold flex items-center justify-center gap-1.5"
+              className="w-full py-2.5 rounded-xl border-2 border-dashed border-teal-300 text-brand-ink hover:bg-teal-50 text-xs font-bold flex items-center justify-center gap-1.5"
             >
               <Send className="w-3.5 h-3.5" />
               Gửi đơn cho ngày này

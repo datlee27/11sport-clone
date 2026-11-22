@@ -117,7 +117,7 @@ const STATUS_BADGE_MAP: Record<
 > = {
   RECEIVED: {
     label: "Đã tiếp nhận",
-    cls: "bg-blue-50 text-blue-700 border-blue-200",
+    cls: "bg-blue-50 text-brand-ink border-blue-200",
   },
   IN_PROGRESS: {
     label: "Đang xử lý",
@@ -125,7 +125,7 @@ const STATUS_BADGE_MAP: Record<
   },
   READY: {
     label: "Đã xong (Chờ lấy)",
-    cls: "bg-blue-50 text-blue-700 border-blue-300",
+    cls: "bg-blue-50 text-brand-ink border-blue-300",
   },
   RETURNED: {
     label: "Đã trả khách",
@@ -777,7 +777,7 @@ export default function PosServiceSection({
               type="button"
               onClick={() => setLeftView("COMPOSE")}
               className={`px-3.5 py-2 rounded-t-lg text-xs font-extrabold flex items-center gap-1.5 transition cursor-pointer ${leftView === "COMPOSE"
-                ? "bg-white text-blue-700 shadow-xs"
+                ? "bg-white text-brand-ink shadow-xs"
                 : "bg-blue-700/80 text-white hover:bg-blue-700"
                 }`}
             >
@@ -788,7 +788,7 @@ export default function PosServiceSection({
               type="button"
               onClick={() => setLeftView("ORDERS")}
               className={`px-3.5 py-2 rounded-t-lg text-xs font-extrabold flex items-center gap-1.5 transition cursor-pointer ${leftView === "ORDERS"
-                ? "bg-white text-blue-700 shadow-xs"
+                ? "bg-white text-brand-ink shadow-xs"
                 : "bg-blue-700/80 text-white hover:bg-blue-700"
                 }`}
             >
@@ -798,7 +798,7 @@ export default function PosServiceSection({
                 <span
                   className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${leftView === "ORDERS"
                     ? "bg-blue-600 text-white"
-                    : "bg-white text-blue-700"
+                    : "bg-white text-brand-ink"
                     }`}
                 >
                   {ordersMeta.receivedCount + ordersMeta.inProgressCount + ordersMeta.readyCount}
@@ -849,10 +849,10 @@ export default function PosServiceSection({
                         )}
                       </div>
                       <div className="mt-2 pt-1.5 border-t border-slate-200/70 flex items-center justify-between">
-                        <span className="font-mono text-xs font-extrabold text-blue-700">
+                        <span className="font-mono text-xs font-extrabold text-brand-ink">
                           {formatVND(st.defaultPrice)}/{st.unit || "Cây"}
                         </span>
-                        <span className="inline-flex items-center gap-0.5 text-[11px] font-bold text-blue-600">
+                        <span className="inline-flex items-center gap-0.5 text-[11px] font-bold text-brand-ink">
                           <Plus className="w-3.5 h-3.5" /> Thêm
                         </span>
                       </div>
@@ -870,7 +870,7 @@ export default function PosServiceSection({
 
               {serviceCart.length === 0 ? (
                 <div className="py-10 px-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 text-center space-y-2">
-                  <div className="w-11 h-11 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mx-auto">
+                  <div className="w-11 h-11 rounded-full bg-blue-50 text-brand-ink flex items-center justify-center mx-auto">
                     <Wrench className="w-5 h-5" />
                   </div>
                   <div className="text-xs font-bold text-slate-700">
@@ -997,7 +997,7 @@ export default function PosServiceSection({
                                   {formatVND(linePricing.grossLine)}
                                 </span>
                               )}
-                              <span className="font-extrabold text-blue-700">
+                              <span className="font-extrabold text-brand-ink">
                                 {formatVND(linePricing.lineTotal)}
                               </span>
                             </div>
@@ -1069,7 +1069,7 @@ export default function PosServiceSection({
               <div>
                 <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
                   <span>Theo Dõi Trạng Thái Đơn Dịch Vụ</span>
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-brand-ink border border-blue-200">
                     <Eye className="w-3 h-3" /> Chế độ quan sát (Sales)
                   </span>
                 </h3>
@@ -1090,13 +1090,13 @@ export default function PosServiceSection({
             {/* Thẻ thống kê nhanh */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
               <div className="p-2.5 rounded-xl bg-blue-50 border border-blue-200">
-                <div className="text-[11px] font-bold text-blue-700">Tiếp nhận / Đang làm</div>
+                <div className="text-[11px] font-bold text-brand-ink">Tiếp nhận / Đang làm</div>
                 <div className="text-lg font-extrabold text-blue-900 mt-0.5">
                   {ordersMeta.receivedCount + ordersMeta.inProgressCount} đơn
                 </div>
               </div>
               <div className="p-2.5 rounded-xl bg-blue-50 border border-blue-200">
-                <div className="text-[11px] font-bold text-blue-700">Đã xong (Chờ lấy)</div>
+                <div className="text-[11px] font-bold text-brand-ink">Đã xong (Chờ lấy)</div>
                 <div className="text-lg font-extrabold text-blue-900 mt-0.5">
                   {ordersMeta.readyCount} đơn
                 </div>
@@ -1238,7 +1238,7 @@ export default function PosServiceSection({
                                 )
                               </span>
                               {it.itemNote && (
-                                <span className="ml-1.5 text-blue-700 font-medium">
+                                <span className="ml-1.5 text-brand-ink font-medium">
                                   — {it.itemNote}
                                 </span>
                               )}
@@ -1256,7 +1256,7 @@ export default function PosServiceSection({
                               </span>
                             )}
                             {ordCardFee > 0 && (
-                              <span className="text-blue-700 font-semibold">
+                              <span className="text-brand-ink font-semibold">
                                 Phí quẹt thẻ ({ord.cardFeePercent || 1.8}%): +
                                 {formatVND(ordCardFee)}
                               </span>
@@ -1281,7 +1281,7 @@ export default function PosServiceSection({
                           </span>
                           <span>
                             Đã thu:{" "}
-                            <strong className="font-mono text-blue-700">
+                            <strong className="font-mono text-brand-ink">
                               {formatVND(ord.paidAmount)}
                             </strong>
                           </span>
@@ -1290,7 +1290,7 @@ export default function PosServiceSection({
                               Còn thu: {formatVND(ord.remainingAmount)}
                             </span>
                           ) : (
-                            <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 font-bold">
+                            <span className="px-2 py-0.5 rounded bg-blue-50 text-brand-ink border border-blue-200 font-bold">
                               Đã thu đủ
                             </span>
                           )}
@@ -1351,7 +1351,7 @@ export default function PosServiceSection({
                 Bill Phiếu Dịch Vụ
               </span>
             </div>
-            <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-[11px] font-mono font-extrabold">
+            <span className="px-2 py-0.5 rounded-full bg-blue-50 text-brand-ink border border-blue-200 text-[11px] font-mono font-extrabold">
               {serviceCart.length} dịch vụ
             </span>
           </div>
@@ -1364,7 +1364,7 @@ export default function PosServiceSection({
           )}
 
           {successMsg && (
-            <div className="p-2.5 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold flex items-start gap-2">
+            <div className="p-2.5 rounded-lg bg-blue-50 border border-blue-200 text-brand-ink text-xs font-semibold flex items-start gap-2">
               <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
               <span>{successMsg}</span>
             </div>
@@ -1377,12 +1377,12 @@ export default function PosServiceSection({
                 Khách hàng &amp; Lịch hẹn
               </span>
               {lookingUpCustomer && (
-                <span className="text-[11px] text-blue-600 font-semibold">
+                <span className="text-[11px] text-brand-ink font-semibold">
                   Đang tra cứu SĐT...
                 </span>
               )}
               {!lookingUpCustomer && isExistingCustomer && (
-                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-brand-ink bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
                   <UserCheck className="w-3 h-3" /> Khách quen
                 </span>
               )}
@@ -1432,7 +1432,7 @@ export default function PosServiceSection({
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-blue-700 uppercase mb-0.5">
+                <label className="block text-[10px] font-bold text-brand-ink uppercase mb-0.5">
                   Ngày hẹn trả *
                 </label>
                 <input
@@ -1474,7 +1474,7 @@ export default function PosServiceSection({
                     setDueDate(addDaysToDateStr(receivedDate || getTodayStr(), days));
                   }}
                   placeholder="0"
-                  className="w-11 text-center font-mono text-xs font-extrabold text-blue-700 bg-white border border-slate-300 rounded px-1 py-0.5 focus:border-blue-600 outline-none"
+                  className="w-11 text-center font-mono text-xs font-extrabold text-brand-ink bg-white border border-slate-300 rounded px-1 py-0.5 focus:border-blue-600 outline-none"
                 />
                 <span className="text-[10px] text-slate-500 font-semibold">ngày</span>
               </div>
@@ -1554,7 +1554,7 @@ export default function PosServiceSection({
                       }}
                       className={`px-2 py-0.5 rounded-md transition ${billDiscountMode === bm.id
                         ? "bg-blue-600 text-white shadow-xs"
-                        : "text-slate-600 hover:text-blue-700"
+                        : "text-slate-600 hover:text-brand-ink"
                         }`}
                     >
                       {bm.label}
@@ -1612,7 +1612,7 @@ export default function PosServiceSection({
 
             <div className="flex items-center justify-between pt-2 border-t border-slate-100">
               <span className="font-extrabold text-slate-900 text-sm">Khách cần trả</span>
-              <span className="font-mono font-extrabold text-lg sm:text-xl text-blue-600">
+              <span className="font-mono font-extrabold text-lg sm:text-xl text-brand-ink">
                 {formatVND(totalAmount)}
               </span>
             </div>
@@ -1729,7 +1729,7 @@ export default function PosServiceSection({
             <div className="flex items-center justify-between text-xs px-2.5 py-2 rounded-lg bg-slate-50 border border-slate-200">
               <span className="text-slate-600">
                 Thu ngay:{" "}
-                <strong className="font-mono text-blue-700">
+                <strong className="font-mono text-brand-ink">
                   {formatVND(computedPaidAmount)}
                 </strong>
               </span>
@@ -1791,7 +1791,7 @@ export default function PosServiceSection({
                     {formatVND(collectModalOrder.totalAmount)}
                   </strong>{" "}
                   • Đã thu:{" "}
-                  <strong className="font-mono text-blue-700">
+                  <strong className="font-mono text-brand-ink">
                     {formatVND(collectModalOrder.paidAmount)}
                   </strong>
                 </div>
@@ -2036,7 +2036,7 @@ export default function PosServiceSection({
                         <div className="text-center border-b-2 border-black pb-2.5 mb-2.5">
                           <div className="flex justify-center mb-1.5">
                             <img
-                              src="/logo-11sport.svg"
+                              data-keep-logo src="/logo-11sport.svg"
                               alt="11Sport Logo"
                               className="h-10 w-auto object-contain"
                             />

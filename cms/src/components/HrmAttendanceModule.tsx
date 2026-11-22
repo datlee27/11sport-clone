@@ -396,7 +396,7 @@ export default function HrmAttendanceModule({ currentUser }: { currentUser: Staf
           {/* Header gọn gàng */}
           <div className="flex flex-wrap items-center justify-between gap-3 pb-3.5 border-b border-slate-100">
             <div className="flex items-center gap-2.5">
-              <CalendarIcon className="w-5 h-5 text-teal-600" />
+              <CalendarIcon className="w-5 h-5 text-brand-ink" />
               <h2 className="text-base sm:text-lg font-bold text-slate-900">
                 Lịch Công Ty & Ngày Lễ
               </h2>
@@ -585,7 +585,7 @@ export default function HrmAttendanceModule({ currentUser }: { currentUser: Staf
                             {cell.holiday.name}
                           </div>
                         ) : cell.isToday ? (
-                          <div className="text-[9px] font-bold text-teal-600 truncate">
+                          <div className="text-[9px] font-bold text-brand-ink truncate">
                             Hôm nay
                           </div>
                         ) : null}
@@ -830,7 +830,7 @@ export default function HrmAttendanceModule({ currentUser }: { currentUser: Staf
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
             <div>
               <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                <FileText className="w-6 h-6 text-teal-600" />
+                <FileText className="w-6 h-6 text-brand-ink" />
                 Phê Duyệt Đơn Từ (WFH, Nghỉ phép, Đổi ngày off, Đi trễ/Về sớm)
               </h2>
             </div>
@@ -891,7 +891,7 @@ export default function HrmAttendanceModule({ currentUser }: { currentUser: Staf
                             <div className="text-xs text-slate-500">
                               Từ: <span className="line-through">{r.fromDate}</span>
                             </div>
-                            <div className="text-indigo-700 font-bold">
+                            <div className="text-brand-ink font-bold">
                               → Sang: {r.date}
                             </div>
                           </div>
@@ -906,7 +906,7 @@ export default function HrmAttendanceModule({ currentUser }: { currentUser: Staf
                       <td className="py-3.5 px-4">
                         <span
                           className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${r.department === "OFFICE"
-                            ? "bg-indigo-50 text-indigo-700"
+                            ? "bg-indigo-50 text-brand-ink"
                             : "bg-amber-50 text-amber-700"
                             }`}
                         >
@@ -918,9 +918,9 @@ export default function HrmAttendanceModule({ currentUser }: { currentUser: Staf
                           className={`px-2.5 py-1 rounded-lg text-xs font-bold inline-block ${r.type === "WFH"
                             ? "bg-purple-100 text-purple-800"
                             : r.type === "PAID_LEAVE"
-                              ? "bg-teal-100 text-teal-800"
+                              ? "bg-teal-100 text-brand-ink"
                               : r.type === "CHANGE_OFF"
-                                ? "bg-indigo-100 text-indigo-800"
+                                ? "bg-indigo-100 text-brand-ink"
                                 : r.type === "OFF"
                                   ? "bg-rose-100 text-rose-800"
                                   : "bg-amber-100 text-amber-800"
@@ -947,7 +947,7 @@ export default function HrmAttendanceModule({ currentUser }: { currentUser: Staf
                       <td className="py-3.5 px-4">
                         <span
                           className={`px-2.5 py-1 rounded-full text-xs font-semibold ${r.status === "APPROVED"
-                            ? "bg-teal-100 text-teal-800"
+                            ? "bg-teal-100 text-brand-ink"
                             : r.status === "REJECTED"
                               ? "bg-rose-100 text-rose-800"
                               : "bg-amber-100 text-amber-800"

@@ -163,14 +163,14 @@ function CmsRoleBadge({ role, compact = false }: { role?: string; compact?: bool
   }
   if (r === "ACCOUNTANT") {
     return (
-      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-teal-100 text-teal-800 border border-teal-200 whitespace-nowrap">
+      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-teal-100 text-brand-ink border border-teal-200 whitespace-nowrap">
         {compact ? "ACCOUNTANT" : "ACCOUNTANT (Kế toán & Kho)"}
       </span>
     );
   }
   if (r === "SALES") {
     return (
-      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-teal-100 text-teal-800 border border-teal-200 whitespace-nowrap">
+      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-teal-100 text-brand-ink border border-teal-200 whitespace-nowrap">
         {compact ? "SALES" : "SALES (Bán hàng)"}
       </span>
     );
@@ -2702,7 +2702,7 @@ export default function InventoryModule() {
               {startIdx}–{endIdx}
             </strong>{" "}
             trên tổng{" "}
-            <strong className="text-teal-700 font-mono">{totalItems}</strong>{" "}
+            <strong className="text-brand-ink font-mono">{totalItems}</strong>{" "}
             {itemLabel}
           </span>
           <span className="text-slate-300">|</span>
@@ -2965,7 +2965,7 @@ export default function InventoryModule() {
         <div
           className={`p-3.5 rounded-xl border text-xs font-bold flex items-center justify-between gap-2 ${
             statusMsg.type === "success"
-              ? "bg-teal-50 border-teal-200 text-teal-800"
+              ? "bg-teal-50 border-teal-200 text-brand-ink"
               : "bg-red-50 border-red-200 text-red-700"
           }`}
         >
@@ -2998,7 +2998,7 @@ export default function InventoryModule() {
               <div>
                 <h3 className="font-bold text-slate-900 text-base flex flex-wrap items-center gap-2">
                   <span>Danh mục Sản phẩm — {activeWarehouseLabel}</span>
-                  <span className="px-2.5 py-0.5 rounded-full text-xs font-mono bg-teal-100 text-teal-800">
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-mono bg-teal-100 text-brand-ink">
                     {displayedProducts.length} mặt hàng · {totalStockQty.toLocaleString("vi-VN")} đơn vị
                   </span>
                 </h3>
@@ -3079,7 +3079,7 @@ export default function InventoryModule() {
                   }`}
                   title="Bật/tắt khung Máy quét Label kiểm hàng"
                 >
-                  <ScanBarcode className="w-3.5 h-3.5 text-teal-600" />
+                  <ScanBarcode className="w-3.5 h-3.5 text-brand-ink" />
                   <span>
                     Máy quét kiểm kho
                     {Object.keys(scannedCheckCounts).length > 0
@@ -3252,7 +3252,7 @@ export default function InventoryModule() {
                           className={`px-2.5 py-1.5 rounded-lg border text-xs font-extrabold transition cursor-pointer ${
                             onlyShowScanned
                               ? "bg-teal-700 text-white border-teal-700"
-                              : "bg-white text-teal-800 border-teal-300 hover:bg-teal-50"
+                              : "bg-white text-brand-ink border-teal-300 hover:bg-teal-50"
                           }`}
                         >
                           {onlyShowScanned
@@ -3309,7 +3309,7 @@ export default function InventoryModule() {
                       {lastScanFeedback.type === "error" ? (
                         <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
                       ) : (
-                        <CheckCircle2 className="w-4 h-4 shrink-0 text-teal-600" />
+                        <CheckCircle2 className="w-4 h-4 shrink-0 text-brand-ink" />
                       )}
                       <span className="truncate">{lastScanFeedback.message}</span>
                     </div>
@@ -3329,7 +3329,7 @@ export default function InventoryModule() {
                     <th className="py-3 px-3 w-36">Category</th>
                     <th className="py-3 px-3 w-36">Thương hiệu</th>
                     {(activeWarehouse === "FLOOR_1" || activeWarehouse === "ALL") && (
-                      <th className="py-3 px-3 text-center w-28 whitespace-nowrap text-teal-700">
+                      <th className="py-3 px-3 text-center w-28 whitespace-nowrap text-brand-ink">
                         Tồn Tầng 1
                       </th>
                     )}
@@ -3429,7 +3429,7 @@ export default function InventoryModule() {
                               <button
                                 type="button"
                                 onClick={() => handleOpenPrintLabelForProduct(p)}
-                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-sans font-semibold text-slate-500 hover:text-indigo-700 hover:bg-indigo-50 border border-transparent hover:border-indigo-200 transition cursor-pointer"
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-sans font-semibold text-slate-500 hover:text-brand-ink hover:bg-indigo-50 border border-transparent hover:border-indigo-200 transition cursor-pointer"
                                 title="In tem nhãn mã vạch theo từng Mã con (Màu + Size)"
                               >
                                 <Printer className="w-3 h-3" /> In mã
@@ -3495,7 +3495,7 @@ export default function InventoryModule() {
                                   onClick={() =>
                                     setExpandedVariantProdId(isVarExpanded ? null : p._id)
                                   }
-                                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-dashed border-slate-300 bg-white hover:border-teal-400 hover:text-teal-700 text-slate-500 text-[11px] font-semibold transition cursor-pointer"
+                                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-dashed border-slate-300 bg-white hover:border-teal-400 hover:text-brand-ink text-slate-500 text-[11px] font-semibold transition cursor-pointer"
                                 >
                                   + Thêm size/màu
                                 </button>
@@ -3506,7 +3506,7 @@ export default function InventoryModule() {
                                   onClick={() =>
                                     setExpandedVariantProdId(isVarExpanded ? null : p._id)
                                   }
-                                  className="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 text-[11px] font-bold hover:bg-indigo-100 cursor-pointer"
+                                  className="px-2 py-0.5 rounded-full bg-indigo-50 text-brand-ink border border-indigo-200 text-[11px] font-bold hover:bg-indigo-100 cursor-pointer"
                                 >
                                   +{hiddenVarCount} nữa
                                 </button>
@@ -3518,7 +3518,7 @@ export default function InventoryModule() {
                                 }
                                 className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-dashed text-[11px] font-semibold transition cursor-pointer ${isVarExpanded
                                   ? "bg-teal-600 text-white border-teal-700"
-                                  : "bg-white hover:bg-teal-50 hover:border-teal-500 hover:text-teal-800 text-slate-600 border-slate-300"
+                                  : "bg-white hover:bg-teal-50 hover:border-teal-500 hover:text-brand-ink text-slate-600 border-slate-300"
                                   }`}
                               >
                                 + Thêm
@@ -3530,7 +3530,7 @@ export default function InventoryModule() {
                                   (Array.isArray(p.linkedRetailProducts) &&
                                     p.linkedRetailProducts.length > 0)
                                   ? "bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-300"
-                                  : "bg-white hover:bg-teal-50 hover:border-teal-400 hover:text-teal-800 text-slate-600 border-slate-200"
+                                  : "bg-white hover:bg-teal-50 hover:border-teal-400 hover:text-brand-ink text-slate-600 border-slate-200"
                                   }`}
                                 title="Cấu hình liên kết tự động tách từ Sản phẩm Bộ/Hộp sang Sản phẩm Lẻ"
                               >
@@ -3596,7 +3596,7 @@ export default function InventoryModule() {
 
                           {/* 2. CATEGORY */}
                           <td className="py-3.5 px-3 align-top">
-                            <span className="inline-block px-2.5 py-1 rounded-lg bg-teal-50 text-teal-700 font-semibold text-[11px] whitespace-nowrap">
+                            <span className="inline-block px-2.5 py-1 rounded-lg bg-teal-50 text-brand-ink font-semibold text-[11px] whitespace-nowrap">
                               {catName}
                             </span>
                           </td>
@@ -3627,7 +3627,7 @@ export default function InventoryModule() {
                               </div>
                               <span
                                 className={`inline-block mt-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap ${f1Val > 0
-                                  ? "bg-teal-50 text-teal-700"
+                                  ? "bg-teal-50 text-brand-ink"
                                   : "bg-slate-100 text-slate-500"
                                   }`}
                               >
@@ -3644,7 +3644,7 @@ export default function InventoryModule() {
                               </div>
                               <span
                                 className={`inline-block mt-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap ${f2Val > 0
-                                  ? "bg-teal-50 text-teal-700"
+                                  ? "bg-teal-50 text-brand-ink"
                                   : "bg-slate-100 text-slate-500"
                                   }`}
                               >
@@ -3739,7 +3739,7 @@ export default function InventoryModule() {
                               <button
                                 type="button"
                                 onClick={() => setEditingProductModal(p)}
-                                className="w-8 h-8 rounded-lg border border-slate-200 bg-white hover:bg-teal-100 hover:border-teal-400 text-teal-700 inline-flex items-center justify-center transition cursor-pointer"
+                                className="w-8 h-8 rounded-lg border border-slate-200 bg-white hover:bg-teal-100 hover:border-teal-400 text-brand-ink inline-flex items-center justify-center transition cursor-pointer"
                                 title="Sửa thông tin sản phẩm, giá và biến thể"
                               >
                                 <Pencil className="w-3.5 h-3.5" />
@@ -3779,7 +3779,7 @@ export default function InventoryModule() {
                                   <div>
                                     <div className="text-xs font-extrabold text-indigo-950">
                                       🎨 Quản lý Chi tiết Màu sắc • Size • Mã con cho Mã gốc:{" "}
-                                      <span className="font-mono text-indigo-700">{p.code}</span>
+                                      <span className="font-mono text-brand-ink">{p.code}</span>
                                     </div>
                                     <div className="text-[11px] text-slate-500">
                                       Mỗi thuộc tính (Màu + Size) có <b>Mã con riêng</b> để in tem &amp; quét kiểm kho chính xác, dùng chung Giá vốn ({formatVND(costVal)}) và Giá niêm yết ({formatVND(sellVal)}).
@@ -3940,7 +3940,7 @@ export default function InventoryModule() {
                                                   {vIdx + 1}
                                                 </td>
                                                 <td className="py-1.5 px-2.5">
-                                                  <span className="font-mono font-extrabold text-indigo-800 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded">
+                                                  <span className="font-mono font-extrabold text-brand-ink bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded">
                                                     {childCode}
                                                   </span>
                                                   {vScanned > 0 && (
@@ -4028,7 +4028,7 @@ export default function InventoryModule() {
                                                         [p._id]: next,
                                                       }));
                                                     }}
-                                                    className="w-24 px-2 py-1 rounded border border-teal-300 font-mono font-bold text-right text-teal-800"
+                                                    className="w-24 px-2 py-1 rounded border border-teal-300 font-mono font-bold text-right text-brand-ink"
                                                   />
                                                 </td>
                                                 <td className="py-1.5 px-2.5 text-right">
@@ -4092,7 +4092,7 @@ export default function InventoryModule() {
                                                   <button
                                                     type="button"
                                                     onClick={() => handleOpenPrintLabelForProduct(p, v)}
-                                                    className="inline-flex items-center gap-1 px-2 py-1 rounded bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-[10px] font-bold"
+                                                    className="inline-flex items-center gap-1 px-2 py-1 rounded bg-indigo-50 hover:bg-indigo-100 text-brand-ink border border-indigo-200 text-[10px] font-bold"
                                                     title={`In tem mã con ${childCode}`}
                                                   >
                                                     <Printer className="w-3 h-3" /> In tem
@@ -4168,7 +4168,7 @@ export default function InventoryModule() {
                                     />
                                   </div>
                                   <div>
-                                    <label className="block text-[10px] font-bold text-teal-700 mb-0.5">
+                                    <label className="block text-[10px] font-bold text-brand-ink mb-0.5">
                                       SL Kho Tầng 1
                                     </label>
                                     <input
@@ -4231,7 +4231,7 @@ export default function InventoryModule() {
                         Tổng toàn kho {activeWarehouseLabel} ({displayedProducts.length} mặt hàng):
                       </td>
                       {(activeWarehouse === "FLOOR_1" || activeWarehouse === "ALL") && (
-                        <td className="py-3 px-2.5 text-right font-mono text-teal-700">
+                        <td className="py-3 px-2.5 text-right font-mono text-brand-ink">
                           {displayedProducts.reduce(
                             (s, p) => s + (Number(p.stockFloor1 ?? p.stock) || 0),
                             0
@@ -4254,7 +4254,7 @@ export default function InventoryModule() {
                       <td className="py-3 px-2.5 text-right font-mono text-amber-800 whitespace-nowrap">
                         {formatVND(totalCostInventoryValue)}
                       </td>
-                      <td className="py-3 px-2.5 text-right font-mono text-teal-800 whitespace-nowrap">
+                      <td className="py-3 px-2.5 text-right font-mono text-brand-ink whitespace-nowrap">
                         {formatVND(totalSellInventoryValue)}
                       </td>
                       <td></td>
@@ -4379,7 +4379,7 @@ export default function InventoryModule() {
                   <th className="py-3 px-3 text-right whitespace-nowrap bg-amber-50 text-amber-800">
                     Tổng vốn tồn
                   </th>
-                  <th className="py-3 px-3 text-right whitespace-nowrap bg-teal-50 text-teal-800">
+                  <th className="py-3 px-3 text-right whitespace-nowrap bg-teal-50 text-brand-ink">
                     Tổng giá niêm yết tồn
                   </th>
                 </tr>
@@ -4400,21 +4400,21 @@ export default function InventoryModule() {
                       <td className="py-3 px-2.5 text-right font-mono font-bold">
                         {r.openingStock}
                       </td>
-                      <td className="py-3 px-2.5 text-right font-mono font-bold text-teal-700">
+                      <td className="py-3 px-2.5 text-right font-mono font-bold text-brand-ink">
                         +{r.importedQty}
                       </td>
                       <td className="py-3 px-2.5 text-right font-mono font-bold text-amber-700">
                         -{r.soldQty}
                       </td>
-                      <td className="py-3 px-2.5 text-right font-mono font-bold text-teal-700">
+                      <td className="py-3 px-2.5 text-right font-mono font-bold text-brand-ink">
                         {r.adjustedAndReturnedQty > 0
                           ? `+${r.adjustedAndReturnedQty}`
                           : r.adjustedAndReturnedQty}
                       </td>
-                      <td className="py-3 px-2.5 text-right font-mono font-bold text-teal-700 bg-teal-50/40">
+                      <td className="py-3 px-2.5 text-right font-mono font-bold text-brand-ink bg-teal-50/40">
                         {f1}
                       </td>
-                      <td className="py-3 px-2.5 text-right font-mono font-bold text-teal-700 bg-teal-50/40">
+                      <td className="py-3 px-2.5 text-right font-mono font-bold text-brand-ink bg-teal-50/40">
                         {f2}
                       </td>
                       <td className="py-3 px-3 text-right font-mono font-extrabold text-slate-900 bg-slate-50">
@@ -4429,7 +4429,7 @@ export default function InventoryModule() {
                       <td className="py-3 px-3 text-right font-mono font-semibold text-amber-800 bg-amber-50/40 whitespace-nowrap">
                         {formatVND(activeQty * cost)}
                       </td>
-                      <td className="py-3 px-3 text-right font-mono font-semibold text-teal-800 bg-teal-50/40 whitespace-nowrap">
+                      <td className="py-3 px-3 text-right font-mono font-semibold text-brand-ink bg-teal-50/40 whitespace-nowrap">
                         {formatVND(activeQty * sell)}
                       </td>
                     </tr>
@@ -4445,19 +4445,19 @@ export default function InventoryModule() {
                     <td className="py-3 px-2.5 text-right font-mono">
                       {reportRows.reduce((s, r) => s + (Number(r.openingStock) || 0), 0)}
                     </td>
-                    <td className="py-3 px-2.5 text-right font-mono text-teal-700">
+                    <td className="py-3 px-2.5 text-right font-mono text-brand-ink">
                       +{reportRows.reduce((s, r) => s + (Number(r.importedQty) || 0), 0)}
                     </td>
                     <td className="py-3 px-2.5 text-right font-mono text-amber-700">
                       -{reportRows.reduce((s, r) => s + (Number(r.soldQty) || 0), 0)}
                     </td>
-                    <td className="py-3 px-2.5 text-right font-mono text-teal-700">
+                    <td className="py-3 px-2.5 text-right font-mono text-brand-ink">
                       {reportRows.reduce((s, r) => s + (Number(r.adjustedAndReturnedQty) || 0), 0)}
                     </td>
-                    <td className="py-3 px-2.5 text-right font-mono text-teal-700">
+                    <td className="py-3 px-2.5 text-right font-mono text-brand-ink">
                       {reportRows.reduce((s, r) => s + (Number(r.stockFloor1 ?? r.closingStock) || 0), 0)}
                     </td>
-                    <td className="py-3 px-2.5 text-right font-mono text-teal-700">
+                    <td className="py-3 px-2.5 text-right font-mono text-brand-ink">
                       {reportRows.reduce((s, r) => s + (Number(r.stockFloor2) || 0), 0)}
                     </td>
                     <td className="py-3 px-3 text-right font-mono">
@@ -4472,7 +4472,7 @@ export default function InventoryModule() {
                         )
                       )}
                     </td>
-                    <td className="py-3 px-3 text-right font-mono text-teal-800 whitespace-nowrap">
+                    <td className="py-3 px-3 text-right font-mono text-brand-ink whitespace-nowrap">
                       {formatVND(
                         reportRows.reduce(
                           (s, r) => s + (Number(r.closingStock) || 0) * (Number(r.sellingPrice) || 0),
@@ -4564,7 +4564,7 @@ export default function InventoryModule() {
             </div>
 
             <span className="text-xs text-slate-500">
-              Đang lọc theo: <strong className="text-teal-700">{activeWarehouseLabel}</strong>
+              Đang lọc theo: <strong className="text-brand-ink">{activeWarehouseLabel}</strong>
             </span>
           </div>
 
@@ -4639,8 +4639,8 @@ export default function InventoryModule() {
                       <td className="py-2.5 px-3 whitespace-nowrap">
                         <span
                           className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${loc === "FLOOR_2"
-                            ? "bg-teal-100 text-teal-800"
-                            : "bg-teal-100 text-teal-800"
+                            ? "bg-teal-100 text-brand-ink"
+                            : "bg-teal-100 text-brand-ink"
                             }`}
                         >
                           {loc === "FLOOR_2" ? "🏬 Kho Tầng 2" : "🏢 Kho Tầng 1"}
@@ -4654,7 +4654,7 @@ export default function InventoryModule() {
                         </div>
                       </td>
                       <td
-                        className={`py-2.5 px-3 text-right font-mono font-extrabold ${m.quantityChange > 0 ? "text-teal-700" : "text-red-600"
+                        className={`py-2.5 px-3 text-right font-mono font-extrabold ${m.quantityChange > 0 ? "text-brand-ink" : "text-red-600"
                           }`}
                       >
                         {m.quantityChange > 0 ? `+${m.quantityChange}` : m.quantityChange}
@@ -4665,7 +4665,7 @@ export default function InventoryModule() {
                       <td className="py-2.5 px-3 text-right font-mono text-amber-800 whitespace-nowrap">
                         {cost > 0 ? formatVND(cost) : <span className="text-slate-400">0 VND</span>}
                       </td>
-                      <td className="py-2.5 px-3 text-right font-mono font-bold text-teal-800 whitespace-nowrap">
+                      <td className="py-2.5 px-3 text-right font-mono font-bold text-brand-ink whitespace-nowrap">
                         {sell > 0 ? formatVND(sell) : <span className="text-slate-400">0 VND</span>}
                       </td>
                       <td className="py-2.5 px-3 whitespace-nowrap">
@@ -4676,7 +4676,7 @@ export default function InventoryModule() {
                           <CmsRoleBadge role={m.performedByRole} compact />
                         </div>
                       </td>
-                      <td className="py-2.5 px-3 font-mono font-semibold text-teal-700 whitespace-nowrap">
+                      <td className="py-2.5 px-3 font-mono font-semibold text-brand-ink whitespace-nowrap">
                         {m.referenceCode || "-"}
                       </td>
                       <td className="py-2.5 px-3 text-slate-600">{m.note || "-"}</td>
@@ -4778,8 +4778,8 @@ export default function InventoryModule() {
                         <td className="py-3 px-3 whitespace-nowrap">
                           <span
                             className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${wh === "FLOOR_2"
-                              ? "bg-teal-100 text-teal-800"
-                              : "bg-teal-100 text-teal-800"
+                              ? "bg-teal-100 text-brand-ink"
+                              : "bg-teal-100 text-brand-ink"
                               }`}
                           >
                             {wh === "FLOOR_2" ? "🏬 Kho Tầng 2" : "🏢 Kho Tầng 1"}
@@ -4788,10 +4788,10 @@ export default function InventoryModule() {
                         <td className="py-3 px-3">
                           <span
                             className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${imp.status === "COMPLETED"
-                              ? "bg-teal-100 text-teal-800"
+                              ? "bg-teal-100 text-brand-ink"
                               : imp.status === "CHECKING"
                                 ? "bg-amber-100 text-amber-800"
-                                : "bg-teal-100 text-teal-800"
+                                : "bg-teal-100 text-brand-ink"
                               }`}
                           >
                             {imp.status}
@@ -4806,7 +4806,7 @@ export default function InventoryModule() {
                         <td className="py-3 px-3 text-right font-mono font-bold text-amber-800 whitespace-nowrap">
                           {formatVND(totalCost)}
                         </td>
-                        <td className="py-3 px-3 text-right font-mono font-bold text-teal-800 whitespace-nowrap">
+                        <td className="py-3 px-3 text-right font-mono font-bold text-brand-ink whitespace-nowrap">
                           {formatVND(totalSell)}
                         </td>
                         <td className="py-3 px-3 whitespace-nowrap">
@@ -4885,7 +4885,7 @@ export default function InventoryModule() {
                                 e.stopPropagation();
                                 setDetailModalReceipt(imp);
                               }}
-                              className="px-2 py-1 rounded-lg border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-[11px] inline-flex items-center gap-1"
+                              className="px-2 py-1 rounded-lg border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-brand-ink font-bold text-[11px] inline-flex items-center gap-1"
                               title="Xem chi tiết phiếu nhập kho"
                             >
                               <Eye className="w-3.5 h-3.5" /> Chi tiết
@@ -4969,7 +4969,7 @@ export default function InventoryModule() {
                                         <td className="py-1.5 px-2.5 font-semibold">
                                           <div>{it.productName}</div>
                                           {varLabel && (
-                                            <div className="text-[10px] font-bold text-indigo-700">
+                                            <div className="text-[10px] font-bold text-brand-ink">
                                               {varLabel}
                                             </div>
                                           )}
@@ -4978,13 +4978,13 @@ export default function InventoryModule() {
                                         <td className="py-1.5 px-2.5 text-right font-mono">
                                           {it.expectedQuantity}
                                         </td>
-                                        <td className="py-1.5 px-2.5 text-right font-mono font-extrabold text-teal-700">
+                                        <td className="py-1.5 px-2.5 text-right font-mono font-extrabold text-brand-ink">
                                           {qty}
                                         </td>
                                         <td className="py-1.5 px-2.5 text-right font-mono text-amber-800">
                                           {formatVND(cost)}
                                         </td>
-                                        <td className="py-1.5 px-2.5 text-right font-mono font-bold text-teal-800">
+                                        <td className="py-1.5 px-2.5 text-right font-mono font-bold text-brand-ink">
                                           {sell > 0 ? formatVND(sell) : "Chưa đặt (0 VND)"}
                                         </td>
                                         <td className="py-1.5 px-2.5 text-right font-mono font-bold">
@@ -5054,7 +5054,7 @@ export default function InventoryModule() {
                 <button
                   type="button"
                   onClick={() => setSubTab("TRANSFER")}
-                  className="px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-extrabold inline-flex items-center gap-1.5 cursor-pointer"
+                  className="px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-brand-ink border border-indigo-200 text-xs font-extrabold inline-flex items-center gap-1.5 cursor-pointer"
                 >
                   <ArrowLeftRight className="w-3.5 h-3.5" />
                   Tạo phiếu chuyển tầng mới
@@ -5112,7 +5112,7 @@ export default function InventoryModule() {
                               }
                               className="hover:bg-indigo-50/40 cursor-pointer transition"
                             >
-                              <td className="py-3 px-3 font-mono font-extrabold text-indigo-700">
+                              <td className="py-3 px-3 font-mono font-extrabold text-brand-ink">
                                 {refCode}
                               </td>
                               <td className="py-3 px-3 text-slate-600 whitespace-nowrap">
@@ -5123,7 +5123,7 @@ export default function InventoryModule() {
                                   ? "🏬 Kho Tầng 2"
                                   : "🏢 Kho Tầng 1"}
                               </td>
-                              <td className="py-3 px-3 font-bold text-indigo-700 whitespace-nowrap">
+                              <td className="py-3 px-3 font-bold text-brand-ink whitespace-nowrap">
                                 {first.toWarehouse === "FLOOR_2"
                                   ? "🏬 Kho Tầng 2"
                                   : "🏢 Kho Tầng 1"}
@@ -5131,7 +5131,7 @@ export default function InventoryModule() {
                               <td className="py-3 px-3 text-right font-mono font-bold">
                                 {items.length} SP
                               </td>
-                              <td className="py-3 px-3 text-right font-mono font-extrabold text-indigo-700">
+                              <td className="py-3 px-3 text-right font-mono font-extrabold text-brand-ink">
                                 {totalQty}
                               </td>
                               <td className="py-3 px-3 font-semibold text-slate-800 whitespace-nowrap">
@@ -5141,7 +5141,7 @@ export default function InventoryModule() {
                                 {first.note || "-"}
                               </td>
                               <td className="py-3 px-3 text-center">
-                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 font-bold text-[11px]">
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 text-brand-ink font-bold text-[11px]">
                                   {isExpanded ? (
                                     <>
                                       Ẩn <ChevronUp className="w-3.5 h-3.5" />
@@ -5230,7 +5230,7 @@ export default function InventoryModule() {
                                                   <span
                                                     style={getColorBoxBorderStyle(
                                                       hexes,
-                                                      "#f8fafc",
+                                                      "var(--box-bg, #f8fafc)",
                                                       2
                                                     )}
                                                     className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md border border-slate-200 font-bold text-slate-800"
@@ -5248,7 +5248,7 @@ export default function InventoryModule() {
                                               </td>
                                               <td className="py-2 px-3 text-center">
                                                 {Boolean(itSize) ? (
-                                                  <span className="px-2 py-0.5 rounded bg-indigo-50 text-indigo-800 border border-indigo-200 font-mono font-extrabold">
+                                                  <span className="px-2 py-0.5 rounded bg-indigo-50 text-brand-ink border border-indigo-200 font-mono font-extrabold">
                                                     {itSize}
                                                   </span>
                                                 ) : (
@@ -5263,12 +5263,12 @@ export default function InventoryModule() {
                                                   ? "🏬 Kho Tầng 2"
                                                   : "🏢 Kho Tầng 1"}
                                               </td>
-                                              <td className="py-2 px-3 font-semibold text-indigo-700">
+                                              <td className="py-2 px-3 font-semibold text-brand-ink">
                                                 {it.toWarehouse === "FLOOR_2"
                                                   ? "🏬 Kho Tầng 2"
                                                   : "🏢 Kho Tầng 1"}
                                               </td>
-                                              <td className="py-2 px-3 text-right font-mono font-extrabold text-indigo-700">
+                                              <td className="py-2 px-3 text-right font-mono font-extrabold text-brand-ink">
                                                 {Math.abs(Number(it.quantityChange) || 0)}
                                               </td>
                                               <td className="py-2 px-3 text-slate-600">
@@ -5302,7 +5302,7 @@ export default function InventoryModule() {
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <h3 className="font-bold text-slate-900 text-base flex items-center gap-2">
-                  <ArrowLeftRight className="w-5 h-5 text-indigo-600" />
+                  <ArrowLeftRight className="w-5 h-5 text-brand-ink" />
                   Tạo Phiếu Xuất Kho Chuyển Tầng (Kho 1 ↔ Kho 2)
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
@@ -5338,7 +5338,7 @@ export default function InventoryModule() {
                 <span
                   className={`px-2 py-0.5 rounded-full font-mono text-[11px] font-extrabold ${transferDirection === "F1_TO_F2"
                     ? "bg-white/20 text-white"
-                    : "bg-white text-teal-800 border border-slate-200"
+                    : "bg-white text-brand-ink border border-slate-200"
                     }`}
                 >
                   {products.filter((p) => (Number(p.stockFloor1 ?? p.stock) || 0) > 0).length} SP
@@ -5359,7 +5359,7 @@ export default function InventoryModule() {
                 <span
                   className={`px-2 py-0.5 rounded-full font-mono text-[11px] font-extrabold ${transferDirection === "F2_TO_F1"
                     ? "bg-white/20 text-white"
-                    : "bg-white text-teal-800 border border-slate-200"
+                    : "bg-white text-brand-ink border border-slate-200"
                     }`}
                 >
                   {products.filter((p) => (Number(p.stockFloor2) || 0) > 0).length} SP
@@ -5502,7 +5502,7 @@ export default function InventoryModule() {
                                     <div className="font-bold text-slate-900 truncate">{p.name}</div>
                                     <div className="font-mono text-[10px] text-slate-500">{p.code}</div>
                                   </div>
-                                  <span className="px-2 py-0.5 rounded bg-teal-100 text-teal-800 font-mono font-bold text-[11px] shrink-0">
+                                  <span className="px-2 py-0.5 rounded bg-teal-100 text-brand-ink font-mono font-bold text-[11px] shrink-0">
                                     Tồn: {avail} {p.unit}
                                   </span>
                                 </button>
@@ -5514,7 +5514,7 @@ export default function InventoryModule() {
                     </div>
 
                     <div className="md:col-span-2">
-                      <label className="block text-[11px] font-bold uppercase text-indigo-700 mb-1">
+                      <label className="block text-[11px] font-bold uppercase text-brand-ink mb-1">
                         Màu sắc
                       </label>
                       {uniqueColorOptions.length > 0 ? (
@@ -5556,7 +5556,7 @@ export default function InventoryModule() {
                     </div>
 
                     <div className="md:col-span-2">
-                      <label className="block text-[11px] font-bold uppercase text-indigo-700 mb-1">
+                      <label className="block text-[11px] font-bold uppercase text-brand-ink mb-1">
                         Size
                       </label>
                       {varsForSelectedColor.length > 0 ? (
@@ -5642,7 +5642,7 @@ export default function InventoryModule() {
                     <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-200/80 text-xs">
                       <div className="flex flex-wrap items-center gap-1.5">
                         <span className="font-bold text-slate-700">
-                          Đang chọn: <span className="text-teal-700">{selectedTransferProd.name}</span>
+                          Đang chọn: <span className="text-brand-ink">{selectedTransferProd.name}</span>
                         </span>
                         <span className="font-mono text-[11px] text-slate-500">
                           ({selectedTransferProd.code} · Tồn {getSourceFloorStock(selectedTransferProd)} {selectedTransferProd.unit})
@@ -5691,10 +5691,10 @@ export default function InventoryModule() {
                                 />
                                 <span>{v.color || "Mặc định"}</span>
                                 {Boolean(v.size?.trim()) && (
-                                  <span className="font-mono text-indigo-700">· {v.size?.trim()}</span>
+                                  <span className="font-mono text-brand-ink">· {v.size?.trim()}</span>
                                 )}
-                                <span className="font-mono text-teal-700">({vStock})</span>
-                                <span className="text-[10px] text-indigo-600 font-extrabold">+1</span>
+                                <span className="font-mono text-brand-ink">({vStock})</span>
+                                <span className="text-[10px] text-brand-ink font-extrabold">+1</span>
                               </button>
                             );
                           })}
@@ -5825,7 +5825,7 @@ export default function InventoryModule() {
                                   <span
                                     style={getColorBoxBorderStyle(
                                       hexes,
-                                      "#f8fafc",
+                                      "var(--box-bg, #f8fafc)",
                                       2
                                     )}
                                     className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md border border-slate-200 font-bold text-slate-800"
@@ -5892,7 +5892,7 @@ export default function InventoryModule() {
                             <td className="py-2.5 px-3">
                               <div className="flex flex-wrap items-center gap-1.5">
                                 {Boolean(item.size?.trim()) ? (
-                                  <span className="px-2 py-0.5 rounded bg-indigo-100 text-indigo-800 font-mono text-xs font-extrabold">
+                                  <span className="px-2 py-0.5 rounded bg-indigo-100 text-brand-ink font-mono text-xs font-extrabold">
                                     {item.size?.trim()}
                                   </span>
                                 ) : (
@@ -5962,7 +5962,7 @@ export default function InventoryModule() {
                               </div>
                             </td>
                             <td className="py-2.5 px-3 text-center">{prod.unit}</td>
-                            <td className="py-2.5 px-3 text-right font-mono font-bold text-teal-700">
+                            <td className="py-2.5 px-3 text-right font-mono font-bold text-brand-ink">
                               {maxAvail}
                             </td>
                             <td className="py-2.5 px-3 text-right">
@@ -6040,14 +6040,14 @@ export default function InventoryModule() {
             {/* Header Modal */}
             <div className="px-6 py-4 bg-white text-slate-900 border-b border-slate-200 flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-xl bg-teal-50 border border-teal-200 text-teal-600">
+                <div className="p-2 rounded-xl bg-teal-50 border border-teal-200 text-brand-ink">
                   <ClipboardList className="w-5 h-5" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
                     <h3 className="font-extrabold text-base text-slate-900">
                       Chi Tiết Nhập Hàng Vào Kho:{" "}
-                      <span className="font-mono text-teal-700">
+                      <span className="font-mono text-brand-ink">
                         {detailModalReceipt.code ||
                           detailModalReceipt.receiptCode ||
                           detailModalReceipt._id}
@@ -6055,10 +6055,10 @@ export default function InventoryModule() {
                     </h3>
                     <span
                       className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${detailModalReceipt.status === "COMPLETED"
-                        ? "bg-teal-50 text-teal-700 border border-teal-200"
+                        ? "bg-teal-50 text-brand-ink border border-teal-200"
                         : detailModalReceipt.status === "CHECKING"
                           ? "bg-amber-50 text-amber-700 border border-amber-200"
-                          : "bg-teal-50 text-teal-700 border border-teal-200"
+                          : "bg-teal-50 text-brand-ink border border-teal-200"
                         }`}
                     >
                       {detailModalReceipt.status === "COMPLETED"
@@ -6109,7 +6109,7 @@ export default function InventoryModule() {
                 </div>
 
                 <div className="p-3.5 rounded-xl bg-teal-50/60 border border-teal-200 space-y-1">
-                  <div className="text-[11px] font-bold uppercase text-teal-800 flex items-center gap-1.5">
+                  <div className="text-[11px] font-bold uppercase text-brand-ink flex items-center gap-1.5">
                     <UserCheck className="w-3.5 h-3.5" />
                     2. Nhân sự kiểm đếm thực tế
                   </div>
@@ -6162,7 +6162,7 @@ export default function InventoryModule() {
                 </div>
 
                 <div className="p-3.5 rounded-xl bg-teal-50/60 border border-teal-200 space-y-1">
-                  <div className="text-[11px] font-bold uppercase text-teal-800 flex items-center gap-1.5">
+                  <div className="text-[11px] font-bold uppercase text-brand-ink flex items-center gap-1.5">
                     <CheckCircle2 className="w-3.5 h-3.5" />
                     3. Người xác nhận hoàn thành
                   </div>
@@ -6239,14 +6239,14 @@ export default function InventoryModule() {
                           <td className="py-2 px-3 text-right font-mono font-bold">
                             {expQty}
                           </td>
-                          <td className="py-2 px-3 text-right font-mono font-extrabold text-teal-700">
+                          <td className="py-2 px-3 text-right font-mono font-extrabold text-brand-ink">
                             {actQty}
                           </td>
                           <td className="py-2 px-3 text-right font-mono font-bold">
                             {diff === 0 ? (
-                              <span className="text-teal-600">Khớp (0)</span>
+                              <span className="text-brand-ink">Khớp (0)</span>
                             ) : (
-                              <span className={diff > 0 ? "text-teal-600" : "text-red-600"}>
+                              <span className={diff > 0 ? "text-brand-ink" : "text-red-600"}>
                                 {diff > 0 ? `+${diff}` : diff}
                               </span>
                             )}
@@ -6254,7 +6254,7 @@ export default function InventoryModule() {
                           <td className="py-2 px-3 text-right font-mono text-amber-800 whitespace-nowrap">
                             {formatVND(cost)}
                           </td>
-                          <td className="py-2 px-3 text-right font-mono font-semibold text-teal-700 whitespace-nowrap">
+                          <td className="py-2 px-3 text-right font-mono font-semibold text-brand-ink whitespace-nowrap">
                             {formatVND(sell)}
                           </td>
                           <td className="py-2 px-3 text-right font-mono font-bold text-slate-900 whitespace-nowrap">
@@ -6301,7 +6301,7 @@ export default function InventoryModule() {
                           0
                         )}
                       </td>
-                      <td className="py-2.5 px-3 text-right font-mono text-teal-700">
+                      <td className="py-2.5 px-3 text-right font-mono text-brand-ink">
                         {(detailModalReceipt.items || []).reduce(
                           (s: number, it: any) =>
                             s + (Number(it.actualQuantity ?? it.expectedQuantity) || 0),
@@ -6353,7 +6353,7 @@ export default function InventoryModule() {
             <div className="px-5 py-3.5 bg-white text-slate-900 border-b border-slate-200 flex items-center justify-between gap-3 shrink-0">
               <div>
                 <h3 className="text-sm sm:text-base font-extrabold flex items-center gap-2 text-slate-900">
-                  <Plus className="w-4 h-4 text-teal-600" />
+                  <Plus className="w-4 h-4 text-brand-ink" />
                   <span>Nhập Kho Sản Phẩm — Chọn Sản phẩm & Biến thể từ Danh mục</span>
                 </h3>
                 <p className="text-[11px] text-slate-600 mt-0.5">
@@ -6441,7 +6441,7 @@ export default function InventoryModule() {
                   </select>
                 </div>
                 <div className="md:col-span-3">
-                  <label className="block text-xs font-bold uppercase text-teal-700 mb-1">
+                  <label className="block text-xs font-bold uppercase text-brand-ink mb-1">
                     Nhập vào Kho (Chọn Tầng) *
                   </label>
                   <select
@@ -6497,7 +6497,7 @@ export default function InventoryModule() {
                         setAdminFileImportMode("append");
                         adminFileInputRef.current?.click();
                       }}
-                      className="px-3 py-2 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-300 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                      className="px-3 py-2 rounded-xl bg-teal-50 hover:bg-teal-100 text-brand-ink border border-teal-300 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
                     >
                       <Upload className="w-3.5 h-3.5" />
                       <span>+ Nối thêm file</span>
@@ -6576,7 +6576,7 @@ export default function InventoryModule() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2 text-xs">
-                  <span className="px-2.5 py-1 rounded-full bg-teal-100 text-teal-800 font-bold">
+                  <span className="px-2.5 py-1 rounded-full bg-teal-100 text-brand-ink font-bold">
                     Xác nhận: {adminImportRows.filter((r) => r.isConfirmed).length}/
                     {adminImportRows.length}
                   </span>
@@ -6634,11 +6634,11 @@ export default function InventoryModule() {
                       <th className="py-3 px-2.5 w-32 min-w-[120px] text-right">
                         GIÁ VỐN NHẬP (VND)
                       </th>
-                      <th className="py-3 px-2.5 w-32 min-w-[120px] text-right text-teal-700">
+                      <th className="py-3 px-2.5 w-32 min-w-[120px] text-right text-brand-ink">
                         GIÁ NIÊM YẾT (VND)
                       </th>
                       <th className="py-3 px-2 min-w-[120px]">GHI CHÚ</th>
-                      <th className="py-3 px-2 w-20 text-center bg-teal-50 text-teal-800">
+                      <th className="py-3 px-2 w-20 text-center bg-teal-50 text-brand-ink">
                         XÁC NHẬN
                       </th>
                       <th className="py-3 px-2 w-16 text-center">THAO TÁC</th>
@@ -6680,7 +6680,7 @@ export default function InventoryModule() {
                               <div className="p-2 rounded-lg bg-slate-50 border border-slate-200 space-y-1">
                                 <div className="flex items-start justify-between gap-2">
                                   <div>
-                                    <span className="font-mono font-extrabold text-[11px] text-teal-700 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded mr-1.5">
+                                    <span className="font-mono font-extrabold text-[11px] text-brand-ink bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded mr-1.5">
                                       {existingProd.code}
                                     </span>
                                     <span className="font-bold text-slate-900 text-xs">
@@ -6700,7 +6700,7 @@ export default function InventoryModule() {
                                     {existingProd.categoryName || "Danh mục"}
                                   </span>
                                   {(existingProd.brandName || existingProd.brand) && (
-                                    <span className="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 font-bold">
+                                    <span className="px-1.5 py-0.5 rounded bg-indigo-50 text-brand-ink font-bold">
                                       {existingProd.brandCode ? `[${existingProd.brandCode}] ` : ""}
                                       {existingProd.brandName || existingProd.brand}
                                     </span>
@@ -6710,7 +6710,7 @@ export default function InventoryModule() {
                                       Ver: {existingProd.versionName}
                                     </span>
                                   )}
-                                  <span className="text-teal-700 font-bold ml-auto">
+                                  <span className="text-brand-ink font-bold ml-auto">
                                     Tồn: {existingProd.stock} {existingProd.unit}
                                   </span>
                                 </div>
@@ -6796,7 +6796,7 @@ export default function InventoryModule() {
                                                 setActiveAdminSuggestRowIdx(null);
                                                 setShowCodeCreator(true);
                                               }}
-                                              className="font-extrabold text-indigo-600 underline cursor-pointer"
+                                              className="font-extrabold text-brand-ink underline cursor-pointer"
                                             >
                                               + Tạo SP mới
                                             </button>{" "}
@@ -6824,7 +6824,7 @@ export default function InventoryModule() {
                                                     }`}
                                                 >
                                                   <div className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
-                                                    <span className="font-mono font-extrabold text-[11px] text-teal-700 bg-teal-50 px-1.5 py-0.5 rounded">
+                                                    <span className="font-mono font-extrabold text-[11px] text-brand-ink bg-teal-50 px-1.5 py-0.5 rounded">
                                                       {p.code}
                                                     </span>
                                                     <span>{p.name}</span>
@@ -6839,7 +6839,7 @@ export default function InventoryModule() {
                                                         ? ` • ${p.versionName}`
                                                         : ""}
                                                     </span>
-                                                    <span className="text-teal-700 font-bold">
+                                                    <span className="text-brand-ink font-bold">
                                                       {(p.variants || []).length} biến thể • Tồn:{" "}
                                                       {p.stock} {p.unit}
                                                     </span>
@@ -6887,7 +6887,7 @@ export default function InventoryModule() {
                                 </select>
                                 {resolvedVarCode && (
                                   <div className="flex items-center justify-between text-[10px]">
-                                    <span className="font-mono font-extrabold text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded">
+                                    <span className="font-mono font-extrabold text-brand-ink bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded">
                                       Mã con: {resolvedVarCode}
                                     </span>
                                   </div>
@@ -6920,7 +6920,7 @@ export default function InventoryModule() {
                                         )
                                       }
                                       placeholder="Size (41, L..)"
-                                      className="w-full px-2 py-1.5 rounded border border-slate-300 text-center font-mono font-extrabold uppercase text-indigo-800 focus:border-teal-600 focus:outline-none"
+                                      className="w-full px-2 py-1.5 rounded border border-slate-300 text-center font-mono font-extrabold uppercase text-brand-ink focus:border-teal-600 focus:outline-none"
                                     />
                                   </div>
                                 </div>
@@ -6934,7 +6934,7 @@ export default function InventoryModule() {
                                         `${prodVariants[0].color || ""}||${prodVariants[0].size || ""}`
                                       )
                                     }
-                                    className="text-[10px] font-bold text-teal-600 hover:underline cursor-pointer"
+                                    className="text-[10px] font-bold text-brand-ink hover:underline cursor-pointer"
                                   >
                                     ← Chọn từ {prodVariants.length} biến thể có sẵn
                                   </button>
@@ -7024,7 +7024,7 @@ export default function InventoryModule() {
                                 className="w-4 h-4 accent-teal-600 rounded"
                               />
                               <span
-                                className={`text-[10px] font-bold ${row.isConfirmed ? "text-teal-800" : "text-slate-400"
+                                className={`text-[10px] font-bold ${row.isConfirmed ? "text-brand-ink" : "text-slate-400"
                                   }`}
                               >
                                 {row.isConfirmed ? "✓ Nhập" : "Bỏ qua"}
@@ -7038,7 +7038,7 @@ export default function InventoryModule() {
                               <button
                                 type="button"
                                 onClick={() => handleDuplicateAdminRow(idx)}
-                                className="p-1.5 text-teal-600 hover:bg-teal-50 rounded cursor-pointer"
+                                className="p-1.5 text-brand-ink hover:bg-teal-50 rounded cursor-pointer"
                                 title="Thêm nhanh biến thể khác cho cùng sản phẩm này"
                               >
                                 <CopyPlus className="w-4 h-4" />
@@ -7130,7 +7130,7 @@ export default function InventoryModule() {
           <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="px-5 py-4 bg-white text-slate-900 border-b border-slate-200 rounded-t-2xl flex items-center justify-between gap-3">
               <div>
-                <div className="text-[11px] font-bold uppercase text-teal-600">
+                <div className="text-[11px] font-bold uppercase text-brand-ink">
                   Cơ chế Tự động Tách Bộ ↔ Bán Lẻ — 11Sport
                 </div>
                 <h3 className="text-sm font-extrabold mt-0.5 text-slate-900">
@@ -7362,7 +7362,7 @@ export default function InventoryModule() {
                           onChange={(e) =>
                             setNewRetailSellingPrice(parseNumberDots(e.target.value))
                           }
-                          className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white font-mono font-extrabold text-teal-700"
+                          className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white font-mono font-extrabold text-brand-ink"
                         />
                       </div>
                       <div className="p-2.5 rounded-lg bg-teal-100/80 border border-teal-300 text-teal-950 font-semibold flex items-center">

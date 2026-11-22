@@ -1580,7 +1580,7 @@ function SvgDonutChart({
             {displayValue}
           </span>
           {displaySub && (
-            <span className="text-[10px] font-mono font-extrabold text-teal-600">
+            <span className="text-[10px] font-mono font-extrabold text-brand-ink">
               ({displaySub})
             </span>
           )}
@@ -2019,7 +2019,7 @@ export default function RevenueDashboardModule({
       <div className="bg-white text-slate-900 rounded-2xl border border-slate-200 px-4 py-2.5 shadow-sm space-y-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-2.5">
-            <div className="p-1.5 rounded-xl bg-teal-50 text-teal-600 border border-teal-200 shrink-0">
+            <div className="p-1.5 rounded-xl bg-teal-50 text-brand-ink border border-teal-200 shrink-0">
               <TrendingUp className="w-4 h-4" />
             </div>
             <div>
@@ -2027,7 +2027,7 @@ export default function RevenueDashboardModule({
                 Dashboard Doanh Thu &amp; Phân Tích Kinh Doanh
               </h2>
               <div className="text-xs text-slate-500 mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                <span className="font-bold text-teal-700">
+                <span className="font-bold text-brand-ink">
                   {fromDate || toDate
                     ? `${fromDate ? fromDate.split("-").reverse().join("/") : "Đầu kỳ"} → ${toDate ? toDate.split("-").reverse().join("/") : "Hiện tại"
                     }`
@@ -2039,11 +2039,11 @@ export default function RevenueDashboardModule({
                 </span>
                 <span>·</span>
                 <span>
-                  DT thuần: <strong className="text-teal-700 font-mono">{formatVND(s?.netRevenue || 0)}</strong>
+                  DT thuần: <strong className="text-brand-ink font-mono">{formatVND(s?.netRevenue || 0)}</strong>
                 </span>
                 <span>·</span>
                 <span>
-                  Lãi gộp: <strong className="text-teal-700 font-mono">{formatVND(s?.grossProfit || 0)}</strong>
+                  Lãi gộp: <strong className="text-brand-ink font-mono">{formatVND(s?.grossProfit || 0)}</strong>
                 </span>
               </div>
             </div>
@@ -2069,7 +2069,7 @@ export default function RevenueDashboardModule({
               disabled={loading}
               className="px-3 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-xs font-bold text-slate-700 border border-slate-200 flex items-center gap-1.5"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-teal-600" : "text-teal-600"}`} />
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-brand-ink" : "text-brand-ink"}`} />
               Làm mới
             </button>
             {data && (
@@ -2176,19 +2176,19 @@ export default function RevenueDashboardModule({
       {/* HÀNG 1: 4 THẺ KPI TỔNG QUAN GỌN GÀNG */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2.5">
         {/* Ô 1: Doanh thu thuần (Hệ thống POS) */}
-        <div className="relative group bg-white rounded-xl border border-slate-200 hover:border-teal-500 hover:shadow-md px-3.5 py-2.5 shadow-sm transition-all">
+        <div className="relative group bg-white rounded-xl border border-slate-200 hover:border-teal-500 hover:bg-teal-50 hover:shadow-md px-3.5 py-2.5 shadow-sm transition-all">
           <div className="flex items-center justify-between gap-2">
             <span className="text-[11px] font-extrabold uppercase text-slate-600">
               1. Doanh thu thuần (POS)
             </span>
-            <span className="p-1 rounded-lg bg-teal-50 text-teal-700">
+            <span className="p-1 rounded-lg bg-teal-50 text-brand-ink">
               <DollarSign className="w-3.5 h-3.5" />
             </span>
           </div>
           <div className="text-xl sm:text-[22px] font-black font-mono text-slate-900 mt-1">
             <AnimatedNumber value={s?.netRevenue || 0} formatter={formatVND} />
           </div>
-          <div className="pointer-events-none opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 absolute left-0 right-0 top-full mt-1.5 z-30 bg-white rounded-xl border border-slate-200 shadow-xl p-3 space-y-1 text-xs text-slate-600">
+          <div className="pointer-events-none opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 absolute left-0 right-0 top-full mt-1.5 z-30 bg-teal-50 rounded-xl border border-slate-200 shadow-xl p-3 space-y-1 text-xs text-slate-600">
             <div className="flex justify-between">
               <span>Giá niêm yết (SP + Quà)</span>
               <span className="font-mono font-bold text-slate-900">
@@ -2211,10 +2211,10 @@ export default function RevenueDashboardModule({
         {/* Ô 2: Doanh thu thực tế (Dòng tiền thực thu) */}
         <div className="relative group bg-white rounded-xl border-2 border-teal-500 hover:shadow-md px-3.5 py-2.5 shadow-sm transition-all">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[11px] font-extrabold uppercase text-teal-700">
+            <span className="text-[11px] font-extrabold uppercase text-brand-ink">
               2. Doanh thu thực tế
             </span>
-            <span className="p-1 rounded-lg bg-teal-50 text-teal-700">
+            <span className="p-1 rounded-lg bg-teal-50 text-brand-ink">
               <CheckCircle2 className="w-3.5 h-3.5" />
             </span>
           </div>
@@ -2228,7 +2228,7 @@ export default function RevenueDashboardModule({
               />
             )}
           </div>
-          <div className="pointer-events-none opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 absolute left-0 right-0 top-full mt-1.5 z-30 bg-white rounded-xl border border-slate-200 shadow-xl p-3 space-y-1 text-xs text-slate-600">
+          <div className="pointer-events-none opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 absolute left-0 right-0 top-full mt-1.5 z-30 bg-teal-50 rounded-xl border border-slate-200 shadow-xl p-3 space-y-1 text-xs text-slate-600">
             <div className="flex justify-between">
               <span>Thực thu khi mua:</span>
               <span className="font-mono font-bold text-slate-900">
@@ -2243,7 +2243,7 @@ export default function RevenueDashboardModule({
         </div>
 
         {/* Ô 3: Các khoản giảm trừ doanh thu */}
-        <div className="relative group bg-white rounded-xl border border-slate-200 hover:border-teal-500 hover:shadow-md px-3.5 py-2.5 shadow-sm transition-all">
+        <div className="relative group bg-white rounded-xl border border-slate-200 hover:border-teal-500 hover:bg-teal-50 hover:shadow-md px-3.5 py-2.5 shadow-sm transition-all">
           <div className="flex items-center justify-between gap-2">
             <span className="text-[11px] font-extrabold uppercase text-slate-600">
               3. Giảm trừ doanh thu
@@ -2255,7 +2255,7 @@ export default function RevenueDashboardModule({
           <div className="text-xl sm:text-[22px] font-black font-mono text-slate-900 mt-1">
             <AnimatedNumber value={s?.deductionsTotal ?? s?.giftRetailValue ?? 0} formatter={formatVND} />
           </div>
-          <div className="pointer-events-none opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 absolute left-0 right-0 top-full mt-1.5 z-30 bg-white rounded-xl border border-slate-200 shadow-xl p-3 space-y-1 text-xs text-slate-600">
+          <div className="pointer-events-none opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 absolute left-0 right-0 top-full mt-1.5 z-30 bg-teal-50 rounded-xl border border-slate-200 shadow-xl p-3 space-y-1 text-xs text-slate-600">
             <div className="flex justify-between">
               <span>Trị giá niêm yết quà tặng (<strong className="text-slate-900">{s?.totalGiftUnits || 0}</strong> SP)</span>
             </div>
@@ -2267,7 +2267,7 @@ export default function RevenueDashboardModule({
         </div>
 
         {/* Ô 4: Giá vốn hàng bán (COGS) */}
-        <div className="relative group bg-white rounded-xl border border-slate-200 hover:border-teal-500 hover:shadow-md px-3.5 py-2.5 shadow-sm transition-all">
+        <div className="relative group bg-white rounded-xl border border-slate-200 hover:border-teal-500 hover:bg-teal-50 hover:shadow-md px-3.5 py-2.5 shadow-sm transition-all">
           <div className="flex items-center justify-between gap-2">
             <span className="text-[11px] font-extrabold uppercase text-slate-600 flex items-center gap-1">
               4. Giá vốn (COGS)
@@ -2287,7 +2287,7 @@ export default function RevenueDashboardModule({
           <div className="text-xl sm:text-[22px] font-black font-mono text-slate-900 mt-1">
             <AnimatedNumber value={s?.estimatedCogs || 0} formatter={formatVND} />
           </div>
-          <div className="pointer-events-none opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 absolute left-0 right-0 top-full mt-1.5 z-30 bg-white rounded-xl border border-slate-200 shadow-xl p-3 space-y-1 text-xs text-slate-600">
+          <div className="pointer-events-none opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 absolute left-0 right-0 top-full mt-1.5 z-30 bg-teal-50 rounded-xl border border-slate-200 shadow-xl p-3 space-y-1 text-xs text-slate-600">
             <div className="flex justify-between">
               <span>Vốn SP bán:</span>
               <span className="font-mono font-bold text-slate-900">
@@ -2304,10 +2304,10 @@ export default function RevenueDashboardModule({
         {/* Ô 5: Lợi nhuận gộp (LN Gộp) */}
         <div className="relative group bg-white border-2 border-teal-500 hover:shadow-md text-slate-900 rounded-xl px-3.5 py-2.5 shadow-sm transition-all">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[11px] font-extrabold uppercase text-teal-700">
+            <span className="text-[11px] font-extrabold uppercase text-brand-ink">
               5. Lợi nhuận gộp
             </span>
-            <span className="px-2 py-0.5 rounded-full text-[11px] font-mono font-black bg-teal-50 text-teal-700 border border-teal-200">
+            <span className="px-2 py-0.5 rounded-full text-[11px] font-mono font-black bg-teal-50 text-brand-ink border border-teal-200">
               Biên: {s?.grossMarginPercent || 0}%
             </span>
           </div>
@@ -2317,13 +2317,13 @@ export default function RevenueDashboardModule({
           >
             <AnimatedNumber value={s?.grossProfit || 0} formatter={formatVND} />
           </div>
-          <div className="pointer-events-none opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 absolute left-0 right-0 top-full mt-1.5 z-30 bg-white rounded-xl border border-slate-200 shadow-xl p-3 text-xs text-slate-600">
+          <div className="pointer-events-none opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 absolute left-0 right-0 top-full mt-1.5 z-30 bg-teal-50 rounded-xl border border-slate-200 shadow-xl p-3 text-xs text-slate-600">
             = Thực thu (<strong className="text-slate-900">{formatShortVND(s?.actualRevenue ?? s?.cashCollected ?? 0)}</strong>) − Giảm trừ (<strong className="text-slate-900">{formatShortVND(s?.deductionsTotal ?? s?.giftRetailValue ?? 0)}</strong>) − COGS (<strong className="text-slate-900">{formatShortVND(s?.estimatedCogs || 0)}</strong>)
           </div>
         </div>
 
         {/* Ô 6: Doanh thu dịch vụ (Tách riêng) */}
-        <div className="relative group bg-white rounded-xl border border-slate-200 hover:border-teal-500 hover:shadow-md px-3.5 py-2.5 shadow-sm transition-all">
+        <div className="relative group bg-white rounded-xl border border-slate-200 hover:border-teal-500 hover:bg-teal-50 hover:shadow-md px-3.5 py-2.5 shadow-sm transition-all">
           <div className="flex items-center justify-between gap-2">
             <span className="text-[11px] font-extrabold uppercase text-slate-600">
               6. Doanh thu dịch vụ
@@ -2331,7 +2331,7 @@ export default function RevenueDashboardModule({
             <button
               type="button"
               onClick={() => setDashboardView("SERVICES")}
-              className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-50 text-teal-700 border border-teal-200 hover:bg-teal-100 cursor-pointer"
+              className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-50 text-brand-ink border border-teal-200 hover:bg-teal-100 cursor-pointer"
             >
               Tách riêng
             </button>
@@ -2339,7 +2339,7 @@ export default function RevenueDashboardModule({
           <div className="text-xl sm:text-[22px] font-black font-mono text-slate-900 mt-1">
             <AnimatedNumber value={s?.serviceRevenue || 0} formatter={formatVND} />
           </div>
-          <div className="pointer-events-none opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 absolute left-0 right-0 top-full mt-1.5 z-30 bg-white rounded-xl border border-slate-200 shadow-xl p-3 space-y-1 text-xs text-slate-600">
+          <div className="pointer-events-none opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 absolute left-0 right-0 top-full mt-1.5 z-30 bg-teal-50 rounded-xl border border-slate-200 shadow-xl p-3 space-y-1 text-xs text-slate-600">
             <div className="flex justify-between">
               <span>Thực thu DV (đã trả khách):</span>
               <span className="font-mono font-bold text-slate-900">
@@ -2354,7 +2354,7 @@ export default function RevenueDashboardModule({
         </div>
 
         {/* Ô 7: Phí thẻ & Cổng thanh toán (VNPAY / POS) */}
-        <div className="relative group bg-white rounded-xl border border-slate-200 hover:border-teal-500 hover:shadow-md px-3.5 py-2.5 shadow-sm transition-all">
+        <div className="relative group bg-white rounded-xl border border-slate-200 hover:border-teal-500 hover:bg-teal-50 hover:shadow-md px-3.5 py-2.5 shadow-sm transition-all">
           <div className="flex items-center justify-between gap-2">
             <span className="text-[11px] font-extrabold uppercase text-slate-600">
               7. Phí thẻ (VNPAY / POS)
@@ -2366,7 +2366,7 @@ export default function RevenueDashboardModule({
           <div className="text-xl sm:text-[22px] font-black font-mono text-slate-900 mt-1">
             <AnimatedNumber value={s?.cardFeeNet ?? s?.cardFeeTotal ?? 0} formatter={formatVND} />
           </div>
-          <div className="pointer-events-none opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 absolute left-0 right-0 top-full mt-1.5 z-30 bg-white rounded-xl border border-slate-200 shadow-xl p-3 space-y-1 text-xs text-slate-600">
+          <div className="pointer-events-none opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 absolute left-0 right-0 top-full mt-1.5 z-30 bg-teal-50 rounded-xl border border-slate-200 shadow-xl p-3 space-y-1 text-xs text-slate-600">
             <div className="flex justify-between">
               <span>Thu hộ: <strong className="text-slate-900">+{formatShortVND(s?.cardFeeCollected || 0)}</strong></span>
               <span>Hoàn: <strong className="text-slate-900">-{formatShortVND(s?.cardFeeRefunded || 0)}</strong></span>
@@ -2378,19 +2378,19 @@ export default function RevenueDashboardModule({
         </div>
 
         {/* Ô 8: Đơn hàng, Sản lượng & Tổng nợ */}
-        <div className="relative group bg-white rounded-xl border border-slate-200 hover:border-teal-500 hover:shadow-md px-3.5 py-2.5 shadow-sm transition-all">
+        <div className="relative group bg-white rounded-xl border border-slate-200 hover:border-teal-500 hover:bg-teal-50 hover:shadow-md px-3.5 py-2.5 shadow-sm transition-all">
           <div className="flex items-center justify-between gap-2">
             <span className="text-[11px] font-extrabold uppercase text-slate-600">
               8. Đơn hàng &amp; Công nợ
             </span>
-            <span className="p-1 rounded-lg bg-teal-50 text-teal-700">
+            <span className="p-1 rounded-lg bg-teal-50 text-brand-ink">
               <ShoppingBag className="w-3.5 h-3.5" />
             </span>
           </div>
           <div className="text-xl sm:text-[22px] font-black font-mono text-slate-900 mt-1">
             <AnimatedNumber value={s?.totalOrders || 0} /> đơn · <AnimatedNumber value={s?.totalUnitsSold || 0} /> SP
           </div>
-          <div className="opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 absolute left-0 right-0 top-full mt-1.5 z-30 bg-white rounded-xl border border-slate-200 shadow-xl p-3 space-y-1 text-xs text-slate-600">
+          <div className="opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 absolute left-0 right-0 top-full mt-1.5 z-30 bg-teal-50 rounded-xl border border-slate-200 shadow-xl p-3 space-y-1 text-xs text-slate-600">
             <div className="flex justify-between">
               <span>AOV: <strong className="font-mono text-slate-900">{formatShortVND(s?.avgOrderValue || 0)}</strong></span>
               <span>Đổi: <strong className="text-slate-900">{s?.totalUnitsReturned || 0} SP</strong></span>
@@ -2400,7 +2400,7 @@ export default function RevenueDashboardModule({
               <button
                 type="button"
                 onClick={() => setDashboardView("DEBTS")}
-                className="font-mono font-black text-slate-900 hover:text-teal-700 hover:underline cursor-pointer"
+                className="font-mono font-black text-slate-900 hover:text-brand-ink hover:underline cursor-pointer"
               >
                 {formatShortVND(dm?.summary?.totalOutstandingDebt || 0)} ({dm?.summary?.activeDebtOrdersCount || 0} đơn)
               </button>
@@ -2449,7 +2449,7 @@ export default function RevenueDashboardModule({
             <span
               className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${dashboardView === "SERVICES"
                 ? "bg-white/20 text-white"
-                : "bg-indigo-100 text-indigo-700"
+                : "bg-indigo-100 text-brand-ink"
                 }`}
             >
               {s?.serviceOrdersCount} phiếu
@@ -2485,7 +2485,7 @@ export default function RevenueDashboardModule({
         <div className="bg-white rounded-2xl border border-indigo-200 p-5 shadow-sm space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-800 text-[11px] font-extrabold uppercase">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-100 text-brand-ink text-[11px] font-extrabold uppercase">
                 <Wrench className="w-3.5 h-3.5" />
                 Thống kê Doanh thu &amp; Thực thu Mảng Dịch vụ
               </div>
@@ -2503,7 +2503,7 @@ export default function RevenueDashboardModule({
               <div className="text-xs font-bold text-indigo-900">
                 1. Doanh thu thuần Dịch vụ (Theo ngày tạo)
               </div>
-              <div className="text-xl font-black font-mono text-indigo-700 mt-1">
+              <div className="text-xl font-black font-mono text-brand-ink mt-1">
                 {formatVND(s?.serviceRevenue || 0)}
               </div>
               <div className="mt-1.5 text-[11px] text-slate-600 flex justify-between">
@@ -2516,10 +2516,10 @@ export default function RevenueDashboardModule({
               <div className="text-xs font-bold text-teal-900">
                 2. Thực thu Dịch vụ (Đã hoàn thành)
               </div>
-              <div className="text-xl font-black font-mono text-teal-700 mt-1">
+              <div className="text-xl font-black font-mono text-brand-ink mt-1">
                 {formatVND(s?.serviceCashCollected || 0)}
               </div>
-              <div className="mt-1.5 text-[11px] text-teal-800">
+              <div className="mt-1.5 text-[11px] text-brand-ink">
                 Đã hoàn thành trả khách:{" "}
                 <strong>{s?.completedServiceOrdersCount || 0}</strong> đơn
               </div>
@@ -2567,7 +2567,7 @@ export default function RevenueDashboardModule({
                 <tbody className="divide-y divide-slate-200">
                   {data.serviceStats.byServiceType.map((row) => (
                     <tr key={row.serviceCode} className="hover:bg-slate-50">
-                      <td className="py-2.5 px-3.5 font-mono font-bold text-indigo-700">
+                      <td className="py-2.5 px-3.5 font-mono font-bold text-brand-ink">
                         {row.serviceCode}
                       </td>
                       <td className="py-2.5 px-3.5 font-bold text-slate-900">
@@ -2579,7 +2579,7 @@ export default function RevenueDashboardModule({
                       <td className="py-2.5 px-3.5 text-center font-mono font-bold">
                         {row.quantity} {row.unit}
                       </td>
-                      <td className="py-2.5 px-3.5 text-right font-mono font-extrabold text-teal-700">
+                      <td className="py-2.5 px-3.5 text-right font-mono font-extrabold text-brand-ink">
                         {formatVND(row.revenue)}
                       </td>
                       <td className="py-2.5 px-3.5 text-right font-mono font-semibold text-slate-600">
@@ -2599,7 +2599,7 @@ export default function RevenueDashboardModule({
         <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-teal-100 text-teal-800 text-[11px] font-extrabold uppercase">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-teal-100 text-brand-ink text-[11px] font-extrabold uppercase">
                 <Wallet className="w-3.5 h-3.5" />
                 Thống kê Công nợ (Mua trước trả sau)
               </div>
@@ -2644,7 +2644,7 @@ export default function RevenueDashboardModule({
             <div className="rounded-xl bg-slate-50 border border-slate-200 p-3.5">
               <div className="flex items-center justify-between text-[11px] font-extrabold uppercase text-slate-600">
                 <span>Tổng dư nợ cần thu</span>
-                <Wallet className="w-4 h-4 text-teal-600" />
+                <Wallet className="w-4 h-4 text-brand-ink" />
               </div>
               <div className="text-xl font-black font-mono text-slate-900 mt-1">
                 {formatVND(dm?.summary?.totalOutstandingDebt || 0)}
@@ -2676,14 +2676,14 @@ export default function RevenueDashboardModule({
             </div>
 
             <div className="rounded-xl bg-teal-50/70 border border-teal-200 p-3.5">
-              <div className="flex items-center justify-between text-[11px] font-extrabold uppercase text-teal-800">
+              <div className="flex items-center justify-between text-[11px] font-extrabold uppercase text-brand-ink">
                 <span>Công nợ phát sinh trong kỳ</span>
-                <Clock className="w-4 h-4 text-teal-600" />
+                <Clock className="w-4 h-4 text-brand-ink" />
               </div>
               <div className="text-xl font-black font-mono text-teal-900 mt-1">
                 {formatVND(s?.initialDebtInPeriod || 0)}
               </div>
-              <div className="text-[11px] text-teal-800 mt-1">
+              <div className="text-[11px] text-brand-ink mt-1">
                 Còn chưa thu trong kỳ:{" "}
                 <strong className="font-mono">{formatVND(s?.outstandingDebtInPeriod || 0)}</strong> (
                 {s?.debtOrdersInPeriod || 0} đơn)
@@ -2691,14 +2691,14 @@ export default function RevenueDashboardModule({
             </div>
 
             <div className="rounded-xl bg-teal-50/70 border border-teal-200 p-3.5">
-              <div className="flex items-center justify-between text-[11px] font-extrabold uppercase text-teal-800">
+              <div className="flex items-center justify-between text-[11px] font-extrabold uppercase text-brand-ink">
                 <span>Đã thu nợ & Giảm nợ trả hàng</span>
-                <CheckCircle2 className="w-4 h-4 text-teal-600" />
+                <CheckCircle2 className="w-4 h-4 text-brand-ink" />
               </div>
-              <div className="text-xl font-black font-mono text-teal-800 mt-1">
+              <div className="text-xl font-black font-mono text-brand-ink mt-1">
                 {formatVND(dm?.summary?.totalCollectedDebt || 0)}
               </div>
-              <div className="text-[11px] text-teal-800 mt-1 space-y-0.5">
+              <div className="text-[11px] text-brand-ink mt-1 space-y-0.5">
                 <div>
                   Giảm nợ do trả hàng:{" "}
                   <strong className="font-mono text-purple-700">
@@ -2796,7 +2796,7 @@ export default function RevenueDashboardModule({
                         </td>
                         <td className="px-3 py-2.5">
                           <div className="font-bold text-slate-900">{o.customerName}</div>
-                          <div className="font-mono text-[11px] text-teal-700 font-semibold">
+                          <div className="font-mono text-[11px] text-brand-ink font-semibold">
                             {formatPhone(o.customerPhone)}
                           </div>
                           {o.note && (
@@ -2811,7 +2811,7 @@ export default function RevenueDashboardModule({
                             Nợ gốc: {formatVND(o.initialDebtAmount)}
                           </div>
                         </td>
-                        <td className="px-3 py-2.5 text-right font-mono font-bold text-teal-700">
+                        <td className="px-3 py-2.5 text-right font-mono font-bold text-brand-ink">
                           {formatVND(o.paidAmount)}
                           {(o.reducedByReturnAmount || 0) > 0 && (
                             <div className="text-[10px] text-purple-700 font-semibold">
@@ -2841,9 +2841,9 @@ export default function RevenueDashboardModule({
                         <td className="px-3 py-2.5 text-center">
                           <span
                             className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${o.debtAmount <= 0 || o.debtStatus === "SETTLED"
-                              ? "bg-teal-100 text-teal-800"
+                              ? "bg-teal-100 text-brand-ink"
                               : o.debtStatus === "PARTIAL"
-                                ? "bg-teal-100 text-teal-800"
+                                ? "bg-teal-100 text-brand-ink"
                                 : "bg-amber-100 text-amber-800"
                               }`}
                           >
@@ -2858,7 +2858,7 @@ export default function RevenueDashboardModule({
                               <div className="mt-1 space-y-0.5 text-[10px] text-slate-600 text-left bg-slate-50 rounded p-1.5 border border-slate-200 max-w-[240px] mx-auto">
                                 {o.debtPayments?.map((dp, i) => (
                                   <div key={`dp-${i}`} className="flex justify-between gap-1">
-                                    <span className="font-mono font-bold text-teal-700">
+                                    <span className="font-mono font-bold text-brand-ink">
                                       +{formatVND(dp.amount)} ({dp.method})
                                     </span>
                                     <span className="text-slate-400">
@@ -2925,7 +2925,7 @@ export default function RevenueDashboardModule({
                           >
                             <td className="px-3 py-2.5">
                               <div className="font-extrabold text-slate-900">{c.customerName}</div>
-                              <div className="font-mono text-xs text-teal-700 font-bold">
+                              <div className="font-mono text-xs text-brand-ink font-bold">
                                 {formatPhone(c.phone)}
                               </div>
                             </td>
@@ -2940,7 +2940,7 @@ export default function RevenueDashboardModule({
                             <td className="px-3 py-2.5 text-right font-mono font-bold text-slate-800">
                               {formatVND(c.totalOrderAmount)}
                             </td>
-                            <td className="px-3 py-2.5 text-right font-mono font-bold text-teal-700">
+                            <td className="px-3 py-2.5 text-right font-mono font-bold text-brand-ink">
                               {formatVND(c.totalPaidAmount)}
                               {(c.totalReducedByReturn || 0) > 0 && (
                                 <div className="text-[10px] text-purple-700 font-semibold">
@@ -3011,7 +3011,7 @@ export default function RevenueDashboardModule({
                                           <span>
                                             Tổng: <strong className="font-mono">{formatVND(co.totalAmount)}</strong>
                                           </span>
-                                          <span className="text-teal-700">
+                                          <span className="text-brand-ink">
                                             Đã trả: <strong className="font-mono">{formatVND(co.paidAmount)}</strong>
                                           </span>
                                           {(co.reducedByReturnAmount || 0) > 0 && (
@@ -3051,7 +3051,7 @@ export default function RevenueDashboardModule({
           <div className="xl:col-span-8 bg-white rounded-2xl border border-slate-200 p-4 shadow-sm space-y-2.5">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
-                <BarChart3 className="w-4 h-4 text-teal-600" />
+                <BarChart3 className="w-4 h-4 text-brand-ink" />
                 Biểu đồ Doanh thu &amp; Lợi nhuận chi tiết
               </h3>
 
@@ -3141,11 +3141,11 @@ export default function RevenueDashboardModule({
                     </strong>
                   </span>
                   <div className="flex items-center gap-4">
-                    <span className="inline-flex items-center gap-1.5 text-teal-700">
+                    <span className="inline-flex items-center gap-1.5 text-brand-ink">
                       <span className="w-3 h-3 rounded-sm bg-teal-500 inline-block" /> Doanh thu thuần
                     </span>
-                    <span className="inline-flex items-center gap-1.5 text-indigo-700">
-                      <span className="w-3 h-3 rounded-sm bg-indigo-500 inline-block" /> Lãi gộp
+                    <span className="inline-flex items-center gap-1.5 text-brand-ink">
+                      <span className="w-3 h-3 rounded-sm bg-[#212121] inline-block" /> Lãi gộp
                     </span>
                   </div>
                 </div>
@@ -3246,7 +3246,7 @@ export default function RevenueDashboardModule({
                                     <span
                                       className="
                                       absolute left-1/2 -translate-x-1/2 mb-1
-                                      text-[9px] sm:text-[10px] font-mono font-extrabold text-teal-800
+                                      text-[9px] sm:text-[10px] font-mono font-extrabold text-brand-ink
                                       whitespace-nowrap pointer-events-none transition-transform duration-200 group-hover:-translate-y-0.5
                                     "
                                       style={{ bottom: `${Math.max(revH, profH)}%` }}
@@ -3268,7 +3268,7 @@ export default function RevenueDashboardModule({
                                   {(hasProf || chartSeries.length <= 16) && (
                                     <div
                                       className={`flex-1 rounded-t-sm sm:rounded-t-md animate-chart-grow-y transition-all duration-300 ${hasProf
-                                        ? "bg-gradient-to-t from-indigo-600 to-indigo-400 group-hover:from-indigo-500 group-hover:to-indigo-300 group-hover:scale-x-110 group-hover:shadow-md shadow-sm"
+                                        ? "bg-gradient-to-t from-[#212121] to-[#474748] group-hover:from-[#2D2D2D] group-hover:to-[#6B6B6B] group-hover:scale-x-110 group-hover:shadow-md shadow-sm"
                                         : "bg-transparent"
                                         }`}
                                       style={{
@@ -3357,12 +3357,12 @@ export default function RevenueDashboardModule({
                           >
                             <defs>
                               <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor="#10b981" stopOpacity="0.38" />
-                                <stop offset="100%" stopColor="#10b981" stopOpacity="0.02" />
+                                <stop offset="0%" stopColor="#E8B020" stopOpacity="0.38" />
+                                <stop offset="100%" stopColor="#E8B020" stopOpacity="0.02" />
                               </linearGradient>
                               <linearGradient id="profGrad" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor="#6366f1" stopOpacity="0.32" />
-                                <stop offset="100%" stopColor="#6366f1" stopOpacity="0.02" />
+                                <stop offset="0%" stopColor="#212121" stopOpacity="0.32" />
+                                <stop offset="100%" stopColor="#212121" stopOpacity="0.02" />
                               </linearGradient>
                             </defs>
 
@@ -3401,14 +3401,14 @@ export default function RevenueDashboardModule({
                                   <polygon points={profArea} fill="url(#profGrad)" />
                                   <polyline
                                     fill="none"
-                                    stroke="#10b981"
+                                    stroke="#E8B020"
                                     strokeWidth="2.5"
                                     vectorEffect="non-scaling-stroke"
                                     points={revPoints}
                                   />
                                   <polyline
                                     fill="none"
-                                    stroke="#6366f1"
+                                    stroke="#212121"
                                     strokeWidth="2"
                                     strokeDasharray="5 3"
                                     vectorEffect="non-scaling-stroke"
@@ -3476,7 +3476,7 @@ export default function RevenueDashboardModule({
                                   {/* Nhãn số trên đỉnh điểm có doanh thu */}
                                   {d.netRevenue > 0 && (
                                     <span
-                                      className="absolute left-1/2 -translate-x-1/2 mb-2 text-[9px] sm:text-[10px] font-mono font-extrabold text-teal-800 whitespace-nowrap"
+                                      className="absolute left-1/2 -translate-x-1/2 mb-2 text-[9px] sm:text-[10px] font-mono font-extrabold text-brand-ink whitespace-nowrap"
                                       style={{ bottom: `${revBottomPct}%` }}
                                     >
                                       {formatShortVND(d.netRevenue)}
@@ -3496,8 +3496,8 @@ export default function RevenueDashboardModule({
                                   {(d.grossProfit > 0 || n <= 14) && (
                                     <span
                                       className={`absolute left-1/2 -translate-x-1/2 translate-y-1/2 rounded-full border border-white shadow-sm ${d.grossProfit > 0
-                                        ? "w-2 h-2 bg-indigo-600"
-                                        : "w-1.5 h-1.5 bg-indigo-400/60"
+                                        ? "w-2 h-2 bg-[#212121]"
+                                        : "w-1.5 h-1.5 bg-[#212121]/60"
                                         }`}
                                       style={{ bottom: `${profBottomPct}%` }}
                                     />
@@ -3570,9 +3570,9 @@ export default function RevenueDashboardModule({
                               </span>
                             </span>
                             <span className="text-right shrink-0 whitespace-nowrap">
-                              <strong className="text-teal-700">{formatVND(d.netRevenue)}</strong>
+                              <strong className="text-brand-ink">{formatVND(d.netRevenue)}</strong>
                               <span className="text-slate-400 mx-1">·</span>
-                              <span className={`font-bold ${d.grossProfit >= 0 ? "text-teal-600" : "text-red-600"}`}>
+                              <span className={`font-bold ${d.grossProfit >= 0 ? "text-brand-ink" : "text-red-600"}`}>
                                 Lãi: {formatVND(d.grossProfit)}
                               </span>
                             </span>
@@ -3619,7 +3619,7 @@ export default function RevenueDashboardModule({
                     onClick={() => setShowDailyTable((v) => !v)}
                     className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold inline-flex items-center gap-1.5 transition"
                   >
-                    <Calendar className="w-3.5 h-3.5 text-teal-600" />
+                    <Calendar className="w-3.5 h-3.5 text-brand-ink" />
                     <span>
                       {showDailyTable
                         ? `Ẩn bảng chi tiết theo ngày (${reversedDaily.length} ngày)`
@@ -3639,10 +3639,10 @@ export default function RevenueDashboardModule({
                             <th className="py-2.5 px-2.5 text-right">SL bán</th>
                             <th className="py-2.5 px-3 text-right">Tiền hàng</th>
                             <th className="py-2.5 px-3 text-right text-amber-700">Giảm giá</th>
-                            <th className="py-2.5 px-3 text-right text-teal-700">Doanh thu thuần</th>
-                            <th className="py-2.5 px-3 text-right text-teal-700">Thực thu</th>
+                            <th className="py-2.5 px-3 text-right text-brand-ink">Doanh thu thuần</th>
+                            <th className="py-2.5 px-3 text-right text-brand-ink">Thực thu</th>
                             <th className="py-2.5 px-3 text-right">Giá vốn</th>
-                            <th className="py-2.5 px-3 text-right text-indigo-700">Lãi gộp</th>
+                            <th className="py-2.5 px-3 text-right text-brand-ink">Lãi gộp</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-200">
@@ -3659,17 +3659,17 @@ export default function RevenueDashboardModule({
                               <td className="py-2 px-3 text-right text-amber-700 whitespace-nowrap">
                                 {d.discountTotal > 0 ? `-${formatVND(d.discountTotal)}` : "0 VND"}
                               </td>
-                              <td className="py-2 px-3 text-right font-extrabold text-teal-700 whitespace-nowrap">
+                              <td className="py-2 px-3 text-right font-extrabold text-brand-ink whitespace-nowrap">
                                 {formatVND(d.netRevenue)}
                               </td>
-                              <td className="py-2 px-3 text-right font-bold text-teal-700 whitespace-nowrap">
+                              <td className="py-2 px-3 text-right font-bold text-brand-ink whitespace-nowrap">
                                 {d.cashCollected !== undefined ? formatVND(d.cashCollected) : "—"}
                               </td>
                               <td className="py-2 px-3 text-right text-slate-600 whitespace-nowrap">
                                 {formatVND(d.cogs)}
                               </td>
                               <td
-                                className={`py-2 px-3 text-right font-extrabold whitespace-nowrap ${d.grossProfit >= 0 ? "text-indigo-700" : "text-red-600"
+                                className={`py-2 px-3 text-right font-extrabold whitespace-nowrap ${d.grossProfit >= 0 ? "text-brand-ink" : "text-red-600"
                                   }`}
                               >
                                 {formatVND(d.grossProfit)}
@@ -3717,12 +3717,12 @@ export default function RevenueDashboardModule({
               <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
                 {structureView === "PAYMENT" ? (
                   <>
-                    <CreditCard className="w-4 h-4 text-teal-600" />
+                    <CreditCard className="w-4 h-4 text-brand-ink" />
                     Cơ cấu Thanh toán
                   </>
                 ) : (
                   <>
-                    <Layers className="w-4 h-4 text-teal-600" />
+                    <Layers className="w-4 h-4 text-brand-ink" />
                     Tỷ trọng Danh mục
                   </>
                 )}
@@ -3776,7 +3776,7 @@ export default function RevenueDashboardModule({
                     >
                       <div className="flex items-center justify-between gap-1.5 text-xs">
                         <span className="font-bold text-slate-800 truncate">{pm.label}</span>
-                        <span className="font-mono text-[11px] px-2 py-0.5 rounded-full bg-teal-100 text-teal-800 font-bold shrink-0">
+                        <span className="font-mono text-[11px] px-2 py-0.5 rounded-full bg-teal-100 text-brand-ink font-bold shrink-0">
                           {pm.sharePercent}%
                         </span>
                       </div>
@@ -3822,7 +3822,7 @@ export default function RevenueDashboardModule({
                                 ({c.unitsSold} SP)
                               </span>
                             </span>
-                            <span className="font-mono font-bold text-teal-700 shrink-0 whitespace-nowrap">
+                            <span className="font-mono font-bold text-brand-ink shrink-0 whitespace-nowrap">
                               {formatShortVND(c.revenue)} ({c.sharePercent}%)
                             </span>
                           </div>
@@ -3838,7 +3838,7 @@ export default function RevenueDashboardModule({
                           </div>
                           <div className="flex flex-wrap justify-between gap-x-3 gap-y-0.5 text-[11px] text-slate-500 font-mono">
                             <span>Giá vốn: {formatVND(c.cogs)}</span>
-                            <span className="font-bold text-indigo-700">
+                            <span className="font-bold text-brand-ink">
                               Lãi gộp: {formatVND(c.grossProfit)}
                             </span>
                           </div>
@@ -3866,7 +3866,7 @@ export default function RevenueDashboardModule({
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <h3 className="font-extrabold text-slate-900 text-base flex items-center gap-2">
-                    <PieChart className="w-5 h-5 text-teal-600" />
+                    <PieChart className="w-5 h-5 text-brand-ink" />
                     Biểu đồ Top Sản Phẩm Đóng Góp Doanh Thu & Lãi Gộp Cao Nhất
                   </h3>
                   <p className="text-xs text-slate-500">
@@ -3874,11 +3874,11 @@ export default function RevenueDashboardModule({
                   </p>
                 </div>
                 <div className="flex items-center gap-4 text-xs font-bold">
-                  <span className="inline-flex items-center gap-1.5 text-teal-700">
+                  <span className="inline-flex items-center gap-1.5 text-brand-ink">
                     <span className="w-3 h-3 rounded-sm bg-teal-500 inline-block" /> Doanh thu thuần
                   </span>
-                  <span className="inline-flex items-center gap-1.5 text-teal-600">
-                    <span className="w-3 h-3 rounded-sm bg-teal-600 inline-block" /> Lãi gộp thực tế
+                  <span className="inline-flex items-center gap-1.5 text-brand-ink">
+                    <span className="w-3 h-3 rounded-sm bg-[#212121] inline-block" /> Lãi gộp thực tế
                   </span>
                 </div>
               </div>
@@ -3900,16 +3900,16 @@ export default function RevenueDashboardModule({
                     >
                       <div className="flex items-center justify-between gap-2 min-w-0">
                         <span className="font-bold text-slate-900 truncate min-w-0">
-                          <span className="font-mono text-teal-700 mr-1.5">#{idx + 1}</span>
+                          <span className="font-mono text-brand-ink mr-1.5">#{idx + 1}</span>
                           {p.productName}{" "}
                           <span className="font-mono text-[11px] text-slate-500 font-normal">
                             ({p.netSoldQty} {p.unit})
                           </span>
                         </span>
                         <span className="font-mono shrink-0 whitespace-nowrap">
-                          <strong className="text-teal-700">{formatShortVND(p.revenue)}</strong>
+                          <strong className="text-brand-ink">{formatShortVND(p.revenue)}</strong>
                           <span className="text-slate-300 mx-1.5">|</span>
-                          <strong className={p.grossProfit >= 0 ? "text-teal-600" : "text-red-600"}>
+                          <strong className={p.grossProfit >= 0 ? "text-brand-ink" : "text-red-600"}>
                             Lãi {formatShortVND(p.grossProfit)}
                           </strong>
                         </span>
@@ -3937,7 +3937,7 @@ export default function RevenueDashboardModule({
                           </span>
                           <div className="flex-1 h-2.5 bg-slate-100 rounded-full overflow-hidden">
                             <div
-                              className={`h-full rounded-full animate-chart-grow-x transition-all duration-500 ${p.grossProfit >= 0 ? "bg-teal-600" : "bg-red-500"
+                              className={`h-full rounded-full animate-chart-grow-x transition-all duration-500 ${p.grossProfit >= 0 ? "bg-[#212121]" : "bg-red-500"
                                 }`}
                               style={{
                                 width: `${profPct}%`,
@@ -3958,7 +3958,7 @@ export default function RevenueDashboardModule({
           <div className="bg-white rounded-2xl border-2 border-teal-200 shadow-sm p-5 space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-teal-100 text-teal-800 mb-1">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-teal-100 text-brand-ink mb-1">
                   <Flame className="w-3.5 h-3.5 text-orange-500" />
                   TOP BEST SELLERS
                 </div>
@@ -4057,7 +4057,7 @@ export default function RevenueDashboardModule({
                             </span>
                           </td>
                           <td className="py-3 px-3 text-right font-mono bg-teal-50/40">
-                            <div className="font-black text-sm text-teal-700">
+                            <div className="font-black text-sm text-brand-ink">
                               {p.netSoldQty} {p.unit}
                             </div>
                             {p.giftQty > 0 && (
@@ -4074,7 +4074,7 @@ export default function RevenueDashboardModule({
                           </td>
                           <td className="py-3 px-3 text-right font-mono whitespace-nowrap">
                             <div
-                              className={`font-extrabold ${p.grossProfit >= 0 ? "text-indigo-700" : "text-red-600"
+                              className={`font-extrabold ${p.grossProfit >= 0 ? "text-brand-ink" : "text-red-600"
                                 }`}
                             >
                               {formatVND(p.grossProfit)}
@@ -4088,7 +4088,7 @@ export default function RevenueDashboardModule({
                               Tổng: {p.stock} {p.unit}
                             </div>
                             <div className="text-[11px] text-slate-500">
-                              🏢 T1: <b className="text-teal-700">{p.stockFloor1}</b> · 🏬 T2:{" "}
+                              🏢 T1: <b className="text-brand-ink">{p.stockFloor1}</b> · 🏬 T2:{" "}
                               <b className="text-purple-700">{p.stockFloor2}</b>
                             </div>
                           </td>
@@ -4099,7 +4099,7 @@ export default function RevenueDashboardModule({
                                 <span>{p.restockAlert}</span>
                               </div>
                             ) : (
-                              <span className="px-2.5 py-1 rounded-full bg-teal-50 text-teal-700 font-bold text-[11px]">
+                              <span className="px-2.5 py-1 rounded-full bg-teal-50 text-brand-ink font-bold text-[11px]">
                                 ✓ Đủ hàng bán tại Tầng 1
                               </span>
                             )}

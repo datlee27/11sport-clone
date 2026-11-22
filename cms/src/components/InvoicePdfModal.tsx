@@ -183,9 +183,9 @@ export default function InvoicePdfModal({ order, onClose }: InvoicePdfModalProps
         <div className="bg-white text-slate-900 border-b border-slate-200 px-3 py-3 sm:px-6 sm:py-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div className="flex items-center justify-between gap-2 min-w-0">
             <div className="flex items-center gap-2 min-w-0">
-              <Printer className="w-5 h-5 shrink-0 text-teal-600" />
+              <Printer className="w-5 h-5 shrink-0 text-brand-ink" />
               <h3 className="font-bold text-base sm:text-lg truncate text-slate-900">
-                Xuất / In Hóa Đơn PDF — <span className="font-mono text-teal-700">{orderCode}</span>
+                Xuất / In Hóa Đơn PDF — <span className="font-mono text-brand-ink">{orderCode}</span>
                 {order.status === "DRAFT" && (
                   <span className="ml-2 px-2 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 text-xs font-extrabold">
                     BẢN NHÁP
@@ -263,7 +263,7 @@ export default function InvoicePdfModal({ order, onClose }: InvoicePdfModalProps
             {/* Header cửa hàng 11Sport với Logo */}
             <div className="text-center border-b-2 border-dashed border-black pb-3 mb-3 text-black">
               <img
-                src="/logo-11sport.svg"
+                data-keep-logo src="/logo-11sport.svg"
                 alt="11SPORT"
                 className={`mx-auto object-contain mb-1.5 ${paperSize === "K80" ? "h-16 w-auto" : "h-20 w-auto"
                   }`}

@@ -618,7 +618,7 @@ export default function TagCheckScannerModal({
                           className="w-full text-left px-3 py-2 min-h-[44px] rounded-lg border border-slate-200 hover:border-amber-500 text-xs"
                         >
                           <span className="font-bold">#{c.index + 1}</span> {c.productName}
-                          <span className={`ml-1 font-bold ${full ? "text-blue-700" : "text-amber-700"}`}>
+                          <span className={`ml-1 font-bold ${full ? "text-brand-ink" : "text-amber-700"}`}>
                             ({c.scannedQuantity ?? 0}/{c.expectedQuantity ?? 0})
                           </span>
                         </button>
@@ -715,7 +715,7 @@ export default function TagCheckScannerModal({
                       </div>
                       <span
                         className={`font-mono font-extrabold whitespace-nowrap ${
-                          full ? "text-blue-700" : scanned > 0 ? "text-amber-700" : "text-slate-500"
+                          full ? "text-brand-ink" : scanned > 0 ? "text-amber-700" : "text-slate-500"
                         }`}
                       >
                         {scanned}/{expected}

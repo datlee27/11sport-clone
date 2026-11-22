@@ -397,8 +397,8 @@ export default function FridayShiftRegistrationModal({ onClose, onSuccess }: Pro
           )}
 
           {isConfirmedByHr && (
-            <div className="p-3 bg-blue-50 border border-blue-200 text-blue-800 font-bold rounded-xl flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />
+            <div className="p-3 bg-blue-50 border border-blue-200 text-brand-ink font-bold rounded-xl flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-brand-ink shrink-0" />
               <span>
                 Lịch ca tuần sau đã được HR xác nhận chính thức. Nếu cần đổi ca hoặc đổi ngày nghỉ, vui lòng liên hệ trực tiếp HR.
               </span>
@@ -416,7 +416,7 @@ export default function FridayShiftRegistrationModal({ onClose, onSuccess }: Pro
               <span
                 className={`px-2.5 py-1 rounded-lg font-extrabold text-[11px] shrink-0 ${
                   isRuleValid
-                    ? "bg-blue-100 text-blue-800"
+                    ? "bg-blue-100 text-brand-ink"
                     : "bg-slate-200 text-slate-700"
                 }`}
               >
@@ -452,7 +452,7 @@ export default function FridayShiftRegistrationModal({ onClose, onSuccess }: Pro
                       <div className="text-[11px] font-mono text-slate-400">{item.date}</div>
                     </div>
                     {!item.isOff && item.shift1 && item.shift2 && (
-                      <span className="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-extrabold">
+                      <span className="px-2 py-0.5 rounded-full bg-indigo-100 text-brand-ink text-[10px] font-extrabold">
                         2 ca
                       </span>
                     )}
@@ -517,7 +517,7 @@ export default function FridayShiftRegistrationModal({ onClose, onSuccess }: Pro
                       className={`px-2.5 py-1.5 rounded-xl font-bold transition text-xs cursor-pointer ${
                         item.isOff && item.leaveType === "PAID_LEAVE"
                           ? "bg-teal-600 text-white shadow-xs"
-                          : "bg-slate-100 hover:bg-teal-50 text-slate-600 hover:text-teal-700"
+                          : "bg-slate-100 hover:bg-teal-50 text-slate-600 hover:text-brand-ink"
                       } disabled:opacity-50`}
                     >
                       Nghỉ phép

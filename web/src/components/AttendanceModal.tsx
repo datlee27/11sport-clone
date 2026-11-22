@@ -248,12 +248,12 @@ export default function AttendanceModal({ currentUser, onClose }: Props) {
             <div
               className={`p-3.5 rounded-2xl border font-semibold flex items-center gap-2 ${
                 statusMsg.type === "success"
-                  ? "bg-blue-50 border-blue-200 text-blue-800"
+                  ? "bg-blue-50 border-blue-200 text-brand-ink"
                   : "bg-rose-50 border-rose-200 text-rose-800"
               }`}
             >
               {statusMsg.type === "success" ? (
-                <CheckCircle2 className="w-4 h-4 shrink-0 text-blue-600" />
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-brand-ink" />
               ) : (
                 <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
               )}
@@ -285,7 +285,7 @@ export default function AttendanceModal({ currentUser, onClose }: Props) {
                         <span className="font-bold text-slate-900">{p.name}</span>{" "}
                         <span className="font-mono text-slate-500">({p.code})</span>
                       </div>
-                      <div className="font-mono font-bold text-blue-700 shrink-0">
+                      <div className="font-mono font-bold text-brand-ink shrink-0">
                         Tồn T1: {p.stockQtyFloor1} {p.unit || "cây"}
                       </div>
                     </div>
@@ -335,7 +335,7 @@ export default function AttendanceModal({ currentUser, onClose }: Props) {
           <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl flex items-center gap-2.5">
             <Wifi
               className={`w-4 h-4 shrink-0 ${
-                isWfhToday || isCurrentIpAllowed ? "text-blue-600" : "text-rose-500"
+                isWfhToday || isCurrentIpAllowed ? "text-brand-ink" : "text-rose-500"
               }`}
             />
             <div>
@@ -400,10 +400,10 @@ export default function AttendanceModal({ currentUser, onClose }: Props) {
             <div className="p-4 bg-blue-50/70 border border-blue-200 rounded-2xl space-y-2">
               <div className="flex items-center justify-between">
                 <span className="font-bold text-blue-900 flex items-center gap-1.5">
-                  <CheckCircle2 className="w-4 h-4 text-blue-600" />
+                  <CheckCircle2 className="w-4 h-4 text-brand-ink" />
                   Đã Check-in vào ca
                 </span>
-                <span className="font-mono font-bold text-blue-800">
+                <span className="font-mono font-bold text-brand-ink">
                   {new Date(attendance.checkInTime).toLocaleTimeString("vi-VN", {
                     hour: "2-digit",
                     minute: "2-digit",

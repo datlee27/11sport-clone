@@ -159,7 +159,7 @@ export default function PosShiftBillsSection({
       <div className="bg-white text-slate-900 rounded-xl p-4 sm:p-5 shadow-sm border border-slate-200 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div className="space-y-1.5">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 text-xs font-extrabold">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 border border-blue-200 text-brand-ink text-xs font-extrabold">
               <Clock className="w-3.5 h-3.5" />
               {meta?.shiftLabel || "Cả ngày (Mọi ca)"}
             </span>
@@ -173,7 +173,7 @@ export default function PosShiftBillsSection({
             Lịch sử Hoá đơn (Tra cứu Bill mọi ngày &amp; mọi ca)
           </h2>
           <p className="text-xs text-slate-600 flex items-center gap-1.5">
-            <ShieldAlert className="w-4 h-4 text-blue-600 shrink-0" />
+            <ShieldAlert className="w-4 h-4 text-brand-ink shrink-0" />
             <span>
               Tra cứu toàn bộ đơn hàng, Chọn ngày bất kỳ hoặc bấm <strong>Tất cả</strong> để xem toàn bộ lịch sử bill.
             </span>
@@ -219,7 +219,7 @@ export default function PosShiftBillsSection({
             disabled={loading}
             className="px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-extrabold flex items-center gap-1.5 transition cursor-pointer"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-blue-600" : "text-blue-600"}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-brand-ink" : "text-brand-ink"}`} />
             <span>Làm mới</span>
           </button>
         </div>
@@ -230,7 +230,7 @@ export default function PosShiftBillsSection({
         <div className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-2xs">
           <div className="flex items-center justify-between text-xs text-slate-500 font-semibold">
             <span>Số Bill đã thanh toán</span>
-            <ShoppingBag className="w-4 h-4 text-blue-600" />
+            <ShoppingBag className="w-4 h-4 text-brand-ink" />
           </div>
           <div className="mt-1.5 flex items-baseline gap-2">
             <span className="text-xl sm:text-2xl font-mono font-black text-slate-900">
@@ -246,11 +246,11 @@ export default function PosShiftBillsSection({
         </div>
 
         <div className="bg-white rounded-xl border border-blue-200 p-3.5 shadow-2xs">
-          <div className="flex items-center justify-between text-xs text-blue-800 font-semibold">
+          <div className="flex items-center justify-between text-xs text-brand-ink font-semibold">
             <span>{dateFilter === "ALL" ? "Tổng tiền Bill (Tất cả)" : "Tổng tiền Bill trong ngày"}</span>
-            <FileText className="w-4 h-4 text-blue-600" />
+            <FileText className="w-4 h-4 text-brand-ink" />
           </div>
-          <div className="mt-1.5 text-lg sm:text-xl font-mono font-black text-blue-700 break-all">
+          <div className="mt-1.5 text-lg sm:text-xl font-mono font-black text-brand-ink break-all">
             {formatVND(summary.totalRevenue)}
           </div>
         </div>
@@ -268,9 +268,9 @@ export default function PosShiftBillsSection({
         <div className="bg-white rounded-xl border border-indigo-200 p-3.5 shadow-2xs">
           <div className="flex items-center justify-between text-xs text-indigo-900 font-semibold">
             <span>{dateFilter === "ALL" ? "Chuyển khoản (Tất cả)" : "Chuyển khoản trong ngày"}</span>
-            <Landmark className="w-4 h-4 text-indigo-600" />
+            <Landmark className="w-4 h-4 text-brand-ink" />
           </div>
-          <div className="mt-1.5 text-lg sm:text-xl font-mono font-black text-indigo-700 break-all">
+          <div className="mt-1.5 text-lg sm:text-xl font-mono font-black text-brand-ink break-all">
             {formatVND(summary.bankingTotal)}
           </div>
         </div>
@@ -419,7 +419,7 @@ export default function PosShiftBillsSection({
                         <div className="font-mono text-xs font-semibold text-slate-800">
                           {formatDateTime(ord.confirmedAt || ord.createdAt)}
                         </div>
-                        <span className="inline-block mt-0.5 text-[10px] font-extrabold px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
+                        <span className="inline-block mt-0.5 text-[10px] font-extrabold px-2 py-0.5 rounded bg-blue-50 text-brand-ink border border-blue-200">
                           {formatShiftBadge(ord.shiftCode)}
                         </span>
                       </td>
@@ -449,7 +449,7 @@ export default function PosShiftBillsSection({
                             </div>
                           ))}
                           {(ord.items || []).length > 3 && (
-                            <div className="text-[11px] font-semibold text-indigo-600">
+                            <div className="text-[11px] font-semibold text-brand-ink">
                               +{(ord.items || []).length - 3} dòng sản phẩm khác (Tổng {totalUnits} SP)
                             </div>
                           )}
@@ -459,16 +459,16 @@ export default function PosShiftBillsSection({
                       <td className="py-3 px-3.5 whitespace-nowrap">
                         <span className="inline-flex items-center gap-1 text-xs font-bold text-slate-800">
                           {ord.paymentMethod === "CASH" && (
-                            <Banknote className="w-3.5 h-3.5 text-blue-600" />
+                            <Banknote className="w-3.5 h-3.5 text-brand-ink" />
                           )}
                           {ord.paymentMethod === "BANKING" && (
-                            <Landmark className="w-3.5 h-3.5 text-blue-600" />
+                            <Landmark className="w-3.5 h-3.5 text-brand-ink" />
                           )}
                           {ord.paymentMethod === "CARD" && (
                             <CreditCard className="w-3.5 h-3.5 text-amber-600" />
                           )}
                           {ord.paymentMethod === "OTHER" && (
-                            <Layers className="w-3.5 h-3.5 text-indigo-600" />
+                            <Layers className="w-3.5 h-3.5 text-brand-ink" />
                           )}
                           {formatPaymentMethodLabel(ord)}
                         </span>
@@ -485,7 +485,7 @@ export default function PosShiftBillsSection({
                       </td>
 
                       <td className="py-3 px-3.5 text-right whitespace-nowrap">
-                        <div className="font-mono font-black text-blue-700 text-sm">
+                        <div className="font-mono font-black text-brand-ink text-sm">
                           {formatVND(ord.totalAmount)}
                         </div>
                         {((ord.itemDiscountTotal || 0) > 0 ||
@@ -505,7 +505,7 @@ export default function PosShiftBillsSection({
                           className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full ${ord.status === "DRAFT"
                             ? "bg-amber-100 text-amber-800 border border-amber-300"
                             : ord.status === "PAID"
-                              ? "bg-blue-100 text-blue-800"
+                              ? "bg-blue-100 text-brand-ink"
                               : ord.status === "PARTIALLY_RETURNED"
                                 ? "bg-orange-100 text-orange-800"
                                 : "bg-red-100 text-red-700"
@@ -583,7 +583,7 @@ export default function PosShiftBillsSection({
             <div className="p-4 sm:p-5 overflow-y-auto space-y-4 text-xs sm:text-sm">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
                 <div className="flex items-start gap-2.5">
-                  <User className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
+                  <User className="w-4 h-4 text-brand-ink mt-0.5 shrink-0" />
                   <div>
                     <div className="text-[11px] text-slate-500 font-semibold uppercase">
                       Khách hàng
@@ -659,7 +659,7 @@ export default function PosShiftBillsSection({
                                 <div className="line-through text-slate-400 text-[11px]">
                                   {formatVND(origPrice)}
                                 </div>
-                                <div className="font-bold text-blue-700">
+                                <div className="font-bold text-brand-ink">
                                   {formatVND(it.unitPrice)}
                                 </div>
                               </div>
@@ -713,7 +713,7 @@ export default function PosShiftBillsSection({
                     <span className="font-mono">+{formatVND(detailOrder.cardFee)}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-sm font-extrabold pt-2 border-t border-blue-200 text-blue-700">
+                <div className="flex justify-between text-sm font-extrabold pt-2 border-t border-blue-200 text-brand-ink">
                   <span>TỔNG THANH TOÁN:</span>
                   <span className="font-mono text-base">
                     {formatVND(detailOrder.totalAmount)}

@@ -374,14 +374,14 @@ export default function ShiftHandoverModule({
     }
     if (h.status === "STORE_CLOSED") {
       return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-teal-100 text-teal-800 text-xs font-bold">
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-teal-100 text-brand-ink text-xs font-bold">
           <CheckCircle2 className="w-3.5 h-3.5" />
           Kết ca đóng cửa {hasDiff ? `(${h.discrepancies.length} lệch)` : ""}
         </span>
       );
     }
     return (
-      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-teal-100 text-teal-800 text-xs font-bold">
+      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-teal-100 text-brand-ink text-xs font-bold">
         <CheckCircle2 className="w-3.5 h-3.5" />
         Đã xác nhận {hasDiff ? `(${h.discrepancies.length} lệch)` : ""}
       </span>
@@ -394,7 +394,7 @@ export default function ShiftHandoverModule({
       <div className="bg-white rounded-3xl border border-slate-200 p-5 shadow-xs space-y-4">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="flex items-start gap-3">
-            <div className="p-3 rounded-2xl bg-teal-50 text-teal-600 border border-teal-200">
+            <div className="p-3 rounded-2xl bg-teal-50 text-brand-ink border border-teal-200">
               <ClipboardCheck className="w-6 h-6" />
             </div>
             <div>
@@ -410,10 +410,10 @@ export default function ShiftHandoverModule({
           {/* Box xem nhóm kiểm hàng cố định theo Thứ + Nút cấu hình */}
           <div className="p-3.5 rounded-2xl bg-teal-50/80 border border-teal-200 flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2">
-              <Shuffle className="w-4 h-4 text-teal-600 shrink-0" />
+              <Shuffle className="w-4 h-4 text-brand-ink shrink-0" />
               <div className="text-xs">
                 <div className="font-bold text-teal-950">Lịch kiểm hàng theo ngày:</div>
-                <div className="text-[11px] text-teal-700">Cố định theo Thứ (Vợt + Nhóm cấu hình)</div>
+                <div className="text-[11px] text-brand-ink">Cố định theo Thứ (Vợt + Nhóm cấu hình)</div>
               </div>
             </div>
 
@@ -463,9 +463,9 @@ export default function ShiftHandoverModule({
               <div>
                 <h3 className="text-xs font-extrabold text-slate-900 flex items-center gap-1.5">
                   {isReadOnlySchedule ? (
-                    <Eye className="w-4 h-4 text-teal-600" />
+                    <Eye className="w-4 h-4 text-brand-ink" />
                   ) : (
-                    <Settings className="w-4 h-4 text-teal-600" />
+                    <Settings className="w-4 h-4 text-brand-ink" />
                   )}
                   {isReadOnlySchedule
                     ? "Lịch Kiểm Hàng Cố Định Theo Thứ Trong Tuần (Chỉ xem)"
@@ -511,11 +511,11 @@ export default function ShiftHandoverModule({
                     <div>
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-extrabold text-slate-900">{day.label}</span>
-                        <span className="px-1.5 py-0.5 rounded bg-teal-50 text-teal-700 font-bold text-[10px] border border-teal-200">
+                        <span className="px-1.5 py-0.5 rounded bg-teal-50 text-brand-ink font-bold text-[10px] border border-teal-200">
                           Vợt + ...
                         </span>
                       </div>
-                      <div className="text-[11px] font-bold text-teal-800 mt-1 truncate">
+                      <div className="text-[11px] font-bold text-brand-ink mt-1 truncate">
                         Vợt + {selectValue}
                       </div>
                     </div>
@@ -563,12 +563,12 @@ export default function ShiftHandoverModule({
           <div
             className={`p-3 rounded-xl text-xs font-bold flex items-center gap-2 border ${
               notice.type === "ok"
-                ? "bg-teal-50 text-teal-800 border-teal-200"
+                ? "bg-teal-50 text-brand-ink border-teal-200"
                 : "bg-rose-50 text-rose-800 border-rose-200"
             }`}
           >
             {notice.type === "ok" ? (
-              <CheckCircle2 className="w-4 h-4 text-teal-600 shrink-0" />
+              <CheckCircle2 className="w-4 h-4 text-brand-ink shrink-0" />
             ) : (
               <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
             )}
@@ -587,7 +587,7 @@ export default function ShiftHandoverModule({
             <div className="text-2xl font-black text-amber-900 mt-1">{pendingCount}</div>
           </div>
           <div className="p-4 rounded-2xl bg-teal-50/70 border border-teal-200">
-            <div className="text-xs text-teal-800 font-semibold">Đã xác nhận / Hoàn tất</div>
+            <div className="text-xs text-brand-ink font-semibold">Đã xác nhận / Hoàn tất</div>
             <div className="text-2xl font-black text-teal-900 mt-1">{acceptedCount}</div>
           </div>
           <div className="p-4 rounded-2xl bg-rose-50/70 border border-rose-200">
@@ -650,7 +650,7 @@ export default function ShiftHandoverModule({
               type="checkbox"
               checked={onlyDiscrepancy}
               onChange={(e) => setOnlyDiscrepancy(e.target.checked)}
-              className="rounded text-teal-600"
+              className="rounded text-brand-ink"
             />
             <span>Chỉ hiện phiếu lệch tồn</span>
           </label>
@@ -726,7 +726,7 @@ export default function ShiftHandoverModule({
                           {shiftLabel(h.shiftCode)}
                         </div>
                         {h.submittedAt && (
-                          <div className="text-[10px] font-bold text-teal-700 mt-0.5">
+                          <div className="text-[10px] font-bold text-brand-ink mt-0.5">
                             Chốt gửi:{" "}
                             {new Date(h.submittedAt).toLocaleTimeString("vi-VN", {
                               hour: "2-digit",
@@ -743,7 +743,7 @@ export default function ShiftHandoverModule({
                           <span
                             className={
                               h.toStaffName
-                                ? "text-teal-700 font-bold"
+                                ? "text-brand-ink font-bold"
                                 : "text-amber-600 italic font-semibold"
                             }
                           >
@@ -769,7 +769,7 @@ export default function ShiftHandoverModule({
 
                       <td className="py-3.5 px-4">
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-teal-50 text-teal-900 border border-teal-200 font-bold text-[11px]">
-                          <Boxes className="w-3 h-3 text-teal-600" />
+                          <Boxes className="w-3 h-3 text-brand-ink" />
                           {categoriesText}
                         </span>
                         {categoryCounts.length > 0 ? (
@@ -802,7 +802,7 @@ export default function ShiftHandoverModule({
 
                       <td className="py-3.5 px-4">
                         {diffCount === 0 ? (
-                          <span className="text-teal-700 font-bold text-xs">
+                          <span className="text-brand-ink font-bold text-xs">
                             Khớp 100% tồn Tầng 1
                           </span>
                         ) : (
@@ -892,8 +892,8 @@ export default function ShiftHandoverModule({
                 </div>
 
                 <div className="p-3.5 rounded-2xl bg-teal-50 border border-teal-200">
-                  <div className="text-teal-800 font-bold flex items-center gap-1.5">
-                    <Boxes className="w-4 h-4 text-teal-600" />
+                  <div className="text-brand-ink font-bold flex items-center gap-1.5">
+                    <Boxes className="w-4 h-4 text-brand-ink" />
                     <span>Nhóm hàng kiểm theo ngày</span>
                   </div>
                   <div className="font-extrabold text-sm text-teal-950 mt-1">
@@ -904,7 +904,7 @@ export default function ShiftHandoverModule({
                   </div>
                   {typeof selectedHandover.totalCheckedProducts === "number" &&
                     selectedHandover.totalCheckedProducts > 0 && (
-                      <div className="text-[11px] text-teal-700">
+                      <div className="text-[11px] text-brand-ink">
                         Tổng {selectedHandover.totalCheckedProducts} mã kiểm
                       </div>
                     )}
@@ -927,7 +927,7 @@ export default function ShiftHandoverModule({
                   <span className="font-bold text-teal-900">
                     Mốc thời gian chốt gửi bàn giao (tính giờ Check-out cho người giao ca):
                   </span>
-                  <span className="font-mono font-extrabold text-teal-800">
+                  <span className="font-mono font-extrabold text-brand-ink">
                     {new Date(selectedHandover.submittedAt).toLocaleTimeString("vi-VN", {
                       hour: "2-digit",
                       minute: "2-digit",
@@ -955,7 +955,7 @@ export default function ShiftHandoverModule({
 
               {selectedHandover.confirmNote && (
                 <div className="p-3.5 rounded-2xl bg-teal-50 border border-teal-200">
-                  <span className="font-bold text-teal-800">Ghi chú xác nhận nhận ca: </span>
+                  <span className="font-bold text-brand-ink">Ghi chú xác nhận nhận ca: </span>
                   <span className="text-teal-950">{selectedHandover.confirmNote}</span>
                 </div>
               )}
@@ -993,7 +993,7 @@ export default function ShiftHandoverModule({
                                 </td>
                                 <td className="py-2.5 px-3 text-right font-mono font-bold">
                                   {diff === 0 ? (
-                                    <span className="text-teal-700">Khớp (0)</span>
+                                    <span className="text-brand-ink">Khớp (0)</span>
                                   ) : (
                                     <span className="text-amber-800">
                                       {diff > 0 ? `+${diff}` : diff}
@@ -1021,8 +1021,8 @@ export default function ShiftHandoverModule({
 
                 {!Array.isArray(selectedHandover.discrepancies) ||
                 selectedHandover.discrepancies.length === 0 ? (
-                  <div className="p-4 rounded-2xl bg-teal-50/60 border border-teal-200 text-teal-800 font-bold flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-teal-600" />
+                  <div className="p-4 rounded-2xl bg-teal-50/60 border border-teal-200 text-brand-ink font-bold flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-brand-ink" />
                     <span>Tất cả sản phẩm thuộc nhóm kiểm trong ngày đều khớp 100% tồn hệ thống.</span>
                   </div>
                 ) : (

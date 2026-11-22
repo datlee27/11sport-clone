@@ -53,7 +53,7 @@ const STATUS: Record<
     badge: "✓",
     badgeCls: "bg-blue-500 text-white",
     box: "bg-blue-50 border-blue-400",
-    dayNum: "text-blue-700",
+    dayNum: "text-brand-ink",
     dot: "bg-blue-500",
   },
   LATE: {
@@ -89,7 +89,7 @@ const STATUS: Record<
     badge: "W",
     badgeCls: "bg-cyan-600 text-white",
     box: "bg-cyan-50 border-cyan-400",
-    dayNum: "text-cyan-700",
+    dayNum: "text-brand-ink",
     dot: "bg-cyan-600",
   },
   WORKING: {
@@ -98,7 +98,7 @@ const STATUS: Record<
     badge: "●",
     badgeCls: "bg-blue-500 text-white animate-pulse",
     box: "bg-blue-50 border-blue-400",
-    dayNum: "text-blue-700",
+    dayNum: "text-brand-ink",
     dot: "bg-blue-500",
   },
   MISSING_OUT: {
@@ -116,7 +116,7 @@ const STATUS: Record<
     badge: "PL",
     badgeCls: "bg-blue-600 text-white",
     box: "bg-blue-50 border-blue-400",
-    dayNum: "text-blue-700",
+    dayNum: "text-brand-ink",
     dot: "bg-blue-600",
   },
   LEAVE: {
@@ -199,7 +199,7 @@ const LEAVE_TYPE_LABEL: Record<LeaveRequestType, string> = {
 };
 const LEAVE_STATUS: Record<string, { label: string; cls: string }> = {
   PENDING: { label: "Chờ duyệt", cls: "bg-amber-100 text-amber-800" },
-  APPROVED: { label: "Đã duyệt", cls: "bg-blue-100 text-blue-800" },
+  APPROVED: { label: "Đã duyệt", cls: "bg-blue-100 text-brand-ink" },
   REJECTED: { label: "Từ chối", cls: "bg-rose-100 text-rose-700" },
 };
 
@@ -396,7 +396,7 @@ export default function MyAttendanceCalendar({ currentUser, onBack, onScheduleSe
               )}
               <div>
                 <h2 className="text-base sm:text-lg font-extrabold text-slate-900 flex items-center gap-2">
-                  <CalendarDays className="w-5 h-5 text-blue-600" />
+                  <CalendarDays className="w-5 h-5 text-brand-ink" />
                   Lịch công của tôi
                 </h2>
                 <p className="text-[11px] text-slate-500">
@@ -477,7 +477,7 @@ export default function MyAttendanceCalendar({ currentUser, onBack, onScheduleSe
                 <div className="text-[10px] text-slate-500 mt-1">
                   Đi làm {s.workUnits.toFixed(2)}
                   {s.holidayPaidDays > 0 && <span className="text-rose-600 font-semibold"> + Lễ {s.holidayPaidDays}</span>}
-                  {s.paidLeaveUsed > 0 && <span className="text-teal-600 font-semibold"> + Phép {s.paidLeaveUsed}</span>}
+                  {s.paidLeaveUsed > 0 && <span className="text-brand-ink font-semibold"> + Phép {s.paidLeaveUsed}</span>}
                 </div>
               </div>
               <StatCard label="Tổng giờ làm" value={`${s.totalHours.toFixed(1)}h`} tone="slate" />
@@ -589,12 +589,12 @@ export default function MyAttendanceCalendar({ currentUser, onBack, onScheduleSe
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex flex-wrap items-center gap-2">
                     <h3 className="text-xs sm:text-sm font-extrabold text-slate-900 flex items-center gap-1.5">
-                      <Clock className="w-4 h-4 text-blue-600" />
+                      <Clock className="w-4 h-4 text-brand-ink" />
                       Lịch làm việc tuần sau ({wsD}/{wsM} – {weD}/{weM}/{weY})
                     </h3>
                     {myShiftSchedule.isConfirmedByHr ? (
-                      <span className="px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 text-[11px] font-extrabold inline-flex items-center gap-1">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />
+                      <span className="px-2.5 py-0.5 rounded-full bg-blue-100 text-brand-ink text-[11px] font-extrabold inline-flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-brand-ink" />
                         HR đã xác nhận lịch làm việc
                         {justSawConfirmedSchedule && (
                           <span className="ml-1 px-1.5 py-0.2 rounded-full bg-rose-600 text-white text-[9px] font-black uppercase">
@@ -603,7 +603,7 @@ export default function MyAttendanceCalendar({ currentUser, onBack, onScheduleSe
                         )}
                       </span>
                     ) : myShiftSchedule.isRegistered ? (
-                      <span className="px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-800 text-[11px] font-bold">
+                      <span className="px-2.5 py-0.5 rounded-full bg-indigo-100 text-brand-ink text-[11px] font-bold">
                         ⏳ Đã gửi đăng ký – Chờ HR xác nhận
                       </span>
                     ) : (
@@ -672,7 +672,7 @@ export default function MyAttendanceCalendar({ currentUser, onBack, onScheduleSe
                           {item?.preferenceShift === "BOTH" &&
                             (code === "SHIFT_1" || code === "SHIFT_2") &&
                             item.assignedBy === "AUTO" && (
-                              <div className="text-[9px] font-semibold text-indigo-600">
+                              <div className="text-[9px] font-semibold text-brand-ink">
                                 (ĐK 2 ca • Random 1 ca)
                               </div>
                             )}
@@ -1188,7 +1188,7 @@ function DayDetailModal({
             )}
             {!!cell.overtimeMinutes && (
               <Row
-                icon={<Timer className="w-3.5 h-3.5 text-indigo-600" />}
+                icon={<Timer className="w-3.5 h-3.5 text-brand-ink" />}
                 text={`Tăng ca ${fmtMinutes(cell.overtimeMinutes)} (Đã được HR phê duyệt)`}
               />
             )}
@@ -1266,7 +1266,7 @@ function DayDetailModal({
             <button
               type="button"
               onClick={() => onRequestChangeOff(day.date, activeOffLeave?.id)}
-              className="w-full py-2.5 rounded-xl border-2 border-indigo-200 bg-indigo-50 text-indigo-800 hover:bg-indigo-100 text-xs font-bold flex items-center justify-center gap-1.5 transition"
+              className="w-full py-2.5 rounded-xl border-2 border-indigo-200 bg-indigo-50 text-brand-ink hover:bg-indigo-100 text-xs font-bold flex items-center justify-center gap-1.5 transition"
             >
               <RefreshCw className="w-3.5 h-3.5" />
               Xin chuyển ngày off {dd}/{mm} sang ngày khác
@@ -1278,7 +1278,7 @@ function DayDetailModal({
             <button
               type="button"
               onClick={() => setShowForm(true)}
-              className="w-full py-2.5 rounded-xl border-2 border-dashed border-blue-300 text-blue-700 hover:bg-blue-50 text-xs font-bold flex items-center justify-center gap-1.5"
+              className="w-full py-2.5 rounded-xl border-2 border-dashed border-blue-300 text-brand-ink hover:bg-blue-50 text-xs font-bold flex items-center justify-center gap-1.5"
             >
               <Send className="w-3.5 h-3.5" />
               Gửi đơn cho ngày này
