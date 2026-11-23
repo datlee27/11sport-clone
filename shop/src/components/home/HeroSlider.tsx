@@ -87,7 +87,7 @@ export function HeroSlider({ banners }: HeroSliderProps) {
         <div className="flex">
           {banners.map((banner, idx) => {
             const slideContent = (
-              <div className="relative w-full aspect-square sm:aspect-[1425/490]">
+              <div className="relative w-full aspect-[16/9] sm:aspect-[1425/490]">
                 {/* Desktop Image */}
                 <Image
                   src={resolveMediaUrl(banner.desktopImageUrl)}
@@ -97,16 +97,16 @@ export function HeroSlider({ banners }: HeroSliderProps) {
                   sizes="100vw"
                   className="hidden sm:block object-cover"
                 />
-                {/* Mobile Square Image */}
+                {/* Mobile Image: scale theo tỉ lệ màn hình, không bị crop mất chữ */}
                 <Image
                   src={resolveMediaUrl(
-                    banner.mobileImageUrl || banner.desktopImageUrl
+                    banner.desktopImageUrl || banner.mobileImageUrl
                   )}
                   alt={banner.altText || banner.title}
                   fill
                   priority={idx === 0}
                   sizes="100vw"
-                  className="sm:hidden object-cover"
+                  className="sm:hidden object-cover object-center"
                 />
               </div>
             );
@@ -132,7 +132,7 @@ export function HeroSlider({ banners }: HeroSliderProps) {
             type="button"
             onClick={() => emblaApi?.scrollPrev()}
             aria-label="Banner trước"
-            className="inline-flex items-center justify-center w-10 h-10 rounded-full border border-white/75 bg-black/15 text-white hover:bg-black/35 opacity-0 group-hover:opacity-100 transition-opacity absolute left-4 top-1/2 -translate-y-1/2 z-10 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            className="hidden sm:inline-flex items-center justify-center w-10 h-10 rounded-full border border-white/75 bg-black/15 text-white hover:bg-black/35 opacity-0 group-hover:opacity-100 transition-opacity absolute left-4 top-1/2 -translate-y-1/2 z-10 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
           >
             <ChevronLeft className="w-5 h-5" aria-hidden="true" />
           </button>
@@ -141,22 +141,22 @@ export function HeroSlider({ banners }: HeroSliderProps) {
             type="button"
             onClick={() => emblaApi?.scrollNext()}
             aria-label="Banner tiếp theo"
-            className="inline-flex items-center justify-center w-10 h-10 rounded-full border border-white/75 bg-black/15 text-white hover:bg-black/35 opacity-0 group-hover:opacity-100 transition-opacity absolute right-4 top-1/2 -translate-y-1/2 z-10 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            className="hidden sm:inline-flex items-center justify-center w-10 h-10 rounded-full border border-white/75 bg-black/15 text-white hover:bg-black/35 opacity-0 group-hover:opacity-100 transition-opacity absolute right-4 top-1/2 -translate-y-1/2 z-10 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
           >
             <ChevronRight className="w-5 h-5" aria-hidden="true" />
           </button>
 
-          <div className="absolute bottom-3.5 inset-x-0 flex items-center justify-center gap-2.5 z-10">
+          <div className="absolute bottom-2 sm:bottom-3.5 inset-x-0 flex items-center justify-center gap-2 z-10">
             {banners.map((b, idx) => (
               <button
                 key={b._id}
                 type="button"
                 onClick={() => emblaApi?.scrollTo(idx)}
                 aria-label={`Xem banner ${idx + 1}`}
-                className={`w-3 h-3 rounded-full border-2 border-white transition-colors ${
+                className={`w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full border border-white transition-all ${
                   idx === selectedIndex
-                    ? "bg-white"
-                    : "bg-transparent hover:bg-white/40"
+                    ? "bg-white scale-110"
+                    : "bg-transparent opacity-60 hover:opacity-100"
                 }`}
               />
             ))}

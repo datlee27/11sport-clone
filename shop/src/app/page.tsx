@@ -154,7 +154,7 @@ export default async function HomePage() {
               if (!banner) return null;
 
               const imgNode = (
-                <div className="relative w-full aspect-[21/9] sm:aspect-[1440/360] overflow-hidden bg-surface-muted my-6">
+                <div className="relative w-full aspect-[16/9] sm:aspect-[1440/360] overflow-hidden bg-surface-muted my-6">
                   <Image
                     src={resolveMediaUrl(banner.desktopImageUrl)}
                     alt={banner.altText || banner.title}
@@ -164,7 +164,7 @@ export default async function HomePage() {
                   />
                   <Image
                     src={resolveMediaUrl(
-                      banner.mobileImageUrl || banner.desktopImageUrl
+                      banner.desktopImageUrl || banner.mobileImageUrl
                     )}
                     alt={banner.altText || banner.title}
                     fill

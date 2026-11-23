@@ -1271,7 +1271,7 @@ export const MOCK_HOME_DATA: HomeDataResponse = {
       title: "11SPORT PICKLEBALL · VỢT CHÍNH HÃNG & ƯU ĐÃI GIÁ SỈ TỪ 3 CÂY",
       position: "HERO",
       desktopImageUrl: "/mock/hero-11sport-desktop-1.jpg",
-      mobileImageUrl: "/mock/hero-11sport-mobile-1.jpg",
+      mobileImageUrl: "/mock/hero-11sport-desktop-1.jpg",
       linkUrl: "/vot-pickleball",
       altText: "11Sport Pickleball — Vợt chính hãng Joola, Selkirk, Facolos, CRBN",
       sortOrder: 1,
