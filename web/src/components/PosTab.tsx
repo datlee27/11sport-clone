@@ -4568,7 +4568,9 @@ export default function PosTab({ onOpenInvoice }: PosTabProps) {
                                 </div>
                                 <div className="font-mono font-extrabold text-xs text-brand-ink mt-0.5 flex items-center gap-1">
                                   <span>
-                                    {formatNumberDots(displayPrice.price)}
+                                    {displayPrice.minPrice > 0 && displayPrice.maxPrice > displayPrice.minPrice
+                                      ? `${formatNumberDots(displayPrice.minPrice)} – ${formatNumberDots(displayPrice.maxPrice)}`
+                                      : formatNumberDots(displayPrice.price)}
                                   </span>
                                 </div>
                               </div>

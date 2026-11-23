@@ -1002,9 +1002,9 @@
     "semantic_hash": ""
   },
   "web/src/components/PosTab.tsx": {
-    "mtime": 1795422260.158388,
-    "seen": 1795422320.057698,
-    "ast_hash": "f051b8ff6df568ef8ff6acda4f832c13",
+    "mtime": 1795423505.1548812,
+    "seen": 1795423549.490102,
+    "ast_hash": "7e4aa2c6a99e7f967d4b05ad5ba24490",
     "semantic_hash": ""
   },
   "web/src/components/ProductCodeCreatorModal.tsx": {
