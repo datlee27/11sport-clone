@@ -209,7 +209,7 @@ export default function InvoicePdfModal({ order, onClose }: InvoicePdfModalProps
             {/* Chỉ giữ khổ in nhiệt K80 */}
             <div className="min-h-[40px] px-3 py-1.5 rounded-lg bg-blue-700/70 border border-white/20 text-xs font-semibold flex items-center justify-center gap-1.5 text-white">
               <Receipt className="w-4 h-4" />
-              Khổ Bill K80 (80mm)
+              Khổ Bill
             </div>
 
             <button
@@ -218,7 +218,7 @@ export default function InvoicePdfModal({ order, onClose }: InvoicePdfModalProps
               className="min-h-[44px] px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 !text-white font-semibold text-sm flex items-center justify-center gap-1.5 shadow cursor-pointer"
             >
               <Download className="w-4 h-4" />
-              In / Lưu PDF (K80)
+              In / Lưu PDF
             </button>
 
             <button
