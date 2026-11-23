@@ -98,17 +98,24 @@ function VietnamFlagSvg({
 function UsFlagSvg({ sizeClass = "w-full h-full" }: { sizeClass?: string }) {
   return (
     <svg viewBox="0 0 24 24" className={`${sizeClass} block`} aria-hidden="true">
-      <circle cx="12" cy="12" r="12" fill="#FFFFFF" />
-      <path
-        d="M0 3.5h24v2H0zm0 4h24v2H0zm0 4h24v2H0zm0 4h24v2H0zm0 4h24v2H0z"
-        fill="#B80411"
-      />
-      <rect width="12" height="12" fill="#1B4F9C" />
-      <circle cx="3.5" cy="3.5" r="1" fill="#FFFFFF" />
-      <circle cx="7.5" cy="3.5" r="1" fill="#FFFFFF" />
-      <circle cx="5.5" cy="6.2" r="1" fill="#FFFFFF" />
-      <circle cx="3.5" cy="9" r="1" fill="#FFFFFF" />
-      <circle cx="7.5" cy="9" r="1" fill="#FFFFFF" />
+      <defs>
+        <clipPath id="headerUsFlagCircle">
+          <circle cx="12" cy="12" r="12" />
+        </clipPath>
+      </defs>
+      <g clipPath="url(#headerUsFlagCircle)">
+        <rect width="24" height="24" fill="#FFFFFF" />
+        <path
+          d="M0 3.5h24v2H0zm0 4h24v2H0zm0 4h24v2H0zm0 4h24v2H0zm0 4h24v2H0z"
+          fill="#B80411"
+        />
+        <rect width="12" height="12" fill="#1B4F9C" />
+        <circle cx="3.5" cy="3.5" r="1" fill="#FFFFFF" />
+        <circle cx="7.5" cy="3.5" r="1" fill="#FFFFFF" />
+        <circle cx="5.5" cy="6.2" r="1" fill="#FFFFFF" />
+        <circle cx="3.5" cy="9" r="1" fill="#FFFFFF" />
+        <circle cx="7.5" cy="9" r="1" fill="#FFFFFF" />
+      </g>
     </svg>
   );
 }
@@ -627,7 +634,7 @@ export function Header({
               <Link
                 href={enTarget}
                 aria-label="English"
-                className={`w-5 h-5 rounded-full overflow-hidden flex items-center justify-center shrink-0 ring-1 ${
+                className={`w-5 h-5 lg:w-[26px] lg:h-[26px] rounded-full overflow-hidden flex items-center justify-center shrink-0 ring-1 ${
                   isEn
                     ? "ring-white"
                     : "ring-white/40 opacity-85 hover:opacity-100"

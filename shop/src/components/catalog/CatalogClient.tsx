@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ChevronLeft, ChevronRight, Search, X } from "lucide-react";
+import { Check, ChevronDown, ChevronLeft, ChevronRight, Search, X } from "lucide-react";
 import { ProductCard } from "@/components/common/ProductCard";
 import { BreadcrumbBar } from "@/components/store/StorefrontDesignSystem";
 import { formatPriceByCurrency } from "@/lib/format";
@@ -57,9 +57,33 @@ export function CatalogClient({
   const searchParams = useSearchParams();
   const currency = useCurrencyStore((s) => s.currency);
   const [mounted, setMounted] = useState(false);
+  const [sortOpen, setSortOpen] = useState(false);
+  const sortDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (
+        sortDropdownRef.current &&
+        !sortDropdownRef.current.contains(e.target as Node)
+      ) {
+        setSortOpen(false);
+      }
+    }
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setSortOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
   }, []);
 
   const activeCurrency = mounted ? currency : "VND";
@@ -143,21 +167,68 @@ export function CatalogClient({
       ? `Hiển thị tất cả ${meta.total} kết quả`
       : `Hiển thị ${products.length} / ${meta.total} kết quả`;
 
+  const currentSortOption =
+    SORT_OPTIONS.find((opt) => opt.value === currentSort) || SORT_OPTIONS[0];
+
   const sortControls = showSortToolbar ? (
     <div className="flex flex-wrap items-center gap-3">
       <span className="text-[13.5px] text-ink-secondary">{countLabel}</span>
-      <select
-        aria-label="Sắp xếp sản phẩm"
-        value={currentSort}
-        onChange={(e) => updateQuery({ sort: e.target.value })}
-        className="h-[39px] min-w-[230px] px-3 border border-[#d9d9d9] bg-white text-[13.5px] text-ink-primary focus:outline-none focus:border-store-forest"
-      >
-        {SORT_OPTIONS.map((opt) => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
-      </select>
+      <div ref={sortDropdownRef} className="relative inline-block text-left">
+        <button
+          type="button"
+          onClick={() => setSortOpen((o) => !o)}
+          aria-haspopup="listbox"
+          aria-expanded={sortOpen}
+          aria-label="Sắp xếp sản phẩm"
+          className="h-[39px] min-w-[240px] px-3.5 bg-white border border-[#d9d9d9] hover:border-store-forest text-[13.5px] font-medium text-ink-primary flex items-center justify-between gap-2 transition-colors focus:outline-none focus:border-store-forest cursor-pointer shadow-sm rounded-none"
+        >
+          <span className="truncate">{currentSortOption.label}</span>
+          <ChevronDown
+            className={`w-4 h-4 text-ink-muted transition-transform duration-200 shrink-0 ${
+              sortOpen ? "rotate-180 text-store-forest" : ""
+            }`}
+            aria-hidden="true"
+          />
+        </button>
+
+        {sortOpen && (
+          <ul
+            role="listbox"
+            aria-label="Tùy chọn sắp xếp"
+            className="absolute right-0 top-full mt-1 w-full min-w-[250px] bg-white border border-store-border-sage shadow-drawer py-1 z-30 animate-in fade-in-50 zoom-in-95 duration-150"
+          >
+            {SORT_OPTIONS.map((opt) => {
+              const isSelected = opt.value === currentSort;
+              return (
+                <li key={opt.value}>
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={isSelected}
+                    onClick={() => {
+                      updateQuery({ sort: opt.value });
+                      setSortOpen(false);
+                    }}
+                    className={`w-full px-3.5 py-2.5 flex items-center justify-between text-left text-[13px] transition-colors cursor-pointer ${
+                      isSelected
+                        ? "bg-store-surface-sage text-store-forest font-bold"
+                        : "text-ink-primary hover:bg-[#f4f7f5] hover:text-store-forest"
+                    }`}
+                  >
+                    <span>{opt.label}</span>
+                    {isSelected && (
+                      <Check
+                        className="w-4 h-4 text-store-forest shrink-0 ml-2"
+                        aria-hidden="true"
+                      />
+                    )}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
     </div>
   ) : null;
 
