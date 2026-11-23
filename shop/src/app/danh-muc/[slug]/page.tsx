@@ -1,8 +1,6 @@
 import { Suspense } from "react";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { ChevronRight } from "lucide-react";
 import { buildBreadcrumbJsonLd, buildMetadata } from "@/lib/seo";
 import { fetchCategoryDetail, fetchProducts } from "@/lib/storefront";
 import { JsonLd } from "@/components/seo/JsonLd";
@@ -14,9 +12,7 @@ interface CategoryPageProps {
   searchParams: Record<string, string | string[] | undefined>;
 }
 
-function getParam(
-  val: string | string[] | undefined
-): string | undefined {
+function getParam(val: string | string[] | undefined): string | undefined {
   return Array.isArray(val) ? val[0] : val;
 }
 
@@ -29,6 +25,7 @@ function formatSlugTitle(slug: string): string {
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: CategoryPageProps): Promise<Metadata> {
   const { data } = await fetchCategoryDetail(params.slug);
   const category = data?.category;
@@ -39,13 +36,14 @@ export async function generateMetadata({
       : `${formatSlugTitle(params.slug)} Chính Hãng`);
   const description =
     category?.seo?.description ||
-    `Mua ${category?.name || formatSlugTitle(params.slug)} chính hãng tại 11 Sport. Giá tốt, bảo hành đầy đủ, freeship đơn từ 500k.`;
+    `Mua ${category?.name || formatSlugTitle(params.slug)} chính hãng. Giá tốt, lỗi 1 đổi 1, freeship toàn quốc.`;
 
   return buildMetadata({
     title,
     description,
     path: `/danh-muc/${params.slug}`,
     image: category?.seo?.ogImage || category?.imageUrl,
+    searchParams,
   });
 }
 
@@ -85,29 +83,10 @@ export default async function CategoryPage({
   ];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 lg:px-6 py-6 lg:py-8 space-y-6">
+    <div className="max-w-container mx-auto px-3.5 sm:px-4 lg:px-5 py-4 lg:py-6 space-y-5">
       <JsonLd data={buildBreadcrumbJsonLd(breadcrumbs)} />
 
-      {/* Breadcrumb */}
-      <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs sm:text-sm text-ink-muted">
-        <Link href="/" className="hover:text-brand-primary">
-          Trang chủ
-        </Link>
-        <ChevronRight className="w-4 h-4 shrink-0" aria-hidden="true" />
-        <span className="font-semibold text-ink-primary truncate">
-          {categoryName}
-        </span>
-      </nav>
-
-      {/* Single H1 */}
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h1 className="text-2xl lg:text-[34px] font-extrabold text-ink-primary leading-tight">
-          {categoryName}
-        </h1>
-        <span className="font-mono text-sm text-ink-muted">
-          ({productsRes.meta.total} sản phẩm)
-        </span>
-      </div>
+      <h1 className="sr-only">{categoryName} Chính Hãng — 11Sport</h1>
 
       <Suspense
         fallback={
@@ -115,6 +94,7 @@ export default async function CategoryPage({
         }
       >
         <CatalogClient
+          breadcrumbs={[{ name: "Trang chủ", href: "/" }, { name: categoryName }]}
           products={productsRes.data}
           meta={productsRes.meta}
           facets={productsRes.facets}

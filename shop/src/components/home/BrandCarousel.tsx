@@ -1,86 +1,126 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import useEmblaCarousel from "embla-carousel-react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { resolveMediaUrl } from "@/lib/format";
 import type { BrandSummary } from "@/types/storefront";
+import { resolveMediaUrl } from "@/lib/format";
 
 interface BrandCarouselProps {
   brands: BrandSummary[];
   title?: string;
 }
 
+const ORDERED_HOME_SLUGS = [
+  "kamito",
+  "sypik",
+  "selkirk",
+  "vole",
+  "joola",
+  "wika",
+  "kbs",
+  "kaiwin",
+];
+
+/**
+ * Full-bleed Brand Tile Strip 1:1 with live mipik.vn:
+ * - No section title box, no rounded corners, flush 100% edge-to-edge above Footer
+ * - 7 columns on Desktop, 4 columns on Mobile
+ * - 1:1 square dark green #224E40 tiles separated by crisp 2px white borders
+ */
 export function BrandCarousel({
   brands,
-  title = "Thương hiệu đối tác chính hãng",
+  title = "Thương hiệu phân phối chính hãng",
 }: BrandCarouselProps) {
-  const [emblaRef, emblaApi] = useEmblaCarousel({
-    align: "start",
-    slidesToScroll: 2,
-    containScroll: "trimSnaps",
-  });
+  const [startOffset, setStartOffset] = useState(0);
 
   if (!brands.length) return null;
 
+  const preferred = brands.filter(
+    (b) => "featuredOnHome" in b && Boolean(b.featuredOnHome)
+  );
+  const baseList = preferred.length >= 7 ? preferred : brands;
+  const sortedList = [...baseList].sort((a, b) => {
+    const ia = ORDERED_HOME_SLUGS.indexOf(a.slug);
+    const ib = ORDERED_HOME_SLUGS.indexOf(b.slug);
+    return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+  });
+
+  const displayCount = Math.min(7, sortedList.length);
+  const visibleBrands = Array.from({ length: displayCount }, (_, idx) => {
+    return sortedList[(startOffset + idx) % sortedList.length]!;
+  });
+
+  const canRotate = sortedList.length > 7;
+
   return (
-    <section aria-label={title} className="space-y-4">
-      <div className="flex items-center justify-between gap-4">
-        <h2 className="text-xl lg:text-[26px] font-bold text-ink-primary">
-          {title}
-        </h2>
-        <div className="flex items-center gap-2">
+    <section
+      aria-label={title}
+      className="group relative w-full bg-white py-[2px]"
+    >
+      <div className="grid grid-cols-4 lg:grid-cols-7 gap-[2px] bg-white">
+        {visibleBrands.map((brand, idx) => {
+          const href =
+            "rootCategorySlug" in brand &&
+            typeof brand.rootCategorySlug === "string"
+              ? `/${brand.rootCategorySlug}`
+              : `/thuong-hieu/${brand.slug}`;
+          const logo = resolveMediaUrl(brand.logoUrl);
+
+          return (
+            <Link
+              key={`${brand._id}-${idx}`}
+              href={href}
+              className={`relative aspect-square bg-store-forest hover:bg-store-forest-hover text-white overflow-hidden flex items-center justify-center text-center transition-colors ${
+                idx >= 4 ? "hidden lg:flex" : "flex"
+              }`}
+            >
+              {logo ? (
+                <Image
+                  src={logo}
+                  alt={brand.name}
+                  fill
+                  sizes="(max-width: 1024px) 25vw, 15vw"
+                  className="object-cover transition-transform duration-200 hover:scale-105"
+                />
+              ) : (
+                <span className="text-base sm:text-xl font-extrabold uppercase tracking-wider text-white">
+                  {brand.name}
+                </span>
+              )}
+              <span className="sr-only">{brand.name}</span>
+            </Link>
+          );
+        })}
+      </div>
+
+      {canRotate && (
+        <>
           <button
             type="button"
-            onClick={() => emblaApi?.scrollPrev()}
+            onClick={() =>
+              setStartOffset(
+                (prev) => (prev - 1 + sortedList.length) % sortedList.length
+              )
+            }
             aria-label="Thương hiệu trước"
-            className="inline-flex items-center justify-center w-11 h-11 rounded-full border border-surface-border bg-white text-ink-primary hover:border-brand-primary hover:text-brand-primary"
+            className="hidden lg:inline-flex items-center justify-center w-9 h-9 rounded-full bg-white/90 text-ink-primary shadow-md hover:bg-white opacity-0 group-hover:opacity-100 transition-opacity absolute left-3 top-1/2 -translate-y-1/2 z-10"
           >
             <ChevronLeft className="w-5 h-5" aria-hidden="true" />
           </button>
           <button
             type="button"
-            onClick={() => emblaApi?.scrollNext()}
+            onClick={() =>
+              setStartOffset((prev) => (prev + 1) % sortedList.length)
+            }
             aria-label="Thương hiệu tiếp theo"
-            className="inline-flex items-center justify-center w-11 h-11 rounded-full border border-surface-border bg-white text-ink-primary hover:border-brand-primary hover:text-brand-primary"
+            className="hidden lg:inline-flex items-center justify-center w-9 h-9 rounded-full bg-white/90 text-ink-primary shadow-md hover:bg-white opacity-0 group-hover:opacity-100 transition-opacity absolute right-3 top-1/2 -translate-y-1/2 z-10"
           >
             <ChevronRight className="w-5 h-5" aria-hidden="true" />
           </button>
-        </div>
-      </div>
-
-      <div className="overflow-hidden" ref={emblaRef}>
-        <div className="flex -ml-3 sm:-ml-4">
-          {brands.map((brand) => (
-            <div
-              key={brand._id}
-              className="pl-3 sm:pl-4 shrink-0 basis-1/2 sm:basis-1/4 lg:basis-1/6"
-            >
-              <Link
-                href={`/thuong-hieu/${brand.slug}`}
-                className="h-24 rounded-xl border border-surface-border bg-white hover:border-brand-primary hover:shadow-card transition-all flex items-center justify-center p-4"
-              >
-                {brand.logoUrl ? (
-                  <div className="relative w-full h-12">
-                    <Image
-                      src={resolveMediaUrl(brand.logoUrl)}
-                      alt={brand.name}
-                      fill
-                      sizes="160px"
-                      className="object-contain"
-                    />
-                  </div>
-                ) : (
-                  <span className="text-sm font-extrabold uppercase tracking-wider text-ink-primary">
-                    {brand.name}
-                  </span>
-                )}
-              </Link>
-            </div>
-          ))}
-        </div>
-      </div>
+        </>
+      )}
     </section>
   );
 }

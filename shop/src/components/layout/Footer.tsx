@@ -1,212 +1,300 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
-import { ArrowUp, ChevronDown, Clock, MapPin, Phone, ShieldCheck } from "lucide-react";
-import type { SiteShowroomData, SiteSettingsData } from "@/lib/storefront";
+import { usePathname } from "next/navigation";
+import { getLocaleFromPath, localizeHref, STORE_I18N } from "@/lib/i18n";
+import type { SiteSettingsData, SiteShowroomData } from "@/lib/storefront";
 
-interface FooterColumn {
-  id: string;
-  title: string;
-  links: { label: string; href: string }[];
+const DEFAULT_SHOWROOMS: SiteShowroomData[] = [
+  {
+    name: "HCM: 95 Trần Thiện Chánh, Quận 10",
+    address: "HCM: 95 Trần Thiện Chánh, Quận 10",
+    phone: "+84.789.404.331",
+    mapUrl: "https://maps.google.com/?q=10.7756,106.6679",
+  },
+  {
+    name: "HCM: 100 Hoa Lan, Phú Nhuận",
+    address: "HCM: 100 Hoa Lan, Phú Nhuận",
+    phone: "+84.789.404.231",
+    mapUrl: "https://maps.google.com/?q=10.7982,106.6897",
+  },
+  {
+    name: "Hà Nội: 466 Đ. Bưởi, Ngọc Hà",
+    address: "Hà Nội: 466 Đ. Bưởi, Ngọc Hà",
+    phone: "+84.913.729.135",
+    mapUrl: "https://maps.google.com/?q=21.0431,105.8092",
+  },
+];
+
+function GoldHeadingDivider() {
+  return (
+    <div className="relative w-full mt-2 mb-3 h-[3px] flex items-center">
+      <div className="w-11 h-[3px] bg-store-gold-divider shrink-0 relative z-10" />
+      <div className="flex-1 h-[1px] bg-white/20" />
+    </div>
+  );
 }
 
-const FOOTER_COLUMNS: FooterColumn[] = [
-  {
-    id: "products",
-    title: "Sản phẩm nổi bật",
-    links: [
-      { label: "Vợt Pickleball chính hãng", href: "/danh-muc/vot-pickleball" },
-      { label: "Giày Pickleball & Tennis", href: "/danh-muc/giay-the-thao" },
-      { label: "Thời trang thi đấu", href: "/danh-muc/thoi-trang" },
-      { label: "Balo & Túi đựng vợt", href: "/danh-muc/balo-tui" },
-      { label: "Phụ kiện & Quấn cán", href: "/danh-muc/phu-kien" },
-    ],
-  },
-  {
-    id: "policies",
-    title: "Chính sách khách hàng",
-    links: [
-      { label: "Chính sách bảo hành chính hãng", href: "/chinh-sach-bao-hanh" },
-      { label: "Đổi trả miễn phí trong 7 ngày", href: "/chinh-sach-doi-tra" },
-      { label: "Vận chuyển & Kiểm tra hàng", href: "/chinh-sach-van-chuyen" },
-      { label: "Bảo mật thông tin khách hàng", href: "/chinh-sach-bao-mat" },
-      { label: "Hướng dẫn thanh toán VietQR", href: "/huong-dan-thanh-toan" },
-    ],
-  },
-  {
-    id: "about",
-    title: "Kết nối 11 Sport",
-    links: [
-      { label: "Giới thiệu 11 Sport", href: "/gioi-thieu" },
-      { label: "Tin tức & Hướng dẫn chọn đồ", href: "/tin-tuc" },
-      { label: "Hệ thống Showroom", href: "/lien-he" },
-      { label: "Tra cứu đơn hàng", href: "/tai-khoan" },
-    ],
-  },
-];
-
-const SHOWROOMS: SiteShowroomData[] = [
-  {
-    name: "Chi nhánh Quận 1 (Flagship)",
-    address: "112 Nguyễn Trãi, P. Bến Thành, Q.1, TP.HCM",
-    phone: "0900.000.011",
-  },
-  {
-    name: "Chi nhánh Thủ Đức",
-    address: "45 Song Hành, P. An Phú, TP. Thủ Đức, TP.HCM",
-    phone: "0900.000.012",
-  },
-  {
-    name: "Chi nhánh Hà Nội",
-    address: "88 Thái Hà, P. Trung Liệt, Q. Đống Đa, Hà Nội",
-    phone: "0900.000.013",
-  },
-];
-
+/**
+ * Global Footer 1:1 with live mipik.vn:
+ * - Dark green #224E40 top section, flush beneath BrandCarousel
+ * - 4 columns with left gold bar + full hairline title underline
+ * - Bulleted showroom & product links with thin 1px white/10 dividers
+ * - Circular monochrome SVG social buttons (Facebook, Instagram, TikTok) + Bộ Công Thương badge
+ * - Charcoal #525252 bottom strip with copyright & COD / MasterCard / Visa SVG badges
+ */
 export function Footer({ settings }: { settings?: SiteSettingsData | null }) {
-  const [openCol, setOpenCol] = useState<string | null>("showrooms");
-  const siteName = settings?.siteName || "11 Sport";
-  const defaultHotline = settings?.hotline || "0900 000 011";
+  const pathname = usePathname() || "/";
+  const locale = getLocaleFromPath(pathname);
+  const t = STORE_I18N[locale].footer;
+
+  const siteName = settings?.siteName || "11Sport";
   const showrooms =
     settings?.showrooms && settings.showrooms.length > 0
       ? settings.showrooms
-      : SHOWROOMS;
-
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
+      : DEFAULT_SHOWROOMS;
+  const hotline = settings?.hotline || "+84767.707.128";
+  const facebookHref = settings?.facebookUrl || "https://facebook.com/11sport.vn";
+  const instagramHref =
+    settings?.instagramUrl || "https://instagram.com/11sport.vn";
+  const tiktokHref = settings?.tiktokUrl || "https://tiktok.com/@11sport.vn";
 
   return (
-    <footer className="bg-surface-subtle border-t border-surface-border mt-12">
-      <div className="max-w-7xl mx-auto px-4 lg:px-6 py-10 lg:py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
-          {/* Column 1: Showrooms */}
-          <div className="border-b border-surface-border md:border-b-0 pb-4 md:pb-0">
-            <button
-              type="button"
-              onClick={() =>
-                setOpenCol(openCol === "showrooms" ? null : "showrooms")
-              }
-              aria-expanded={openCol === "showrooms"}
-              className="w-full md:pointer-events-none flex items-center justify-between min-h-[44px] md:min-h-0 text-left"
-            >
-              <span className="text-sm font-bold uppercase tracking-wider text-ink-primary">
-                Hệ thống Showroom {siteName}
-              </span>
-              <ChevronDown
-                className={`w-5 h-5 text-ink-secondary md:hidden transition-transform ${openCol === "showrooms" ? "rotate-180" : ""
-                  }`}
-                aria-hidden="true"
-              />
-            </button>
+    <footer className="mt-0 text-white border-t border-white">
+      {/* Top #224E40 Forest Green Section */}
+      <div className="bg-store-forest py-8 lg:py-10">
+        <div className="max-w-container mx-auto px-4 lg:px-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+          {/* Column 1: Brand Branches, Social SVG Icons & Bộ Công Thương */}
+          <div>
+            <h2 className="text-sm font-bold uppercase tracking-wider text-white">
+              {siteName.toUpperCase()} PICKLEBALL
+            </h2>
+            <GoldHeadingDivider />
 
-            <div
-              className={`mt-3 space-y-3 ${openCol === "showrooms" ? "block" : "hidden md:block"
-                }`}
-            >
-              {showrooms.map((branch, idx) => {
-                const branchPhone = branch.phone || defaultHotline;
-                const branchDigits = branchPhone.replace(/\D/g, "") || "0900000011";
-                return (
-                  <div key={`${branch.name}-${idx}`} className="text-sm text-ink-secondary">
-                    <p className="font-semibold text-ink-primary">{branch.name}</p>
-                    {branch.address && (
-                      <p className="flex items-start gap-1.5 mt-0.5">
-                        <MapPin
-                          className="w-4 h-4 text-brand-primary shrink-0 mt-0.5"
-                          aria-hidden="true"
-                        />
-                        <span>{branch.address}</span>
-                      </p>
-                    )}
-                    {branch.hours && (
-                      <p className="flex items-center gap-1.5 mt-0.5 text-xs text-ink-muted">
-                        <Clock className="w-3.5 h-3.5 text-brand-primary shrink-0" aria-hidden="true" />
-                        <span>{branch.hours}</span>
-                      </p>
-                    )}
-                    {branchPhone && (
+            <ul className="divide-y divide-white/10 text-[13px] leading-relaxed">
+              {showrooms.map((branch, idx) => (
+                <li key={idx} className="py-2 flex items-start gap-2">
+                  <span className="text-white/80 select-none mt-0.5">•</span>
+                  <div>
+                    {branch.mapUrl ? (
                       <a
-                        href={`tel:${branchDigits}`}
-                        className="inline-flex items-center gap-1.5 mt-0.5 font-mono text-xs font-semibold text-brand-primary hover:underline"
+                        href={branch.mapUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-white/95 hover:text-store-gold-divider transition-colors block"
                       >
-                        <Phone className="w-3.5 h-3.5" aria-hidden="true" />
-                        <span>{branchPhone}</span>
+                        {branch.address || branch.name}
+                      </a>
+                    ) : (
+                      <p className="text-white/95">
+                        {branch.address || branch.name}
+                      </p>
+                    )}
+                    {branch.phone && (
+                      <a
+                        href={`tel:${branch.phone.replace(/\D/g, "")}`}
+                        className="text-white/90 hover:text-store-gold-divider transition-colors"
+                      >
+                        ({branch.phone})
                       </a>
                     )}
                   </div>
-                );
-              })}
+                </li>
+              ))}
+              <li className="py-2 flex items-start gap-2">
+                <span className="text-white/80 select-none">•</span>
+                <a
+                  href={`tel:${hotline.replace(/\D/g, "")}`}
+                  className="text-white/95 hover:text-store-gold-divider transition-colors"
+                >
+                  Hotline/Whatsapp: {hotline}
+                </a>
+              </li>
+            </ul>
+
+            {/* 3 Circular Social SVG Buttons (Facebook, Instagram, TikTok) */}
+            <div className="mt-3 flex items-center gap-1.5">
+              <a
+                href={facebookHref}
+                target="_blank"
+                rel="noreferrer"
+                aria-label="Facebook"
+                className="w-8 h-8 rounded-full bg-white/75 hover:bg-white text-store-forest flex items-center justify-center transition-colors"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  className="w-4 h-4 fill-current"
+                  aria-hidden="true"
+                >
+                  <path d="M14 13.5h2.5l1-4H14v-2c0-1.03 0-2 2-2h1.5V2.14c-.326-.043-1.557-.14-2.857-.14C11.928 2 10 3.657 10 6.7v2.8H7v4h3V22h4v-8.5z" />
+                </svg>
+              </a>
+              <a
+                href={instagramHref}
+                target="_blank"
+                rel="noreferrer"
+                aria-label="Instagram"
+                className="w-8 h-8 rounded-full bg-white/75 hover:bg-white text-store-forest flex items-center justify-center transition-colors"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  className="w-4 h-4 fill-none stroke-current"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <rect width="16" height="16" x="4" y="4" rx="4" />
+                  <circle cx="12" cy="12" r="3.5" />
+                  <circle cx="16.5" cy="7.5" r="0.8" fill="currentColor" />
+                </svg>
+              </a>
+              <a
+                href={tiktokHref}
+                target="_blank"
+                rel="noreferrer"
+                aria-label="TikTok"
+                className="w-8 h-8 rounded-full bg-white/75 hover:bg-white text-store-forest flex items-center justify-center transition-colors"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  className="w-4 h-4 fill-current"
+                  aria-hidden="true"
+                >
+                  <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64c.3 0 .59.05.86.13V9.4a6.34 6.34 0 0 0-1-.08A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1.04-.1z" />
+                </svg>
+              </a>
+            </div>
+
+            {/* Bộ Công Thương Verified Badge */}
+            <div className="mt-3">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#0072BC] text-white border border-white/25 shadow-xs">
+                <svg
+                  viewBox="0 0 24 24"
+                  className="w-4 h-4 fill-none stroke-current shrink-0"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="m8.5 12.5 2.5 2.5 4.5-5" />
+                </svg>
+                <div className="leading-none">
+                  <p className="text-[7px] font-bold uppercase tracking-wider opacity-95">
+                    ĐÃ THÔNG BÁO
+                  </p>
+                  <p className="text-[8px] font-extrabold uppercase tracking-tight">
+                    BỘ CÔNG THƯƠNG
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Columns 2-4 */}
-          {FOOTER_COLUMNS.map((col) => {
-            const isOpen = openCol === col.id;
-            return (
-              <div
-                key={col.id}
-                className="border-b border-surface-border md:border-b-0 pb-4 md:pb-0"
-              >
-                <button
-                  type="button"
-                  onClick={() => setOpenCol(isOpen ? null : col.id)}
-                  aria-expanded={isOpen}
-                  className="w-full md:pointer-events-none flex items-center justify-between min-h-[44px] md:min-h-0 text-left"
-                >
-                  <span className="text-sm font-bold uppercase tracking-wider text-ink-primary">
-                    {col.title}
-                  </span>
-                  <ChevronDown
-                    className={`w-5 h-5 text-ink-secondary md:hidden transition-transform ${isOpen ? "rotate-180" : ""
-                      }`}
-                    aria-hidden="true"
-                  />
-                </button>
-
-                <ul
-                  className={`mt-3 space-y-2 ${isOpen ? "block" : "hidden md:block"
-                    }`}
-                >
-                  {col.links.map((link) => (
-                    <li key={link.href}>
-                      <Link
-                        href={link.href}
-                        className="inline-flex items-center min-h-[36px] md:min-h-0 text-sm text-ink-secondary hover:text-brand-primary transition-colors"
-                      >
-                        {link.label}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Bottom bar */}
-        <div className="mt-10 pt-6 border-t border-surface-border flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2 text-xs text-ink-muted text-center sm:text-left">
-            <ShieldCheck
-              className="w-4 h-4 text-brand-primary shrink-0"
-              aria-hidden="true"
-            />
-            <span>
-              © {new Date().getFullYear()} 11 Sport. Đại lý phân phối dụng cụ thể
-              thao chính hãng tại Việt Nam.
-            </span>
+          {/* Column 2: SẢN PHẨM / PRODUCTS */}
+          <div>
+            <h2 className="text-sm font-bold uppercase tracking-wider text-white">
+              {t.productsHeading}
+            </h2>
+            <GoldHeadingDivider />
+            <ul className="divide-y divide-white/10 text-[13px]">
+              {t.products.map((link) => (
+                <li key={link.href}>
+                  <Link
+                    href={localizeHref(link.href, locale)}
+                    className="flex items-center gap-2 py-2 text-white/95 hover:text-store-gold-divider transition-colors"
+                  >
+                    <span className="text-white/80 select-none">•</span>
+                    <span>{link.label}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
           </div>
 
-          <button
-            type="button"
-            onClick={scrollToTop}
-            aria-label="Quay về đầu trang"
-            className="inline-flex items-center gap-1.5 min-h-[44px] px-4 rounded-lg border border-surface-border bg-white text-sm font-semibold text-ink-primary hover:border-brand-primary hover:text-brand-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
-          >
-            <ArrowUp className="w-4 h-4" aria-hidden="true" />
-            <span>Lên đầu trang</span>
-          </button>
+          {/* Column 3: THÔNG TIN / INFORMATION */}
+          <div>
+            <h2 className="text-sm font-bold uppercase tracking-wider text-white">
+              {t.infoHeading}
+            </h2>
+            <GoldHeadingDivider />
+            <ul className="divide-y divide-white/10 text-[13px]">
+              {t.info.map((link) => (
+                <li key={link.href}>
+                  <Link
+                    href={localizeHref(link.href, locale)}
+                    className="block py-2 text-white/95 hover:text-store-gold-divider transition-colors"
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Column 4: BLOG / BLOGS */}
+          <div>
+            <h2 className="text-sm font-bold uppercase tracking-wider text-white">
+              {t.blogHeading}
+            </h2>
+            <GoldHeadingDivider />
+            <ul className="divide-y divide-white/10 text-[13px]">
+              {t.blog.map((link) => (
+                <li key={link.href}>
+                  <Link
+                    href={localizeHref(link.href, locale)}
+                    className="block py-2 text-white/95 hover:text-store-gold-divider transition-colors"
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom Charcoal Strip (#525252) */}
+      <div className="bg-[#525252] py-4">
+        <div className="max-w-container mx-auto px-4 lg:px-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-white/85">
+          <p className="text-center sm:text-left">
+            Copyright {new Date().getFullYear()} ©{" "}
+            <strong className="text-white font-bold">www.11sport.vn</strong> -
+            Design &amp; SEO by{" "}
+            <strong className="text-white font-bold">{siteName}</strong>
+          </p>
+
+          {/* 3 Monochrome Payment Method Badges (COD, MasterCard, Visa) */}
+          <div className="flex items-center gap-1.5">
+            <div
+              title="Cash on Delivery"
+              className="w-[50px] h-[31px] rounded bg-white/10 border border-white/15 flex items-center justify-center text-[7px] font-extrabold leading-tight text-center text-white/85 px-1"
+            >
+              CASH ON
+              <br />
+              DELIVERY
+            </div>
+            <div
+              title="MasterCard"
+              className="w-[50px] h-[31px] rounded bg-white/10 border border-white/15 flex items-center justify-center"
+            >
+              <svg
+                viewBox="0 0 36 22"
+                className="w-8 h-5"
+                aria-label="MasterCard"
+              >
+                <circle cx="14" cy="11" r="7" fill="rgba(255,255,255,0.65)" />
+                <circle cx="22" cy="11" r="7" fill="rgba(255,255,255,0.45)" />
+              </svg>
+            </div>
+            <div
+              title="VISA"
+              className="w-[50px] h-[31px] rounded bg-white/10 border border-white/15 flex items-center justify-center text-[11px] font-black italic tracking-tight text-white/85"
+            >
+              VISA
+            </div>
+          </div>
         </div>
       </div>
     </footer>

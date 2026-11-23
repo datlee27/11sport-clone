@@ -1,18 +1,24 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
+  CheckCircle2,
   LogOut,
-  Mail,
   MapPin,
   Package,
   Plus,
-  Search,
   Trash2,
   User,
 } from "lucide-react";
 import { ApiError, apiFetch } from "@/lib/api";
-import { formatPhoneVN, formatVND, normalizePhoneVN } from "@/lib/format";
+import {
+  formatPhoneVN,
+  formatPriceByCurrency,
+  normalizePhoneVN,
+} from "@/lib/format";
+import { useCurrencyStore } from "@/store/currencyStore";
 import type {
   CustomerAddress,
   CustomerOrderSummary,
@@ -21,22 +27,33 @@ import type {
 
 const CUSTOMER_TOKEN_KEY = "11sport_customer_token";
 
+const SHARP_INPUT_CLS =
+  "w-full h-[40px] px-3 rounded-none border border-[#dddddd] bg-white text-[14px] text-[#0a0a0a] placeholder:text-[#999999] focus:outline-none focus:border-[#224e40]";
+const LABEL_CLS = "block text-[13px] font-bold text-[#222222] mb-1.5";
+
+/**
+ * 1:1 mipik.vn My Account (`/tai-khoan`) & Figma `Store/Account/AuthCard/Login` (9:1231)
+ */
 export function AccountClient() {
+  const searchParams = useSearchParams();
+  const currency = useCurrencyStore((s) => s.currency);
   const [mounted, setMounted] = useState(false);
   const [token, setToken] = useState<string | null>(null);
   const [profile, setProfile] = useState<CustomerProfile | null>(null);
   const [orders, setOrders] = useState<CustomerOrderSummary[]>([]);
 
-  // Auth OTP states
-  const [emailInput, setEmailInput] = useState("");
-  const [otpSent, setOtpSent] = useState(false);
-  const [otpCode, setOtpCode] = useState("");
-  const [resendSeconds, setResendSeconds] = useState(0);
+  // Guest Mode
+  const [guestMode, setGuestMode] = useState<"login" | "lookup">("login");
+  const [identifier, setIdentifier] = useState("");
+  const [otp, setOtp] = useState("");
+  const [rememberMe, setRememberMe] = useState(true);
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [otpSending, setOtpSending] = useState(false);
+  const [otpNotice, setOtpNotice] = useState<string | null>(null);
+  const [otpCooldown, setOtpCooldown] = useState(0);
 
-  // Guest Order Lookup states
-  const [guestMode, setGuestMode] = useState<"login" | "lookup">("login");
+  // Guest Order Lookup
   const [lookupCode, setLookupCode] = useState("");
   const [lookupPhone, setLookupPhone] = useState("");
   const [lookupResult, setLookupResult] = useState<{
@@ -49,10 +66,10 @@ export function AccountClient() {
   const [lookupError, setLookupError] = useState<string | null>(null);
   const [lookupLoading, setLookupLoading] = useState(false);
 
-  // Logged-in Tabs
-  const [activeTab, setActiveTab] = useState<"orders" | "addresses" | "profile">(
-    "orders"
-  );
+  // Authenticated Dashboard Tabs
+  const [activeTab, setActiveTab] = useState<
+    "dashboard" | "orders" | "addresses" | "profile"
+  >("orders");
   const [profileName, setProfileName] = useState("");
   const [profilePhone, setProfilePhone] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
@@ -64,7 +81,7 @@ export function AccountClient() {
     label: "Nhà riêng",
     fullName: "",
     phone: "",
-    province: "Hồ Chí Minh",
+    province: "TP. Hồ Chí Minh",
     district: "",
     ward: "",
     addressLine: "",
@@ -108,47 +125,80 @@ export function AccountClient() {
         loadAccountData(saved);
       }
     } catch {
-      // Ignore
+      // Ignore storage errors
     }
   }, [loadAccountData]);
 
   useEffect(() => {
-    if (resendSeconds <= 0) return;
-    const t = setInterval(() => {
-      setResendSeconds((s) => Math.max(0, s - 1));
-    }, 1000);
-    return () => clearInterval(t);
-  }, [resendSeconds]);
+    if (searchParams.get("tab") === "lookup") {
+      setGuestMode("lookup");
+    }
+  }, [searchParams]);
 
-  const handleRequestOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!emailInput.trim()) return;
-    setAuthLoading(true);
+  useEffect(() => {
+    if (otpCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setOtpCooldown((prev) => (prev <= 1 ? 0 : prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [otpCooldown]);
+
+  const handleRequestOtp = async () => {
+    const trimmed = identifier.trim();
+    if (!trimmed) {
+      setAuthError("Vui lòng nhập email hoặc số điện thoại để nhận mã OTP.");
+      return;
+    }
+    const cleanId = trimmed.includes("@")
+      ? trimmed.toLowerCase()
+      : normalizePhoneVN(trimmed);
+    if (!cleanId) {
+      setAuthError("Email hoặc số điện thoại không hợp lệ.");
+      return;
+    }
+
+    setOtpSending(true);
     setAuthError(null);
+    setOtpNotice(null);
     try {
-      await apiFetch("/public/customers/request-otp", {
-        method: "POST",
-        body: JSON.stringify({
-          identifier: emailInput.trim(),
-          channel: "EMAIL",
-        }),
-      });
-      setOtpSent(true);
-      setResendSeconds(60);
+      const res = await apiFetch<{ message?: string; devOtp?: string }>(
+        "/public/customers/request-otp",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            identifier: cleanId,
+            channel: trimmed.includes("@") ? "EMAIL" : "SMS",
+          }),
+        }
+      );
+      setOtpNotice(
+        res?.devOtp
+          ? `${res.message || "Mã OTP đã được gửi"} (OTP: ${res.devOtp})`
+          : res?.message ||
+              "Mã OTP 6 số đã được gửi. Vui lòng kiểm tra email / tin nhắn."
+      );
+      setOtpCooldown(60);
     } catch (err) {
       setAuthError(
         err instanceof ApiError
           ? err.message
-          : "Không thể gửi mã OTP. Vui lòng thử lại."
+          : "Không thể gửi mã OTP lúc này. Vui lòng thử lại."
       );
     } finally {
-      setAuthLoading(false);
+      setOtpSending(false);
     }
   };
 
-  const handleVerifyOtp = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!otpCode.trim()) return;
+    const trimmed = identifier.trim();
+    if (!trimmed || !otp.trim()) {
+      setAuthError("Vui lòng nhập email / số điện thoại và mã OTP 6 số.");
+      return;
+    }
+    const cleanId = trimmed.includes("@")
+      ? trimmed.toLowerCase()
+      : normalizePhoneVN(trimmed);
     setAuthLoading(true);
     setAuthError(null);
     try {
@@ -157,12 +207,14 @@ export function AccountClient() {
       }>("/public/customers/verify-otp", {
         method: "POST",
         body: JSON.stringify({
-          identifier: emailInput.trim(),
-          otp: otpCode.trim(),
+          identifier: cleanId,
+          otp: otp.trim(),
         }),
       });
       if (res?.data?.token) {
-        localStorage.setItem(CUSTOMER_TOKEN_KEY, res.data.token);
+        if (rememberMe) {
+          localStorage.setItem(CUSTOMER_TOKEN_KEY, res.data.token);
+        }
         setToken(res.data.token);
         setProfile(res.data.customer);
         setProfileName(res.data.customer.name || "");
@@ -173,7 +225,7 @@ export function AccountClient() {
       setAuthError(
         err instanceof ApiError
           ? err.message
-          : "Mã OTP không đúng hoặc đã hết hạn."
+          : "Mã OTP không chính xác hoặc đã hết hạn. Vui lòng thử lại."
       );
     } finally {
       setAuthLoading(false);
@@ -185,13 +237,11 @@ export function AccountClient() {
     setToken(null);
     setProfile(null);
     setOrders([]);
-    setOtpSent(false);
-    setOtpCode("");
+    setOtp("");
+    setOtpNotice(null);
   };
 
-  const handleSaveProfile = async (
-    nextAddresses?: CustomerAddress[]
-  ) => {
+  const handleSaveProfile = async (nextAddresses?: CustomerAddress[]) => {
     if (!token || !profile) return;
     setSavingProfile(true);
     setProfileNotice(null);
@@ -212,7 +262,7 @@ export function AccountClient() {
       if (res?.data) {
         setProfile(res.data);
       }
-      setProfileNotice("Đã cập nhật thông tin thành công.");
+      setProfileNotice("Đã lưu thông tin tài khoản 11Sport thành công.");
     } catch {
       setProfileNotice("Không thể lưu thay đổi lúc này.");
     } finally {
@@ -240,7 +290,7 @@ export function AccountClient() {
       label: "Nhà riêng",
       fullName: "",
       phone: "",
-      province: "Hồ Chí Minh",
+      province: "TP. Hồ Chí Minh",
       district: "",
       ward: "",
       addressLine: "",
@@ -288,167 +338,155 @@ export function AccountClient() {
   };
 
   if (!mounted) {
-    return <div className="h-72 rounded-2xl bg-surface-muted animate-pulse" />;
+    return <div className="h-64 bg-[#f8f9f5] animate-pulse" />;
   }
 
-  // Unauthenticated View: OTP Login + Guest Order Lookup
+  // 1. GUEST VIEW — 1:1 mipik.vn Single-Column Sharp WooCommerce Login Form
   if (!token) {
     return (
-      <div className="max-w-xl mx-auto space-y-6">
-        <div className="flex rounded-xl border border-surface-border bg-surface-subtle p-1">
-          <button
-            type="button"
-            onClick={() => setGuestMode("login")}
-            className={`flex-1 min-h-[44px] rounded-lg text-sm font-semibold transition-colors ${
-              guestMode === "login"
-                ? "bg-white text-brand-primary shadow-card"
-                : "text-ink-secondary hover:text-ink-primary"
-            }`}
-          >
-            Đăng nhập Email OTP
-          </button>
-          <button
-            type="button"
-            onClick={() => setGuestMode("lookup")}
-            className={`flex-1 min-h-[44px] rounded-lg text-sm font-semibold transition-colors ${
-              guestMode === "lookup"
-                ? "bg-white text-brand-primary shadow-card"
-                : "text-ink-secondary hover:text-ink-primary"
-            }`}
-          >
-            Tra cứu đơn hàng
-          </button>
+      <div className="space-y-5">
+        <div className="flex flex-wrap items-baseline justify-between gap-3 border-b border-[#ececec] pb-3">
+          <h2 className="text-[19px] sm:text-[21px] font-bold uppercase tracking-wide text-[#0a0a0a]">
+            {guestMode === "login" ? "ĐĂNG NHẬP" : "TRA CỨU ĐƠN HÀNG"}
+          </h2>
+
+          <div className="flex items-center gap-4 text-[13px]">
+            <button
+              type="button"
+              onClick={() => setGuestMode("login")}
+              className={
+                guestMode === "login"
+                  ? "font-bold text-[#224e40] underline underline-offset-4"
+                  : "text-[#666666] hover:text-[#0a0a0a]"
+              }
+            >
+              Đăng nhập tài khoản
+            </button>
+            <span className="text-[#cccccc]">|</span>
+            <button
+              type="button"
+              onClick={() => setGuestMode("lookup")}
+              className={
+                guestMode === "lookup"
+                  ? "font-bold text-[#224e40] underline underline-offset-4"
+                  : "text-[#666666] hover:text-[#0a0a0a]"
+              }
+            >
+              Tra cứu đơn hàng
+            </button>
+          </div>
         </div>
 
         {guestMode === "login" ? (
-          <div className="rounded-2xl border border-surface-border bg-white p-6 shadow-card space-y-5">
-            <div className="space-y-1">
-              <h2 className="text-lg font-bold text-ink-primary">
-                Đăng nhập thành viên 11 Sport
-              </h2>
-              <p className="text-sm text-ink-muted">
-                Nhập email để nhận mã OTP 6 số, không cần nhớ mật khẩu.
-              </p>
-            </div>
-
+          <div className="space-y-4">
             {authError && (
               <div
                 role="alert"
-                className="p-3 rounded-lg bg-semantic-danger-bg text-semantic-danger-text text-sm font-medium"
+                className="p-3 rounded-none border border-[#dd3333]/35 bg-[#fef2f2] text-[#b91c1c] text-[13.5px] font-medium"
               >
                 {authError}
               </div>
             )}
 
-            {!otpSent ? (
-              <form onSubmit={handleRequestOtp} className="space-y-4">
-                <div>
-                  <label
-                    htmlFor="otp-email"
-                    className="block text-sm font-medium text-ink-secondary mb-1"
-                  >
-                    Email của bạn
-                  </label>
-                  <div className="relative">
-                    <Mail
-                      className="w-4 h-4 text-ink-muted absolute left-3 top-1/2 -translate-y-1/2"
-                      aria-hidden="true"
-                    />
-                    <input
-                      id="otp-email"
-                      type="email"
-                      required
-                      value={emailInput}
-                      onChange={(e) => setEmailInput(e.target.value)}
-                      placeholder="khachhang@example.com"
-                      className="w-full h-11 pl-10 pr-3 rounded-lg border border-surface-border text-sm focus:outline-none focus:border-brand-primary"
-                    />
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={authLoading}
-                  className="w-full min-h-[48px] rounded-lg bg-brand-primary hover:bg-brand-primary-hover text-white font-bold text-sm disabled:opacity-60"
-                >
-                  {authLoading ? "Đang gửi mã..." : "Gửi mã OTP 6 số"}
-                </button>
-              </form>
-            ) : (
-              <form onSubmit={handleVerifyOtp} className="space-y-4">
-                <p className="text-sm text-ink-secondary">
-                  Mã OTP đã được gửi tới{" "}
-                  <strong className="text-ink-primary">{emailInput}</strong>
-                </p>
-
-                <div>
-                  <label
-                    htmlFor="otp-code"
-                    className="block text-sm font-medium text-ink-secondary mb-1"
-                  >
-                    Nhập mã OTP 6 số
-                  </label>
-                  <input
-                    id="otp-code"
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={6}
-                    required
-                    value={otpCode}
-                    onChange={(e) => setOtpCode(e.target.value)}
-                    placeholder="123456"
-                    className="w-full h-12 px-4 rounded-lg border border-surface-border font-mono text-center text-lg tracking-widest font-bold focus:outline-none focus:border-brand-primary"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={authLoading}
-                  className="w-full min-h-[48px] rounded-lg bg-brand-primary hover:bg-brand-primary-hover text-white font-bold text-sm disabled:opacity-60"
-                >
-                  {authLoading ? "Đang xác thực..." : "Xác nhận đăng nhập"}
-                </button>
-
-                <div className="flex items-center justify-between text-xs">
-                  <button
-                    type="button"
-                    onClick={() => setOtpSent(false)}
-                    className="text-ink-muted hover:text-ink-primary min-h-[36px]"
-                  >
-                    Đổi email khác
-                  </button>
-                  <button
-                    type="button"
-                    disabled={resendSeconds > 0 || authLoading}
-                    onClick={handleRequestOtp}
-                    className="font-semibold text-brand-primary disabled:text-ink-muted min-h-[36px]"
-                  >
-                    {resendSeconds > 0
-                      ? `Gửi lại sau ${resendSeconds}s`
-                      : "Gửi lại mã OTP"}
-                  </button>
-                </div>
-              </form>
+            {otpNotice && (
+              <div
+                role="status"
+                className="p-3 rounded-none border border-[#dce5da] bg-[#f8f9f5] text-[#204b3e] text-[13.5px] font-medium"
+              >
+                {otpNotice}
+              </div>
             )}
+
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div>
+                <label htmlFor="login-identifier" className={LABEL_CLS}>
+                  Email hoặc số điện thoại{" "}
+                  <span className="text-[#dd3333]">*</span>
+                </label>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <input
+                    id="login-identifier"
+                    type="text"
+                    required
+                    value={identifier}
+                    onChange={(e) => setIdentifier(e.target.value)}
+                    placeholder="VD: khachhang@11sport.vn hoặc 0909 123 456"
+                    className={`${SHARP_INPUT_CLS} sm:flex-1`}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleRequestOtp}
+                    disabled={otpSending || otpCooldown > 0}
+                    className="h-[40px] px-4 rounded-none border border-[#224e40] bg-white hover:bg-[#f4f7f5] text-[#224e40] text-[12.5px] font-bold uppercase tracking-wider transition-colors disabled:opacity-55 whitespace-nowrap shrink-0"
+                  >
+                    {otpSending
+                      ? "ĐANG GỬI..."
+                      : otpCooldown > 0
+                      ? `GỬI LẠI (${otpCooldown}s)`
+                      : "Gửi mã OTP"}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="login-otp" className={LABEL_CLS}>
+                  Mã xác thực OTP <span className="text-[#dd3333]">*</span>
+                </label>
+                <input
+                  id="login-otp"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  required
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value)}
+                  placeholder="Nhập mã OTP 6 số (Mock: 123456)"
+                  className={`${SHARP_INPUT_CLS} font-mono tracking-widest`}
+                />
+              </div>
+
+              <div>
+                <label className="inline-flex items-center gap-2 text-[13.5px] text-[#333333] cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="w-3.5 h-3.5 accent-[#224e40]"
+                  />
+                  <span>Ghi nhớ phiên đăng nhập</span>
+                </label>
+              </div>
+
+              <div>
+                <button
+                  type="submit"
+                  disabled={authLoading}
+                  className="h-[40px] px-7 rounded-none bg-[#224e40] hover:bg-[#193b30] text-white text-[13px] font-bold uppercase tracking-wider transition-colors disabled:opacity-60"
+                >
+                  {authLoading ? "ĐANG ĐĂNG NHẬP..." : "ĐĂNG NHẬP"}
+                </button>
+              </div>
+
+              <div>
+                <Link
+                  href="/tai-khoan/lost-password"
+                  className="text-[13.5px] text-[#224e40] hover:underline"
+                >
+                  Quên mật khẩu?
+                </Link>
+              </div>
+            </form>
           </div>
         ) : (
-          <div className="rounded-2xl border border-surface-border bg-white p-6 shadow-card space-y-5">
-            <div className="space-y-1">
-              <h2 className="text-lg font-bold text-ink-primary">
-                Tra cứu đơn hàng nhanh
-              </h2>
-              <p className="text-sm text-ink-muted">
-                Dành cho khách hàng mua không cần đăng nhập.
-              </p>
-            </div>
+          <div className="space-y-4">
+            <p className="text-[13.5px] text-[#555555]">
+              Nhập mã đơn hàng (VD: ONL-20261120-0188) và số điện thoại nhận hàng.
+            </p>
 
             <form onSubmit={handleLookupOrder} className="space-y-4">
               <div>
-                <label
-                  htmlFor="lookup-code"
-                  className="block text-sm font-medium text-ink-secondary mb-1"
-                >
-                  Mã đơn hàng
+                <label htmlFor="lookup-code" className={LABEL_CLS}>
+                  Mã đơn hàng <span className="text-[#dd3333]">*</span>
                 </label>
                 <input
                   id="lookup-code"
@@ -456,17 +494,15 @@ export function AccountClient() {
                   required
                   value={lookupCode}
                   onChange={(e) => setLookupCode(e.target.value)}
-                  placeholder="ONL-20261120-0001"
-                  className="w-full h-11 px-3 rounded-lg border border-surface-border font-mono text-sm uppercase focus:outline-none focus:border-brand-primary"
+                  placeholder="ONL-20261120-0188"
+                  className={`${SHARP_INPUT_CLS} font-mono uppercase`}
                 />
               </div>
 
               <div>
-                <label
-                  htmlFor="lookup-phone"
-                  className="block text-sm font-medium text-ink-secondary mb-1"
-                >
-                  Số điện thoại nhận hàng
+                <label htmlFor="lookup-phone" className={LABEL_CLS}>
+                  Số điện thoại nhận hàng{" "}
+                  <span className="text-[#dd3333]">*</span>
                 </label>
                 <input
                   id="lookup-phone"
@@ -474,53 +510,55 @@ export function AccountClient() {
                   required
                   value={lookupPhone}
                   onChange={(e) => setLookupPhone(formatPhoneVN(e.target.value))}
-                  placeholder="0901 234 567"
-                  className="w-full h-11 px-3 rounded-lg border border-surface-border font-mono text-sm focus:outline-none focus:border-brand-primary"
+                  placeholder="0909 123 456"
+                  className={`${SHARP_INPUT_CLS} tabular-nums`}
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={lookupLoading}
-                className="w-full min-h-[48px] rounded-lg bg-brand-primary hover:bg-brand-primary-hover text-white font-bold text-sm inline-flex items-center justify-center gap-2 disabled:opacity-60"
+                className="h-[40px] px-7 rounded-none bg-[#224e40] hover:bg-[#193b30] text-white text-[13px] font-bold uppercase tracking-wider transition-colors disabled:opacity-60"
               >
-                <Search className="w-4 h-4" aria-hidden="true" />
-                <span>{lookupLoading ? "Đang tra cứu..." : "Tra cứu đơn"}</span>
+                {lookupLoading ? "ĐANG TRA CỨU..." : "TRA CỨU ĐƠN HÀNG"}
               </button>
             </form>
 
             {lookupError && (
               <div
                 role="alert"
-                className="p-3 rounded-lg bg-semantic-danger-bg text-semantic-danger-text text-sm font-medium"
+                className="p-3 rounded-none border border-[#dd3333]/35 bg-[#fef2f2] text-[#b91c1c] text-[13.5px] font-medium"
               >
                 {lookupError}
               </div>
             )}
 
             {lookupResult && (
-              <div className="rounded-xl border border-brand-border bg-brand-tint p-4 space-y-2 text-sm">
+              <div className="border border-[#dce5da] bg-[#f8f9f5] p-4 space-y-2 text-[14px] max-w-lg">
                 <div className="flex justify-between">
-                  <span className="text-ink-secondary">Mã đơn:</span>
-                  <strong className="font-mono text-ink-primary">
+                  <span className="text-[#555555]">Mã đơn:</span>
+                  <strong className="font-mono text-[#224e40]">
                     {lookupResult.orderCode}
                   </strong>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-ink-secondary">Tổng tiền:</span>
-                  <strong className="font-mono text-accent-hot">
-                    {formatVND(lookupResult.totalAmount)}
+                  <span className="text-[#555555]">Tổng thanh toán:</span>
+                  <strong className="text-[#dd3333] tabular-nums">
+                    {formatPriceByCurrency(
+                      lookupResult.totalAmount,
+                      mounted ? currency : "VND"
+                    )}
                   </strong>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-ink-secondary">Thanh toán:</span>
-                  <strong className="font-mono text-brand-primary">
+                  <span className="text-[#555555]">Thanh toán:</span>
+                  <strong className="text-[#204b3e]">
                     {lookupResult.paymentStatus}
                   </strong>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-ink-secondary">Trạng thái giao:</span>
-                  <strong className="font-mono text-ink-primary">
+                  <span className="text-[#555555]">Trạng thái giao:</span>
+                  <strong className="text-[#0a0a0a]">
                     {lookupResult.fulfillmentStatus}
                   </strong>
                 </div>
@@ -532,106 +570,154 @@ export function AccountClient() {
     );
   }
 
-  // Authenticated View
+  // 2. AUTHENTICATED VIEW — Store/Account/DashboardNav (9:1259) & OrderTable (9:1288)
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-      {/* Sidebar / Mobile Tabs */}
-      <aside className="lg:col-span-3 rounded-2xl border border-surface-border bg-white p-3 flex lg:flex-col gap-1 overflow-x-auto">
-        <button
-          type="button"
-          onClick={() => setActiveTab("orders")}
-          className={`min-h-[44px] px-3.5 rounded-lg text-sm font-semibold inline-flex items-center gap-2 shrink-0 ${
-            activeTab === "orders"
-              ? "bg-brand-tint text-brand-primary"
-              : "text-ink-secondary hover:bg-surface-subtle"
-          }`}
-        >
-          <Package className="w-4 h-4" aria-hidden="true" />
-          <span>Lịch sử đơn hàng</span>
-        </button>
+      <aside className="lg:col-span-3 border border-[#e5e5e5] bg-[#fafafa] p-3 space-y-1">
+        <div className="px-3 py-2.5 border-b border-[#ececec] mb-2">
+          <p className="text-[11px] font-bold text-[#666666] uppercase">
+            Tài khoản
+          </p>
+          <p className="text-sm font-bold text-[#224e40] truncate">
+            {profile?.name || profile?.email || "Thành viên 11Sport"}
+          </p>
+        </div>
 
-        <button
-          type="button"
-          onClick={() => setActiveTab("addresses")}
-          className={`min-h-[44px] px-3.5 rounded-lg text-sm font-semibold inline-flex items-center gap-2 shrink-0 ${
-            activeTab === "addresses"
-              ? "bg-brand-tint text-brand-primary"
-              : "text-ink-secondary hover:bg-surface-subtle"
-          }`}
-        >
-          <MapPin className="w-4 h-4" aria-hidden="true" />
-          <span>Sổ địa chỉ</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab("profile")}
-          className={`min-h-[44px] px-3.5 rounded-lg text-sm font-semibold inline-flex items-center gap-2 shrink-0 ${
-            activeTab === "profile"
-              ? "bg-brand-tint text-brand-primary"
-              : "text-ink-secondary hover:bg-surface-subtle"
-          }`}
-        >
-          <User className="w-4 h-4" aria-hidden="true" />
-          <span>Thông tin cá nhân</span>
-        </button>
+        {(
+          [
+            { key: "dashboard", label: "Bảng điều khiển", icon: CheckCircle2 },
+            { key: "orders", label: "Đơn hàng của tôi", icon: Package },
+            { key: "addresses", label: "Địa chỉ giao nhận", icon: MapPin },
+            { key: "profile", label: "Chi tiết tài khoản", icon: User },
+          ] as const
+        ).map((item) => {
+          const Icon = item.icon;
+          const active = activeTab === item.key;
+          return (
+            <button
+              key={item.key}
+              type="button"
+              onClick={() => setActiveTab(item.key)}
+              className={`w-full h-10 px-3 rounded-none text-[13.5px] font-semibold inline-flex items-center gap-2.5 transition-colors ${
+                active
+                  ? "bg-[#224e40] text-white"
+                  : "text-[#333333] hover:bg-white hover:text-[#224e40]"
+              }`}
+            >
+              <Icon className="w-4 h-4 shrink-0" aria-hidden="true" />
+              <span>{item.label}</span>
+            </button>
+          );
+        })}
 
         <button
           type="button"
           onClick={handleLogout}
-          className="min-h-[44px] px-3.5 rounded-lg text-sm font-semibold inline-flex items-center gap-2 text-accent-hot hover:bg-accent-hot-tint shrink-0 lg:mt-2"
+          className="w-full h-10 px-3 rounded-none text-[13.5px] font-semibold inline-flex items-center gap-2.5 text-[#dd3333] hover:bg-white transition-colors mt-2"
         >
-          <LogOut className="w-4 h-4" aria-hidden="true" />
+          <LogOut className="w-4 h-4 shrink-0" aria-hidden="true" />
           <span>Đăng xuất</span>
         </button>
       </aside>
 
-      {/* Content */}
-      <div className="lg:col-span-9 rounded-2xl border border-surface-border bg-white p-5 sm:p-6 space-y-5">
+      <div className="lg:col-span-9 border border-[#ececec] bg-white p-5 sm:p-6 space-y-5">
         {profileNotice && (
           <div
             role="status"
-            className="p-3 rounded-lg bg-semantic-success-bg text-semantic-success-text text-sm font-medium"
+            className="p-3 bg-[#f8f9f5] border border-[#dce5da] text-[#204b3e] text-[13.5px] font-medium"
           >
             {profileNotice}
           </div>
         )}
 
+        {activeTab === "dashboard" && (
+          <div className="space-y-4">
+            <h2 className="text-[17px] font-bold text-[#0a0a0a] uppercase">
+              Xin chào, {profile?.name || "Thành viên 11Sport"}
+            </h2>
+            <p className="text-[14px] text-[#333333] leading-relaxed">
+              Từ trang quản trị tài khoản 11Sport, bạn có thể theo dõi lịch sử{" "}
+              <button
+                type="button"
+                onClick={() => setActiveTab("orders")}
+                className="font-bold text-[#224e40] underline"
+              >
+                đơn hàng gần đây ({orders.length})
+              </button>
+              , quản lý{" "}
+              <button
+                type="button"
+                onClick={() => setActiveTab("addresses")}
+                className="font-bold text-[#224e40] underline"
+              >
+                sổ địa chỉ giao hàng
+              </button>{" "}
+              và cập nhật thông tin cá nhân để nhận ưu đãi thành viên.
+            </p>
+          </div>
+        )}
+
         {activeTab === "orders" && (
           <div className="space-y-4">
-            <h2 className="text-lg font-bold text-ink-primary">
-              Đơn hàng của tôi ({orders.length})
+            <h2 className="text-[17px] font-bold text-[#0a0a0a] uppercase">
+              Lịch sử đơn hàng ({orders.length})
             </h2>
             {orders.length === 0 ? (
-              <p className="text-sm text-ink-muted py-6">
-                Bạn chưa có đơn hàng online nào.
-              </p>
+              <div className="bg-[#f8f9f5] border border-[#dce5da] p-8 text-center space-y-3">
+                <p className="text-[14px] text-[#555555]">
+                  Bạn chưa có đơn hàng nào tại 11Sport.
+                </p>
+                <Link
+                  href="/vot-pickleball"
+                  className="inline-flex items-center justify-center h-[39px] px-6 rounded-none bg-[#224e40] text-white text-xs font-bold uppercase tracking-wider"
+                >
+                  MUA SẮM NGAY
+                </Link>
+              </div>
             ) : (
-              <div className="divide-y divide-surface-border">
-                {orders.map((ord) => (
-                  <div
-                    key={ord._id || ord.orderCode}
-                    className="py-4 flex flex-wrap items-center justify-between gap-3 text-sm"
-                  >
-                    <div>
-                      <p className="font-mono font-bold text-ink-primary">
-                        {ord.orderCode}
-                      </p>
-                      <p className="text-xs text-ink-muted mt-0.5">
-                        {new Date(ord.createdAt).toLocaleDateString("vi-VN")} •{" "}
-                        {ord.paymentGateway}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="px-2.5 py-1 rounded-full bg-surface-muted text-ink-primary font-mono text-xs font-semibold">
-                        {ord.fulfillmentStatus}
-                      </span>
-                      <span className="font-mono font-bold text-accent-hot">
-                        {formatVND(ord.totalAmount)}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-[13.5px]">
+                  <thead>
+                    <tr className="border-b-2 border-[#ececec] text-xs font-bold uppercase text-[#666666]">
+                      <th className="py-3 pr-4">Đơn hàng</th>
+                      <th className="py-3 pr-4">Ngày đặt</th>
+                      <th className="py-3 pr-4">Trạng thái</th>
+                      <th className="py-3 pr-4">Tổng cộng</th>
+                      <th className="py-3 text-right">Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#ececec]">
+                    {orders.map((ord) => (
+                      <tr key={ord._id || ord.orderCode}>
+                        <td className="py-3.5 pr-4 font-mono font-bold text-[#224e40]">
+                          #{ord.orderCode}
+                        </td>
+                        <td className="py-3.5 pr-4 text-[#555555]">
+                          {new Date(ord.createdAt).toLocaleDateString("vi-VN")}
+                        </td>
+                        <td className="py-3.5 pr-4">
+                          <span className="inline-flex px-2.5 py-0.5 bg-[#f8f9f5] border border-[#dce5da] text-[#204b3e] text-xs font-semibold">
+                            {ord.fulfillmentStatus}
+                          </span>
+                        </td>
+                        <td className="py-3.5 pr-4 font-bold text-[#0a0a0a] tabular-nums">
+                          {formatPriceByCurrency(
+                            ord.totalAmount,
+                            mounted ? currency : "VND"
+                          )}
+                        </td>
+                        <td className="py-3.5 text-right">
+                          <Link
+                            href={`/thanh-toan/order-received/${encodeURIComponent(ord.orderCode)}`}
+                            className="inline-flex items-center h-8 px-3.5 rounded-none bg-[#224e40] hover:bg-[#193b30] text-white text-xs font-bold uppercase tracking-wider"
+                          >
+                            Xem
+                          </Link>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>
@@ -640,13 +726,13 @@ export function AccountClient() {
         {activeTab === "addresses" && (
           <div className="space-y-4">
             <div className="flex items-center justify-between gap-2">
-              <h2 className="text-lg font-bold text-ink-primary">
+              <h2 className="text-[17px] font-bold text-[#0a0a0a] uppercase">
                 Sổ địa chỉ giao hàng
               </h2>
               <button
                 type="button"
                 onClick={() => setShowAddAddress((p) => !p)}
-                className="inline-flex items-center gap-1.5 min-h-[44px] px-4 rounded-lg bg-brand-primary text-white text-sm font-semibold"
+                className="inline-flex items-center gap-1.5 h-9 px-4 rounded-none bg-[#224e40] text-white text-xs font-bold uppercase tracking-wider"
               >
                 <Plus className="w-4 h-4" aria-hidden="true" />
                 <span>Thêm địa chỉ</span>
@@ -656,7 +742,7 @@ export function AccountClient() {
             {showAddAddress && (
               <form
                 onSubmit={handleAddAddress}
-                className="rounded-xl border border-surface-border bg-surface-subtle p-4 space-y-3"
+                className="border border-[#dce5da] bg-[#f8f9f5] p-4 space-y-3"
               >
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <input
@@ -667,17 +753,20 @@ export function AccountClient() {
                       setNewAddr({ ...newAddr, fullName: e.target.value })
                     }
                     placeholder="Họ và tên người nhận"
-                    className="h-11 px-3 rounded-lg border border-surface-border bg-white text-sm"
+                    className={SHARP_INPUT_CLS}
                   />
                   <input
                     type="tel"
                     required
                     value={newAddr.phone}
                     onChange={(e) =>
-                      setNewAddr({ ...newAddr, phone: formatPhoneVN(e.target.value) })
+                      setNewAddr({
+                        ...newAddr,
+                        phone: formatPhoneVN(e.target.value),
+                      })
                     }
-                    placeholder="Số điện thoại (VD: 0901 234 567)"
-                    className="h-11 px-3 rounded-lg border border-surface-border bg-white font-mono text-sm"
+                    placeholder="Số điện thoại (VD: 0909 123 456)"
+                    className={`${SHARP_INPUT_CLS} tabular-nums`}
                   />
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -689,7 +778,7 @@ export function AccountClient() {
                       setNewAddr({ ...newAddr, province: e.target.value })
                     }
                     placeholder="Tỉnh/TP"
-                    className="h-11 px-3 rounded-lg border border-surface-border bg-white text-sm"
+                    className={SHARP_INPUT_CLS}
                   />
                   <input
                     type="text"
@@ -699,7 +788,7 @@ export function AccountClient() {
                       setNewAddr({ ...newAddr, district: e.target.value })
                     }
                     placeholder="Quận/Huyện"
-                    className="h-11 px-3 rounded-lg border border-surface-border bg-white text-sm"
+                    className={SHARP_INPUT_CLS}
                   />
                   <input
                     type="text"
@@ -709,7 +798,7 @@ export function AccountClient() {
                       setNewAddr({ ...newAddr, ward: e.target.value })
                     }
                     placeholder="Phường/Xã"
-                    className="h-11 px-3 rounded-lg border border-surface-border bg-white text-sm"
+                    className={SHARP_INPUT_CLS}
                   />
                 </div>
                 <input
@@ -720,20 +809,20 @@ export function AccountClient() {
                     setNewAddr({ ...newAddr, addressLine: e.target.value })
                   }
                   placeholder="Số nhà, tên đường"
-                  className="w-full h-11 px-3 rounded-lg border border-surface-border bg-white text-sm"
+                  className={SHARP_INPUT_CLS}
                 />
                 <div className="flex justify-end gap-2">
                   <button
                     type="button"
                     onClick={() => setShowAddAddress(false)}
-                    className="min-h-[44px] px-4 rounded-lg border border-surface-border bg-white text-sm font-semibold"
+                    className="h-9 px-4 rounded-none border border-[#dddddd] bg-white text-xs font-bold uppercase"
                   >
                     Hủy
                   </button>
                   <button
                     type="submit"
                     disabled={savingProfile}
-                    className="min-h-[44px] px-5 rounded-lg bg-brand-primary text-white text-sm font-semibold"
+                    className="h-9 px-5 rounded-none bg-[#224e40] text-white text-xs font-bold uppercase"
                   >
                     Lưu địa chỉ
                   </button>
@@ -742,7 +831,7 @@ export function AccountClient() {
             )}
 
             {!profile?.addresses?.length ? (
-              <p className="text-sm text-ink-muted py-4">
+              <p className="text-[13.5px] text-[#666666] py-4">
                 Chưa có địa chỉ nào được lưu.
               </p>
             ) : (
@@ -750,23 +839,23 @@ export function AccountClient() {
                 {profile.addresses.map((addr) => (
                   <div
                     key={addr.id}
-                    className="rounded-xl border border-surface-border p-4 flex items-start justify-between gap-3"
+                    className="border border-[#ececec] p-4 flex items-start justify-between gap-3"
                   >
-                    <div className="text-sm space-y-0.5">
+                    <div className="text-[13.5px] space-y-0.5">
                       <div className="flex items-center gap-2">
-                        <strong className="text-ink-primary">
+                        <strong className="text-[#0a0a0a]">
                           {addr.fullName}
                         </strong>
-                        <span className="font-mono text-ink-secondary">
+                        <span className="tabular-nums text-[#555555]">
                           {addr.phone}
                         </span>
                         {addr.isDefault && (
-                          <span className="px-2 py-0.5 rounded bg-brand-tint text-brand-primary text-xs font-bold">
+                          <span className="px-2 py-0.5 bg-[#f8f9f5] border border-[#dce5da] text-[#204b3e] text-xs font-bold">
                             Mặc định
                           </span>
                         )}
                       </div>
-                      <p className="text-ink-secondary">
+                      <p className="text-[#555555]">
                         {addr.addressLine}, {addr.ward}, {addr.district},{" "}
                         {addr.province}
                       </p>
@@ -775,7 +864,7 @@ export function AccountClient() {
                       type="button"
                       onClick={() => handleDeleteAddress(addr.id)}
                       aria-label="Xóa địa chỉ"
-                      className="w-11 h-11 inline-flex items-center justify-center rounded-lg text-ink-muted hover:text-accent-hot hover:bg-accent-hot-tint"
+                      className="w-9 h-9 inline-flex items-center justify-center text-[#888888] hover:text-[#dd3333]"
                     >
                       <Trash2 className="w-4 h-4" aria-hidden="true" />
                     </button>
@@ -794,25 +883,11 @@ export function AccountClient() {
             }}
             className="space-y-4 max-w-md"
           >
-            <h2 className="text-lg font-bold text-ink-primary">
-              Thông tin cá nhân
+            <h2 className="text-[17px] font-bold text-[#0a0a0a] uppercase">
+              Chi tiết tài khoản
             </h2>
             <div>
-              <label className="block text-sm font-medium text-ink-secondary mb-1">
-                Email
-              </label>
-              <input
-                type="email"
-                disabled
-                value={profile?.email || ""}
-                className="w-full h-11 px-3 rounded-lg border border-surface-border bg-surface-muted text-sm text-ink-muted"
-              />
-            </div>
-            <div>
-              <label
-                htmlFor="profile-name"
-                className="block text-sm font-medium text-ink-secondary mb-1"
-              >
+              <label htmlFor="profile-name" className={LABEL_CLS}>
                 Họ và tên
               </label>
               <input
@@ -820,14 +895,11 @@ export function AccountClient() {
                 type="text"
                 value={profileName}
                 onChange={(e) => setProfileName(e.target.value)}
-                className="w-full h-11 px-3 rounded-lg border border-surface-border text-sm"
+                className={SHARP_INPUT_CLS}
               />
             </div>
             <div>
-              <label
-                htmlFor="profile-phone"
-                className="block text-sm font-medium text-ink-secondary mb-1"
-              >
+              <label htmlFor="profile-phone" className={LABEL_CLS}>
                 Số điện thoại
               </label>
               <input
@@ -835,16 +907,27 @@ export function AccountClient() {
                 type="tel"
                 value={profilePhone}
                 onChange={(e) => setProfilePhone(formatPhoneVN(e.target.value))}
-                placeholder="0901 234 567"
-                className="w-full h-11 px-3 rounded-lg border border-surface-border font-mono text-sm"
+                className={`${SHARP_INPUT_CLS} tabular-nums`}
+              />
+            </div>
+            <div>
+              <label htmlFor="profile-email" className={LABEL_CLS}>
+                Email
+              </label>
+              <input
+                id="profile-email"
+                type="email"
+                disabled
+                value={profile?.email || ""}
+                className="w-full h-[40px] px-3 rounded-none border border-[#dddddd] bg-[#f5f5f5] text-[14px] text-[#666666]"
               />
             </div>
             <button
               type="submit"
               disabled={savingProfile}
-              className="min-h-[48px] px-6 rounded-lg bg-brand-primary hover:bg-brand-primary-hover text-white font-bold text-sm"
+              className="h-[40px] px-6 rounded-none bg-[#224e40] hover:bg-[#193b30] text-white text-[13px] font-bold uppercase tracking-wider"
             >
-              {savingProfile ? "Đang lưu..." : "Lưu thông tin"}
+              {savingProfile ? "ĐANG LƯU..." : "LƯU THAY ĐỔI"}
             </button>
           </form>
         )}

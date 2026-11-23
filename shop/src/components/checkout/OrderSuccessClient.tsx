@@ -14,7 +14,8 @@ import {
   XCircle,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
-import { formatVND } from "@/lib/format";
+import { formatPriceByCurrency } from "@/lib/format";
+import { useCurrencyStore } from "@/store/currencyStore";
 
 interface StoredOrder {
   orderCode: string;
@@ -27,22 +28,37 @@ interface StoredOrder {
   reservedUntil?: string;
 }
 
+export interface OrderSuccessClientProps {
+  initialOrderCode?: string;
+}
+
 function formatCountdown(secondsLeft: number): string {
   const mins = Math.floor(Math.max(0, secondsLeft) / 60);
   const secs = Math.max(0, secondsLeft) % 60;
   return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
 }
 
-export function OrderSuccessClient() {
+export function OrderSuccessClient({
+  initialOrderCode = "",
+}: OrderSuccessClientProps) {
   const searchParams = useSearchParams();
-  const codeFromQuery = searchParams.get("code") || "";
+  const currency = useCurrencyStore((s) => s.currency);
+  const codeFromQuery = searchParams.get("code") || initialOrderCode || "";
 
-  const [order, setOrder] = useState<StoredOrder | null>(null);
+  const [mounted, setMounted] = useState(false);
+  const [order, setOrder] = useState<StoredOrder | null>(
+    codeFromQuery ? { orderCode: codeFromQuery } : null
+  );
   const [paymentStatus, setPaymentStatus] = useState<string>("UNPAID");
   const [secondsLeft, setSecondsLeft] = useState<number>(15 * 60);
   const [copied, setCopied] = useState(false);
+  const [orderDateStr, setOrderDateStr] = useState<string>("");
+
+  const activeCurrency = mounted ? currency : "VND";
 
   useEffect(() => {
+    setMounted(true);
+    setOrderDateStr(new Date().toLocaleDateString("vi-VN"));
     try {
       const raw = sessionStorage.getItem("11sport_last_order");
       if (raw) {
@@ -63,7 +79,7 @@ export function OrderSuccessClient() {
         }
       }
     } catch {
-      // Ignore
+      // Ignore storage errors
     }
 
     if (codeFromQuery) {
@@ -135,114 +151,155 @@ export function OrderSuccessClient() {
 
   if (!orderCode) {
     return (
-      <div className="rounded-2xl border border-surface-border bg-surface-subtle p-8 text-center space-y-4">
-        <h1 className="text-2xl font-extrabold text-ink-primary">
+      <div className="max-w-2xl mx-auto border border-[#dce5da] bg-[#f8f9f5] p-8 text-center space-y-4">
+        <h1 className="text-[22px] font-bold text-[#0a0a0a]">
           Không tìm thấy mã đơn hàng
         </h1>
-        <p className="text-sm text-ink-secondary">
+        <p className="text-[14px] text-[#555555]">
           Bạn có thể tra cứu trạng thái đơn hàng bằng mã đơn và số điện thoại.
         </p>
         <Link
           href="/tai-khoan"
-          className="inline-flex items-center justify-center min-h-[48px] px-6 rounded-lg bg-brand-primary text-white text-sm font-semibold"
+          className="inline-flex items-center justify-center h-[42px] px-6 rounded-none bg-[#224e40] hover:bg-[#193b30] text-white text-[13px] font-bold uppercase tracking-wider transition-colors"
         >
-          Tra cứu đơn hàng
+          TRA CỨU ĐƠN HÀNG
         </Link>
       </div>
     );
   }
 
+  const overviewCells = [
+    { label: "MÃ ĐƠN HÀNG", value: `#${orderCode}` },
+    { label: "NGÀY ĐẶT", value: orderDateStr || "Hôm nay" },
+    {
+      label: "TỔNG CỘNG",
+      value:
+        typeof order?.totalAmount === "number"
+          ? formatPriceByCurrency(order.totalAmount, activeCurrency)
+          : "Đã ghi nhận",
+    },
+    {
+      label: "THANH TOÁN",
+      value: isQrPayment
+        ? paymentStatus === "PAID"
+          ? "VietQR / PayOS · Đã TT"
+          : "VietQR / PayOS"
+        : "COD · Đồng kiểm",
+    },
+  ];
+
   // QR Waiting State
   if (isQrPayment && paymentStatus === "UNPAID") {
     return (
-      <div className="max-w-2xl mx-auto rounded-2xl border border-surface-border bg-white p-6 sm:p-8 shadow-card space-y-6 text-center">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-semantic-warning-bg text-semantic-warning-text text-xs font-bold">
-          <Clock className="w-4 h-4" aria-hidden="true" />
-          <span>Đang chờ thanh toán VietQR / PayOS</span>
-        </div>
-
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-ink-primary">
-          Quét mã QR để hoàn tất đơn hàng
-        </h1>
-
-        <p className="text-sm text-ink-secondary">
-          Mã đơn hàng:{" "}
-          <strong className="font-mono text-ink-primary">{orderCode}</strong>
-        </p>
-
-        {/* Countdown 15:00 */}
-        <div className="rounded-xl bg-accent-hot-tint border border-accent-hot/20 p-4 inline-flex flex-col items-center">
-          <span className="text-xs font-semibold text-ink-secondary">
-            Thời gian giữ chỗ tồn kho còn lại
-          </span>
-          <span className="font-mono text-3xl font-extrabold text-accent-hot mt-1">
-            {formatCountdown(secondsLeft)}
-          </span>
-        </div>
-
-        {/* QR Box */}
-        <div className="mx-auto w-60 h-60 rounded-2xl border-2 border-brand-border bg-brand-tint flex flex-col items-center justify-center p-4 gap-2">
-          <QrCode
-            className="w-24 h-24 text-brand-primary"
-            aria-hidden="true"
-          />
-          {order?.qrCode ? (
-            <p className="font-mono text-[10px] text-ink-muted break-all line-clamp-3">
-              {order.qrCode}
-            </p>
-          ) : (
-            <p className="text-xs font-medium text-brand-primary">
-              Mã QR PayOS đang sẵn sàng
-            </p>
-          )}
-        </div>
-
-        {order?.paymentUrl && (
+      <div className="max-w-3xl mx-auto space-y-6">
+        <div className="border-2 border-dashed border-[#224e40] bg-[#f8f9f5] p-5 sm:p-6 flex items-center gap-3 text-[#204b3e]">
+          <Clock className="w-6 h-6 shrink-0" aria-hidden="true" />
           <div>
-            <a
-              href={order.paymentUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 min-h-[48px] px-6 rounded-lg bg-brand-primary hover:bg-brand-primary-hover text-white text-sm font-bold"
-            >
-              <span>Mở cổng thanh toán PayOS</span>
-              <ExternalLink className="w-4 h-4" aria-hidden="true" />
-            </a>
-          </div>
-        )}
-
-        <div className="rounded-xl bg-surface-subtle border border-surface-border p-4 text-left space-y-2 text-sm">
-          {typeof order?.totalAmount === "number" && (
-            <div className="flex items-center justify-between">
-              <span className="text-ink-muted">Số tiền cần chuyển:</span>
-              <span className="font-mono font-bold text-accent-hot text-base">
-                {formatVND(order.totalAmount)}
-              </span>
-            </div>
-          )}
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-ink-muted">Nội dung chuyển khoản:</span>
-            <div className="inline-flex items-center gap-2">
-              <span className="font-mono font-bold text-ink-primary">
-                {orderCode}
-              </span>
-              <button
-                type="button"
-                onClick={() => handleCopy(orderCode)}
-                aria-label="Sao chép mã đơn hàng"
-                className="inline-flex items-center gap-1 min-h-[36px] px-2.5 rounded-md border border-surface-border bg-white text-xs font-semibold text-ink-primary hover:border-brand-primary"
-              >
-                <Copy className="w-3.5 h-3.5" aria-hidden="true" />
-                <span>{copied ? "Đã chép" : "Sao chép"}</span>
-              </button>
-            </div>
+            <h1 className="text-[18px] sm:text-[20px] font-bold">
+              Quét mã QR để hoàn tất thanh toán đơn hàng #{orderCode}
+            </h1>
+            <p className="text-[13.5px] text-[#4a6b5d] mt-0.5">
+              Hệ thống đang giữ chỗ tồn kho và tự động kiểm tra trạng thái mỗi 5 giây.
+            </p>
           </div>
         </div>
 
-        <p className="text-xs text-ink-muted">
-          Hệ thống tự động kiểm tra trạng thái thanh toán mỗi 5 giây. Vui lòng
-          không đóng trang này cho đến khi thanh toán hoàn tất.
-        </p>
+        <div className="grid grid-cols-[1.12fr_0.88fr] sm:grid-cols-[1.45fr_0.85fr_1fr_1.15fr] gap-2.5 sm:gap-3">
+          {overviewCells.map((cell) => (
+            <div
+              key={cell.label}
+              className="border border-[#dce5da] bg-white p-2.5 sm:p-3.5 space-y-1"
+            >
+              <p className="text-[11px] font-bold uppercase tracking-wider text-[#666666]">
+                {cell.label}
+              </p>
+              <p className="text-[11.5px] sm:text-[13px] font-bold text-[#0a0a0a] tabular-nums tracking-tight whitespace-nowrap">
+                {cell.value}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        <div className="border border-[#dce5da] bg-white p-6 sm:p-8 text-center space-y-5">
+          <div className="inline-flex flex-col items-center border border-[#dd3333]/25 bg-[#fef2f2] px-5 py-3">
+            <span className="text-xs font-semibold text-[#555555]">
+              Thời gian giữ chỗ tồn kho còn lại
+            </span>
+            <span className="text-[28px] font-bold text-[#dd3333] tabular-nums mt-0.5">
+              {formatCountdown(secondsLeft)}
+            </span>
+          </div>
+
+          <div className="mx-auto w-56 h-56 border border-[#dce5da] bg-[#f8f9f5] flex flex-col items-center justify-center p-4 gap-2">
+            <QrCode className="w-24 h-24 text-[#224e40]" aria-hidden="true" />
+            {order?.qrCode ? (
+              <p className="font-mono text-[10px] text-[#666666] break-all line-clamp-3">
+                {order.qrCode}
+              </p>
+            ) : (
+              <p className="text-xs font-medium text-[#204b3e]">
+                Mã QR PayOS đang sẵn sàng
+              </p>
+            )}
+          </div>
+
+          {order?.paymentUrl && (
+            <div>
+              <a
+                href={order.paymentUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-2 h-[42px] px-6 rounded-none bg-[#224e40] hover:bg-[#193b30] text-white text-[13px] font-bold uppercase tracking-wider transition-colors"
+              >
+                <span>MỞ CỔNG THANH TOÁN PAYOS</span>
+                <ExternalLink className="w-4 h-4" aria-hidden="true" />
+              </a>
+            </div>
+          )}
+
+          <div className="border border-[#ececec] bg-[#fafafa] p-4 text-left space-y-2 text-[13.5px] max-w-lg mx-auto">
+            {typeof order?.totalAmount === "number" && (
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[#555555]">Số tiền cần chuyển:</span>
+                <span className="font-bold text-[#dd3333] text-base tabular-nums">
+                  {formatPriceByCurrency(order.totalAmount, activeCurrency)}
+                </span>
+              </div>
+            )}
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[#555555]">Nội dung chuyển khoản:</span>
+              <div className="inline-flex items-center gap-2">
+                <span className="font-mono font-bold text-[#0a0a0a]">
+                  {orderCode}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleCopy(orderCode)}
+                  aria-label="Sao chép mã đơn hàng"
+                  className="inline-flex items-center gap-1 px-2.5 h-8 border border-[#dddddd] bg-white text-xs font-semibold text-[#0a0a0a] hover:border-[#224e40]"
+                >
+                  <Copy className="w-3.5 h-3.5" aria-hidden="true" />
+                  <span>{copied ? "Đã chép" : "Sao chép"}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap justify-center gap-3 pt-2">
+            <Link
+              href="/vot-pickleball"
+              className="inline-flex items-center justify-center gap-2 h-[42px] px-6 rounded-none bg-[#224e40] hover:bg-[#193b30] text-white text-[13px] font-bold uppercase tracking-wider transition-colors"
+            >
+              <span>TIẾP TỤC MUA SẮM</span>
+            </Link>
+            <Link
+              href="/tai-khoan"
+              className="inline-flex items-center justify-center gap-2 h-[42px] px-6 rounded-none border border-[#224e40] text-[#224e40] hover:bg-[#f8f9f5] text-[13px] font-bold uppercase tracking-wider transition-colors"
+            >
+              <span>TRA CỨU ĐƠN HÀNG</span>
+            </Link>
+          </div>
+        </div>
       </div>
     );
   }
@@ -250,29 +307,29 @@ export function OrderSuccessClient() {
   // Expired State
   if (isQrPayment && paymentStatus === "EXPIRED") {
     return (
-      <div className="max-w-xl mx-auto rounded-2xl border border-accent-hot/30 bg-white p-6 sm:p-8 shadow-card text-center space-y-5">
-        <div className="w-16 h-16 mx-auto rounded-full bg-semantic-danger-bg text-semantic-danger-icon flex items-center justify-center">
-          <XCircle className="w-9 h-9" aria-hidden="true" />
+      <div className="max-w-2xl mx-auto border border-[#dd3333]/30 bg-white p-6 sm:p-8 text-center space-y-5">
+        <div className="w-14 h-14 mx-auto rounded-full bg-[#fef2f2] text-[#dd3333] flex items-center justify-center">
+          <XCircle className="w-8 h-8" aria-hidden="true" />
         </div>
-        <h1 className="text-2xl font-extrabold text-ink-primary">
+        <h1 className="text-[22px] font-bold text-[#0a0a0a]">
           Mã QR thanh toán đã hết hạn
         </h1>
-        <p className="text-sm text-ink-secondary">
+        <p className="text-[14px] text-[#555555]">
           Đơn hàng <strong className="font-mono">{orderCode}</strong> đã quá
           thời gian giữ chỗ 15 phút và tồn kho đã được hoàn lại.
         </p>
         <div className="flex flex-wrap justify-center gap-3">
           <Link
             href="/gio-hang"
-            className="inline-flex items-center justify-center min-h-[48px] px-6 rounded-lg bg-brand-primary text-white text-sm font-bold"
+            className="inline-flex items-center justify-center h-[42px] px-6 rounded-none bg-[#224e40] hover:bg-[#193b30] text-white text-[13px] font-bold uppercase tracking-wider"
           >
-            Đặt lại đơn hàng
+            ĐẶT LẠI ĐƠN HÀNG
           </Link>
           <Link
             href="/"
-            className="inline-flex items-center justify-center min-h-[48px] px-6 rounded-lg border border-surface-border text-ink-primary text-sm font-semibold"
+            className="inline-flex items-center justify-center h-[42px] px-6 rounded-none border border-[#dddddd] text-[#0a0a0a] text-[13px] font-bold uppercase tracking-wider"
           >
-            Về trang chủ
+            VỀ TRANG CHỦ
           </Link>
         </div>
       </div>
@@ -281,45 +338,57 @@ export function OrderSuccessClient() {
 
   // Paid or COD Success State
   return (
-    <div className="max-w-xl mx-auto rounded-2xl border border-brand-border bg-white p-6 sm:p-8 shadow-card text-center space-y-5">
-      <div className="w-16 h-16 mx-auto rounded-full bg-semantic-success-bg text-semantic-success-icon flex items-center justify-center">
-        <CheckCircle2 className="w-9 h-9" aria-hidden="true" />
+    <div className="max-w-3xl mx-auto border border-[#dce5da] bg-[#f8f9f5] p-4 sm:p-8 space-y-6">
+      <div className="flex items-start gap-3 p-4 border border-[#dce5da] bg-white text-[#204b3e]">
+        <CheckCircle2 className="w-6 h-6 shrink-0 mt-0.5" aria-hidden="true" />
+        <div>
+          <h1 className="text-[18px] sm:text-[21px] font-bold leading-snug">
+            {paymentStatus === "PAID"
+              ? `Thanh toán thành công! Đơn hàng #${orderCode} đã được xác nhận.`
+              : `Cảm ơn bạn. Đơn hàng #${orderCode} đã được tiếp nhận!`}
+          </h1>
+          <p className="text-[13.5px] text-[#4a6b5d] mt-1">
+            Chuyên viên CSKH 11Sport sẽ liên hệ qua số điện thoại trong vòng 15
+            phút để xác nhận và gửi mã vận đơn.
+          </p>
+        </div>
       </div>
 
-      <h1 className="text-2xl sm:text-3xl font-extrabold text-ink-primary">
-        {paymentStatus === "PAID"
-          ? "Thanh toán thành công!"
-          : "Đặt hàng thành công!"}
-      </h1>
+      <div className="grid grid-cols-[1.12fr_0.88fr] sm:grid-cols-[1.45fr_0.85fr_1fr_1.15fr] gap-2.5 sm:gap-3">
+        {overviewCells.map((cell) => (
+          <div
+            key={cell.label}
+            className="bg-white border border-[#dce5da] p-2.5 sm:p-3.5 space-y-1"
+          >
+            <p className="text-[11px] font-bold uppercase tracking-wider text-[#666666]">
+              {cell.label}
+            </p>
+            <p className="text-[11.5px] sm:text-[13px] font-bold text-[#0a0a0a] tabular-nums tracking-tight whitespace-nowrap">
+              {cell.value}
+            </p>
+          </div>
+        ))}
+      </div>
 
-      <p className="text-sm sm:text-base text-ink-secondary">
-        Cảm ơn bạn đã mua sắm tại 11 Sport. Mã đơn hàng của bạn là{" "}
-        <strong className="font-mono text-brand-primary">{orderCode}</strong>.
+      <p className="text-[13.5px] text-[#333333] leading-relaxed">
+        Mọi kiện hàng tại 11Sport đều được tặng kèm quấn cán, dán viền, bao vợt
+        và hỗ trợ mở hộp đồng kiểm tem NFC chính hãng trước khi thanh toán.
       </p>
 
-      {typeof order?.totalAmount === "number" && (
-        <div className="rounded-xl bg-surface-subtle border border-surface-border p-4 inline-flex items-center gap-3 text-sm">
-          <span className="text-ink-muted">Tổng giá trị đơn hàng:</span>
-          <span className="font-mono font-bold text-lg text-ink-primary">
-            {formatVND(order.totalAmount)}
-          </span>
-        </div>
-      )}
-
-      <div className="pt-2 flex flex-wrap justify-center gap-3">
+      <div className="flex flex-wrap items-center gap-3 pt-1">
         <Link
-          href="/tai-khoan"
-          className="inline-flex items-center justify-center gap-2 min-h-[48px] px-6 rounded-lg border border-brand-primary text-brand-primary hover:bg-brand-tint text-sm font-bold"
-        >
-          <Search className="w-4 h-4" aria-hidden="true" />
-          <span>Tra cứu đơn hàng</span>
-        </Link>
-        <Link
-          href="/"
-          className="inline-flex items-center justify-center gap-2 min-h-[48px] px-6 rounded-lg bg-brand-primary hover:bg-brand-primary-hover text-white text-sm font-bold"
+          href="/vot-pickleball"
+          className="h-[42px] px-6 rounded-none bg-[#224e40] hover:bg-[#193b30] text-white text-[13px] font-bold uppercase tracking-wider inline-flex items-center justify-center gap-2 transition-colors"
         >
           <Home className="w-4 h-4" aria-hidden="true" />
-          <span>Tiếp tục mua sắm</span>
+          <span>TIẾP TỤC MUA SẮM</span>
+        </Link>
+        <Link
+          href="/tai-khoan"
+          className="h-[42px] px-6 rounded-none border border-[#224e40] bg-white hover:bg-[#f2f5f2] text-[#224e40] text-[13px] font-bold uppercase tracking-wider inline-flex items-center justify-center gap-2 transition-colors"
+        >
+          <Search className="w-4 h-4" aria-hidden="true" />
+          <span>TRA CỨU ĐƠN HÀNG</span>
         </Link>
       </div>
     </div>

@@ -1,15 +1,62 @@
+export type CurrencyCode = "VND" | "PHP" | "USD";
+export type LocaleCode = "vi" | "en";
+
+export const VND_PER_USD = 25_000;
+export const VND_PER_PHP = 440;
+
 /**
  * Format số tiền sang định dạng chuẩn Việt Nam: 1.030.000₫
  */
 export function formatVND(amount: number | null | undefined): string {
   const safeValue =
-    typeof amount === "number" && Number.isFinite(amount) ? Math.round(amount) : 0;
+    typeof amount === "number" && Number.isFinite(amount)
+      ? Math.max(0, Math.round(amount))
+      : 0;
   const formatted = new Intl.NumberFormat("vi-VN").format(safeValue);
   return `${formatted}₫`;
 }
 
+export function convertFromVnd(
+  amountVnd: number,
+  currency: CurrencyCode = "VND"
+): number {
+  if (currency === "VND") return Math.round(amountVnd);
+  if (currency === "PHP") {
+    return Math.round((amountVnd / VND_PER_PHP) * 100) / 100;
+  }
+  return Math.round((amountVnd / VND_PER_USD) * 100) / 100;
+}
+
+export function formatPriceByCurrency(
+  amountVnd: number | null | undefined,
+  currency: CurrencyCode = "VND"
+): string {
+  const safe =
+    typeof amountVnd === "number" && Number.isFinite(amountVnd)
+      ? Math.max(0, amountVnd)
+      : 0;
+  if (currency === "USD") {
+    const usd = convertFromVnd(safe, "USD");
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: usd % 1 === 0 ? 0 : 2,
+      maximumFractionDigits: 2,
+    }).format(usd);
+  }
+  if (currency === "PHP") {
+    const php = convertFromVnd(safe, "PHP");
+    const formatted = new Intl.NumberFormat("en-US", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(Math.round(php));
+    return `₱${formatted}`;
+  }
+  return formatVND(safe);
+}
+
 /**
- * Tính phần trăm giảm giá (làm tròn xuống/gần nhất, trả về 0 nếu không giảm).
+ * Tính phần trăm giảm giá (làm tròn gần nhất, trả về 0 nếu không giảm).
  */
 export function calcDiscountPercent(
   price: number,
@@ -19,6 +66,27 @@ export function calcDiscountPercent(
     return 0;
   }
   return Math.round(((compareAtPrice - price) / compareAtPrice) * 100);
+}
+
+/**
+ * Bỏ dấu tiếng Việt và chuẩn hóa chữ thường để tìm kiếm / tạo slug.
+ */
+export function stripVietnameseDiacritics(input: string | null | undefined): string {
+  return String(input || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+export function slugifyVi(input: string | null | undefined): string {
+  return stripVietnameseDiacritics(input)
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/[\s_-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
 
 /**
@@ -54,15 +122,20 @@ export function isValidPhoneVN(input: string | null | undefined): boolean {
 }
 
 /**
- * Chuẩn hóa URL ảnh từ Backend (hỗ trợ Cloudinary https://... và /uploads/... trên server).
- * Nếu không có ảnh hoặc là ảnh placeholder tĩnh /images/..., trả về chuỗi rỗng để UI hiển thị icon thay thế.
+ * Chuẩn hóa URL ảnh từ Backend (hỗ trợ Cloudinary https://..., /uploads/..., và ảnh mock nội bộ /images/mock/...).
  */
-export function resolveMediaUrl(url: string | null | undefined, fallback = ""): string {
+export function resolveMediaUrl(
+  url: string | null | undefined,
+  fallback = ""
+): string {
   const raw = String(url || "").trim();
-  if (!raw || raw.startsWith("/images/")) return fallback;
+  if (!raw) return fallback;
+  if (raw.startsWith("/images/mock/")) return raw;
+  if (raw.startsWith("/images/")) return fallback;
   if (/^https?:\/\//i.test(raw) || raw.startsWith("data:")) return raw;
   if (raw.startsWith("/uploads/")) {
-    const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1";
+    const apiBase =
+      process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1";
     const origin = apiBase.replace(/\/api\/v1\/?$/, "");
     return `${origin}${raw}`;
   }

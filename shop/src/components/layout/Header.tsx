@@ -1,153 +1,321 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import Image from "next/image";
+import { usePathname, useRouter } from "next/navigation";
 import {
   ChevronDown,
   ChevronRight,
   Menu,
-  Phone,
   Search,
-  ShoppingBag,
+  ShoppingCart,
   User,
   X,
 } from "lucide-react";
 import { useCartStore } from "@/store/cartStore";
-import { formatVND, resolveMediaUrl } from "@/lib/format";
+import { useCurrencyStore } from "@/store/currencyStore";
+import {
+  formatPriceByCurrency,
+  resolveMediaUrl,
+  type CurrencyCode,
+} from "@/lib/format";
+import { getLocaleFromPath, localizeHref, STORE_I18N } from "@/lib/i18n";
 import type { SiteSettingsData } from "@/lib/storefront";
+import type {
+  ArticleSummary,
+  MenuNode,
+  ProductListItem,
+} from "@/types/storefront";
 
-interface NavSubItem {
-  label: string;
-  href: string;
-  badge?: "HOT" | "MỚI";
-}
+const BRANDS_A_K = [
+  { label: "CRBN", href: "/vot-pickleball-crbn" },
+  { label: "Facolos", href: "/vot-pickleball-facolos" },
+  { label: "Franklin", href: "/vot-pickleball-franklin" },
+  { label: "Gearbox", href: "/vot-pickleball-gearbox" },
+  {
+    label: "Honolulu",
+    href: "/danh-muc-san-pham/vot-pickleball/vot-pickleball-honolulu",
+  },
+  { label: "Joola", href: "/vot-pickleball-joola" },
+  { label: "Kaitashi", href: "/vot-pickleball-kaitashi" },
+  { label: "Kaiwin", href: "/vot-pickleball-kaiwin" },
+  { label: "Kamito", href: "/vot-pickleball-kamito" },
+  { label: "KBS", href: "/vot-pickleball-kbs" },
+];
 
-interface NavGroup {
-  label: string;
-  href: string;
-  subcategories?: NavSubItem[];
-  brands?: NavSubItem[];
-  promo?: {
-    title: string;
-    subtitle: string;
-    href: string;
-  };
-}
-
-const NAV_ITEMS: NavGroup[] = [
+const BRANDS_L_Z = [
+  { label: "Loco", href: "/vot-pickleball-loco" },
+  { label: "Luzz", href: "/vot-pickleball-luzz" },
   {
-    label: "Vợt Pickleball",
-    href: "/danh-muc/vot-pickleball",
-    subcategories: [
-      { label: "Vợt Carbon T700", href: "/danh-muc/vot-carbon-t700", badge: "HOT" },
-      { label: "Vợt cho người mới", href: "/danh-muc/vot-nguoi-moi" },
-      { label: "Vợt thi đấu chuyên nghiệp", href: "/danh-muc/vot-chuyen-nghiep" },
-      { label: "Bóng Pickleball thi đấu", href: "/danh-muc/bong-pickleball" },
-    ],
-    brands: [
-      { label: "JOOLA", href: "/thuong-hieu/joola", badge: "HOT" },
-      { label: "Selkirk", href: "/thuong-hieu/selkirk" },
-      { label: "CRBN", href: "/thuong-hieu/crbn" },
-      { label: "Six Zero", href: "/thuong-hieu/six-zero", badge: "MỚI" },
-    ],
-    promo: {
-      title: "Bộ sưu tập Vợt 2026",
-      subtitle: "Tặng kèm quấn cán chính hãng & giảm thêm 5% khi mua từ 2 cây.",
-      href: "/danh-muc/vot-pickleball",
-    },
+    label: "Proton",
+    href: "/danh-muc-san-pham/vot-pickleball/vot-pickleball-proton",
   },
+  { label: "RPM", href: "/vot-pickleball-rpm" },
+  { label: "Selkirk", href: "/vot-pickleball-selkirk" },
   {
-    label: "Giày thể thao",
-    href: "/danh-muc/giay-the-thao",
-    subcategories: [
-      { label: "Giày Pickleball & Tennis", href: "/danh-muc/giay-pickleball", badge: "HOT" },
-      { label: "Giày Cầu lông", href: "/danh-muc/giay-cau-long" },
-      { label: "Vớ thể thao chuyên dụng", href: "/danh-muc/vo-the-thao" },
-    ],
-    brands: [
-      { label: "ASICS", href: "/thuong-hieu/asics" },
-      { label: "Mizuno", href: "/thuong-hieu/mizuno" },
-      { label: "Yonex", href: "/thuong-hieu/yonex" },
-    ],
-    promo: {
-      title: "Giày Court bám sân tối đa",
-      subtitle: "Hỗ trợ đổi size miễn phí trong 7 ngày tại 3 showroom.",
-      href: "/danh-muc/giay-the-thao",
-    },
+    label: "Six Zero",
+    href: "/danh-muc-san-pham/vot-pickleball/vot-pickleball-six-zero",
   },
+  { label: "Soxter", href: "/vot-pickleball-soxter" },
+  { label: "Sypik", href: "/vot-pickleball-sypik" },
   {
-    label: "Thời trang",
-    href: "/danh-muc/thoi-trang",
-    subcategories: [
-      { label: "Áo thể thao nam", href: "/danh-muc/ao-nam" },
-      { label: "Áo & Váy thể thao nữ", href: "/danh-muc/thoi-trang-nu", badge: "MỚI" },
-      { label: "Quần short thi đấu", href: "/danh-muc/quan-short" },
-    ],
-    brands: [
-      { label: "11 Sport Pro", href: "/thuong-hieu/11-sport" },
-      { label: "Kamito", href: "/thuong-hieu/kamito" },
-    ],
+    label: "Thunder",
+    href: "/danh-muc-san-pham/vot-pickleball/vot-pickleball-thunder",
   },
+  { label: "Vole", href: "/vot-pickleball-vole" },
+  { label: "Wika", href: "/vot-pickleball-wika" },
   {
-    label: "Balo & Túi",
-    href: "/danh-muc/balo-tui",
-    subcategories: [
-      { label: "Balo đựng vợt Pickleball", href: "/danh-muc/balo-vot" },
-      { label: "Túi thể thao du lịch", href: "/danh-muc/tui-the-thao" },
-    ],
-  },
-  {
-    label: "Phụ kiện",
-    href: "/danh-muc/phu-kien",
-    subcategories: [
-      { label: "Quấn cán vợt (Overgrip)", href: "/danh-muc/quan-can" },
-      { label: "Bảo vệ viền vợt & Tẩy mặt vợt", href: "/danh-muc/bao-ve-vot" },
-      { label: "Nón & Băng trán thể thao", href: "/danh-muc/non-bang-tran" },
-    ],
-  },
-  {
-    label: "Tin tức",
-    href: "/tin-tuc",
+    label: "Zocker",
+    href: "/danh-muc-san-pham/vot-pickleball/vot-pickleball-zocker",
   },
 ];
 
-export function Header({ settings }: { settings?: SiteSettingsData | null }) {
+interface NavItem {
+  label: string;
+  href: string;
+  isHighlightedMint?: boolean;
+  isMegaBrands?: boolean;
+  children?: Array<{ label: string; href: string }>;
+}
+
+function VietnamFlagSvg({
+  sizeClass = "w-full h-full",
+}: {
+  sizeClass?: string;
+}) {
+  return (
+    <svg viewBox="0 0 24 24" className={`${sizeClass} block`} aria-hidden="true">
+      <circle cx="12" cy="12" r="12" fill="#DA251D" />
+      <polygon
+        points="12,5.5 13.6,10.2 18.5,10.2 14.5,13.1 16.0,17.8 12,14.9 8.0,17.8 9.5,13.1 5.5,10.2 10.4,10.2"
+        fill="#FFCD00"
+      />
+    </svg>
+  );
+}
+
+function UsFlagSvg({ sizeClass = "w-full h-full" }: { sizeClass?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={`${sizeClass} block`} aria-hidden="true">
+      <circle cx="12" cy="12" r="12" fill="#FFFFFF" />
+      <path
+        d="M0 3.5h24v2H0zm0 4h24v2H0zm0 4h24v2H0zm0 4h24v2H0zm0 4h24v2H0z"
+        fill="#B80411"
+      />
+      <rect width="12" height="12" fill="#1B4F9C" />
+      <circle cx="3.5" cy="3.5" r="1" fill="#FFFFFF" />
+      <circle cx="7.5" cy="3.5" r="1" fill="#FFFFFF" />
+      <circle cx="5.5" cy="6.2" r="1" fill="#FFFFFF" />
+      <circle cx="3.5" cy="9" r="1" fill="#FFFFFF" />
+      <circle cx="7.5" cy="9" r="1" fill="#FFFFFF" />
+    </svg>
+  );
+}
+
+function PhpFlagSvg({ sizeClass = "w-full h-full" }: { sizeClass?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={`${sizeClass} block`} aria-hidden="true">
+      <circle cx="12" cy="12" r="12" fill="#CE1126" />
+      <path d="M0 0h24v12H0z" fill="#0038A8" />
+      <polygon points="0,0 12,12 0,24" fill="#FFFFFF" />
+      <circle cx="4.5" cy="12" r="2.2" fill="#FCD116" />
+    </svg>
+  );
+}
+
+const CURRENCY_OPTIONS: Array<{
+  code: CurrencyCode;
+  label: string;
+}> = [
+  { code: "VND", label: "VND, ₫" },
+  { code: "PHP", label: "PHP, ₱" },
+  { code: "USD", label: "USD, $" },
+];
+
+function CurrencyFlag({ code }: { code: CurrencyCode }) {
+  if (code === "PHP") return <PhpFlagSvg />;
+  if (code === "USD") return <UsFlagSvg />;
+  return <VietnamFlagSvg />;
+}
+
+/**
+ * Global Header 1:1 with live mipik.vn (Desktop 70px & Mobile 70px).
+ * - Dark forest green #224e40, container max 1290px
+ * - Desktop: Wordmark | 7 nav items | Search box (46x46), Cart, VI/EN circular flags, 3-currency dropdown
+ * - Supports dynamic BE `/public/menu` items (falling back cleanly to localized STORE_NAV)
+ */
+export function Header({
+  settings,
+  menuItems,
+}: {
+  settings?: SiteSettingsData | null;
+  menuItems?: MenuNode[];
+}) {
   const router = useRouter();
-  const siteName = settings?.siteName || "11 SPORT";
-  const hotline = settings?.hotline || "0900 000 011";
-  const hotlineDigits = hotline.replace(/\D/g, "") || "0900000011";
-  const freeShipThreshold = settings?.shipping?.freeShipThreshold ?? 500000;
-  const topBarText =
-    settings?.topBarText ||
-    (freeShipThreshold > 0
-      ? `Freeship toàn quốc đơn từ ${formatVND(freeShipThreshold)} • Chính hãng 100%`
-      : "Freeship toàn quốc • Chính hãng 100%");
-  const logoSrc = resolveMediaUrl(settings?.logoUrl);
+  const pathname = usePathname() || "/";
+  const locale = getLocaleFromPath(pathname);
+  const isEn = locale === "en";
+  const t = STORE_I18N[locale].nav;
+
+  const rawBrand = settings?.siteName || "11Sport";
+  const wordmark = rawBrand.toLowerCase();
   const items = useCartStore((s) => s.items);
   const openDrawer = useCartStore((s) => s.openDrawer);
+  const currency = useCurrencyStore((s) => s.currency);
+  const setCurrency = useCurrencyStore((s) => s.setCurrency);
 
   const [mounted, setMounted] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [expandedMobileGroup, setExpandedMobileGroup] = useState<string | null>(null);
+  const [expandedMobileGroup, setExpandedMobileGroup] = useState<string | null>(
+    null
+  );
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [currencyOpen, setCurrencyOpen] = useState(false);
+  const [searchResults, setSearchResults] = useState<{
+    products: ProductListItem[];
+    articles: ArticleSummary[];
+  }>({ products: [], articles: [] });
 
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const currencyDropdownRef = useRef<HTMLDivElement>(null);
+
+  const activeCurrency: CurrencyCode = mounted ? currency : "VND";
+
+  const cleanBasePath = pathname.replace(/^\/en(?=\/|$)/, "") || "/";
+  const viTarget = cleanBasePath;
+  const enTarget = cleanBasePath === "/" ? "/en" : `/en${cleanBasePath}`;
+
+  const navItems = useMemo<NavItem[]>(() => {
+    if (!isEn && menuItems && menuItems.length > 0) {
+      return [...menuItems]
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+        .map((m) => ({
+          label: m.label,
+          href: localizeHref(m.url, locale),
+          isHighlightedMint:
+            Boolean(m.badge) ||
+            m.url.includes("thoi-trang") ||
+            m.url.includes("fashion"),
+          isMegaBrands:
+            m.url === "/vot-pickleball" || (m.children?.length ?? 0) > 8,
+          children: (m.children ?? [])
+            .sort((a, b) => a.sortOrder - b.sortOrder)
+            .map((c) => ({
+              label: c.label,
+              href: localizeHref(c.url, locale),
+            })),
+        }));
+    }
+
+    const defaults: NavItem[] = [
+      {
+        label: t.paddles,
+        href: localizeHref("/vot-pickleball", locale),
+        isMegaBrands: true,
+      },
+      {
+        label: t.fashion,
+        href: localizeHref("/danh-muc-san-pham/thoi-trang", locale),
+        isHighlightedMint: true,
+        children: [
+          {
+            label: t.subCombo,
+            href: localizeHref("/danh-muc-san-pham/thoi-trang/combo-11sport", locale),
+          },
+          {
+            label: t.subShirt,
+            href: localizeHref("/danh-muc-san-pham/thoi-trang/ao-11sport", locale),
+          },
+          {
+            label: t.subCap,
+            href: localizeHref("/danh-muc-san-pham/thoi-trang/non-11sport", locale),
+          },
+          {
+            label: t.subBag,
+            href: localizeHref("/danh-muc-san-pham/thoi-trang/tui-11sport", locale),
+          },
+          {
+            label: t.subSock,
+            href: localizeHref("/danh-muc-san-pham/thoi-trang/tat-11sport", locale),
+          },
+        ],
+      },
+      {
+        label: t.shoes,
+        href: localizeHref("/giay-pickleball", locale),
+        children: [
+          { label: t.subShoesAsics, href: localizeHref("/giay-asics", locale) },
+          {
+            label: t.subShoesSkechers,
+            href: localizeHref("/giay-skechers", locale),
+          },
+          {
+            label: t.subShoesOn,
+            href: localizeHref(
+              "/danh-muc-san-pham/giay-pickleball/giay-on",
+              locale
+            ),
+          },
+          {
+            label: t.subShoesKaitashi,
+            href: localizeHref(
+              "/danh-muc-san-pham/giay-pickleball/giay-kaitashi",
+              locale
+            ),
+          },
+        ],
+      },
+      {
+        label: t.bags,
+        href: localizeHref("/balo-tui-pickleball", locale),
+      },
+      {
+        label: t.accessories,
+        href: localizeHref("/phu-kien-pickleball", locale),
+      },
+      {
+        label: t.blog,
+        href: localizeHref("/tin-tuc", locale),
+        children: [
+          {
+            label: t.subBlogReview,
+            href: localizeHref("/tin-tuc/review-danh-gia", locale),
+          },
+          {
+            label: t.subBlogKnowledge,
+            href: localizeHref("/tin-tuc/kien-thuc-pickleball", locale),
+          },
+          {
+            label: t.subBlogAdvice,
+            href: localizeHref("/tin-tuc/tu-van-dung-cu-pickleball", locale),
+          },
+          {
+            label: t.subBlogCommunity,
+            href: localizeHref("/tin-tuc/tin-tuc-cong-dong", locale),
+          },
+        ],
+      },
+      {
+        label: t.contact,
+        href: localizeHref("/lien-he", locale),
+      },
+    ];
+
+    return defaults;
+  }, [isEn, locale, menuItems, t]);
 
   useEffect(() => {
     setMounted(true);
+    const onScroll = () => setScrolled(window.scrollY > 24);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedQuery(searchQuery.trim());
-    }, 250);
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
 
   useEffect(() => {
     if (searchOpen) {
@@ -156,15 +324,53 @@ export function Header({ settings }: { settings?: SiteSettingsData | null }) {
   }, [searchOpen]);
 
   useEffect(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) {
+      setSearchResults({ products: [], articles: [] });
+      return;
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `/api/search-preview?q=${encodeURIComponent(q)}`
+        );
+        if (res.ok) {
+          const json = await res.json();
+          setSearchResults({
+            products: json.products ?? [],
+            articles: json.articles ?? [],
+          });
+        }
+      } catch {
+        // Ignore preview error
+      }
+    }, 180);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         setActiveMenu(null);
         setMobileMenuOpen(false);
         setSearchOpen(false);
+        setCurrencyOpen(false);
+      }
+    };
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        currencyDropdownRef.current &&
+        !currencyDropdownRef.current.contains(e.target as Node)
+      ) {
+        setCurrencyOpen(false);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
   }, []);
 
   const totalItems = mounted
@@ -190,420 +396,533 @@ export function Header({ settings }: { settings?: SiteSettingsData | null }) {
     const q = searchQuery.trim();
     if (!q) return;
     setSearchOpen(false);
-    router.push(`/tim-kiem?q=${encodeURIComponent(q)}`);
+    setMobileMenuOpen(false);
+    router.push(
+      localizeHref(`/tim-kiem?q=${encodeURIComponent(q)}`, locale)
+    );
   };
 
-  const activeGroup = NAV_ITEMS.find(
-    (item) => item.label === activeMenu && (item.subcategories?.length || item.brands?.length)
-  );
+  const currentCurrencyMeta =
+    CURRENCY_OPTIONS.find((opt) => opt.code === activeCurrency) ||
+    CURRENCY_OPTIONS[0]!;
 
   return (
     <>
-      {/* Top Announcement Bar */}
-      <div className="bg-brand-primary-hover text-white text-xs h-8 flex items-center">
-        <div className="max-w-7xl w-full mx-auto px-4 lg:px-6 flex items-center justify-between gap-4">
-          <p className="truncate font-medium">{topBarText}</p>
-          <a
-            href={`tel:${hotlineDigits}`}
-            className="hidden sm:inline-flex items-center gap-1.5 font-mono font-semibold hover:text-accent-volt transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-volt rounded"
-          >
-            <Phone className="w-3.5 h-3.5" aria-hidden="true" />
-            <span>Hotline: {hotline}</span>
-          </a>
-        </div>
-      </div>
-
-      {/* Main Sticky Header */}
       <header
-        className="sticky top-0 z-40 bg-white border-b border-surface-border"
-        onMouseLeave={handleMouseLeave}
+        className={`sticky top-0 z-40 transition-colors duration-200 text-white ${
+          scrolled ? "bg-store-forest-dark shadow-md" : "bg-store-forest"
+        }`}
       >
-        <div className="max-w-7xl mx-auto px-4 lg:px-6 h-[60px] lg:h-[72px] flex items-center justify-between gap-2">
-          {/* Mobile Hamburger */}
-          <button
-            type="button"
-            onClick={() => setMobileMenuOpen(true)}
-            aria-label="Mở menu điều hướng"
-            aria-expanded={mobileMenuOpen}
-            className="lg:hidden inline-flex items-center justify-center w-11 h-11 rounded-lg text-ink-primary hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
-          >
-            <Menu className="w-6 h-6" aria-hidden="true" />
-          </button>
+        <div className="max-w-container mx-auto px-3.5 lg:px-5 h-[70px] flex items-center justify-between gap-3">
+          {/* Mobile Left: Hamburger + Search bordered icon buttons */}
+          <div className="flex items-center gap-2 lg:hidden">
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(true)}
+              aria-label="Mở menu danh mục"
+              className="w-9 h-8 rounded-md border border-white/30 bg-white/10 flex items-center justify-center text-white hover:bg-white/20"
+            >
+              <Menu className="w-[18px] h-[18px]" aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setSearchOpen(true)}
+              aria-label="Mở tìm kiếm"
+              className="w-9 h-8 rounded-md border border-white/30 bg-white/10 flex items-center justify-center text-white hover:bg-white/20"
+            >
+              <Search className="w-[17px] h-[17px]" aria-hidden="true" />
+            </button>
+          </div>
 
-          {/* Logo */}
+          {/* Brand Wordmark (left on desktop, centered on mobile) */}
           <Link
-            href="/"
-            className="inline-flex items-center gap-2 shrink-0 min-h-[44px] px-1 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+            href={isEn ? "/en" : "/"}
+            className="text-[26px] lg:text-[28px] font-extrabold tracking-tight text-white shrink-0 leading-none"
           >
-            {logoSrc ? (
-              <img
-                src={logoSrc}
-                alt={siteName}
-                className="h-9 w-auto max-w-[140px] object-contain"
-              />
-            ) : (
-              <span className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-brand-primary text-white font-mono font-bold text-sm tracking-tight">
-                11
-              </span>
-            )}
-            <span className="font-extrabold text-lg lg:text-xl tracking-tight text-ink-primary">
-              {siteName}
-            </span>
+            {wordmark}
           </Link>
 
-          {/* Desktop Navigation */}
-          <nav aria-label="Danh mục chính" className="hidden lg:flex items-center gap-1">
-            {NAV_ITEMS.map((item) => {
+          {/* Desktop 7-Item Navigation */}
+          <nav
+            aria-label={isEn ? "Main navigation" : "Danh mục chính"}
+            className="hidden lg:flex items-center gap-3.5 xl:gap-5 shrink-0"
+          >
+            {navItems.map((item) => {
               const hasDropdown = Boolean(
-                item.subcategories?.length || item.brands?.length
+                item.isMegaBrands || (item.children && item.children.length > 0)
               );
               const isOpen = activeMenu === item.label;
+
               return (
                 <div
                   key={item.label}
-                  onMouseEnter={() => handleMouseEnter(item.label, hasDropdown)}
+                  className="relative shrink-0"
+                  onMouseEnter={() =>
+                    handleMouseEnter(item.label, hasDropdown)
+                  }
+                  onMouseLeave={handleMouseLeave}
                 >
-                  <Link
-                    href={item.href}
-                    className={`inline-flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-semibold transition-colors min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary ${
-                      isOpen
-                        ? "text-brand-primary bg-brand-tint"
-                        : "text-ink-primary hover:text-brand-primary hover:bg-surface-subtle"
-                    }`}
-                  >
-                    <span>{item.label}</span>
-                    {hasDropdown && (
-                      <ChevronDown
-                        className={`w-4 h-4 transition-transform ${
-                          isOpen ? "rotate-180" : ""
-                        }`}
-                        aria-hidden="true"
-                      />
-                    )}
-                  </Link>
+                  {item.isHighlightedMint ? (
+                    <Link
+                      href={item.href}
+                      className="mipik-mint-pill inline-flex items-center gap-1.5 h-8 px-[13px] rounded-full bg-store-mint-bg border border-store-mint-border text-store-mint-ink text-xs font-bold uppercase tracking-wide whitespace-nowrap shrink-0"
+                    >
+                      <span>{item.label}</span>
+                      {hasDropdown && (
+                        <ChevronDown
+                          className="w-3 h-3 text-store-mint-ink shrink-0"
+                          aria-hidden="true"
+                        />
+                      )}
+                    </Link>
+                  ) : (
+                    <Link
+                      href={item.href}
+                      className="inline-flex items-center gap-1 py-2 text-[13px] font-medium uppercase tracking-wide text-white/95 hover:text-store-cream transition-colors whitespace-nowrap shrink-0"
+                    >
+                      <span>{item.label}</span>
+                      {hasDropdown && (
+                        <ChevronDown
+                          className="w-3 h-3 opacity-80 shrink-0"
+                          aria-hidden="true"
+                        />
+                      )}
+                    </Link>
+                  )}
+
+                  {/* MegaMenu 2-column (dynamic BE menu children when present, else 20 brands A-K / L-Z) */}
+                  {isOpen && item.isMegaBrands && (
+                    <div className="absolute left-0 top-full pt-2 z-50">
+                      {item.children && item.children.length > 0 ? (
+                        <div className="w-[460px] rounded-md bg-white border border-store-border-sage shadow-drawer p-5 grid grid-cols-2 gap-6 text-ink-primary">
+                          {[
+                            item.children.slice(
+                              0,
+                              Math.ceil(item.children.length / 2)
+                            ),
+                            item.children.slice(
+                              Math.ceil(item.children.length / 2)
+                            ),
+                          ].map((col, colIdx) => (
+                            <ul key={colIdx} className="space-y-1">
+                              {col.map((child) => (
+                                <li key={child.href}>
+                                  <Link
+                                    href={child.href}
+                                    onClick={() => setActiveMenu(null)}
+                                    className="block py-1 text-sm font-medium text-ink-secondary hover:text-store-forest hover:translate-x-0.5 transition-all"
+                                  >
+                                    {child.label}
+                                  </Link>
+                                </li>
+                              ))}
+                            </ul>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="w-[460px] rounded-md bg-white border border-store-border-sage shadow-drawer p-5 grid grid-cols-2 gap-6 text-ink-primary">
+                          <div>
+                            <p className="text-xs font-extrabold uppercase tracking-wider text-store-forest border-b border-store-border-sage pb-2 mb-2">
+                              A–K
+                            </p>
+                            <ul className="space-y-1">
+                              {BRANDS_A_K.map((b) => (
+                                <li key={b.href}>
+                                  <Link
+                                    href={localizeHref(b.href, locale)}
+                                    onClick={() => setActiveMenu(null)}
+                                    className="block py-1 text-sm font-medium text-ink-secondary hover:text-store-forest hover:translate-x-0.5 transition-all"
+                                  >
+                                    {t.megaPaddlePrefix} {b.label}
+                                  </Link>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                          <div>
+                            <p className="text-xs font-extrabold uppercase tracking-wider text-store-forest border-b border-store-border-sage pb-2 mb-2">
+                              L–Z
+                            </p>
+                            <ul className="space-y-1">
+                              {BRANDS_L_Z.map((b) => (
+                                <li key={b.href}>
+                                  <Link
+                                    href={localizeHref(b.href, locale)}
+                                    onClick={() => setActiveMenu(null)}
+                                    className="block py-1 text-sm font-medium text-ink-secondary hover:text-store-forest hover:translate-x-0.5 transition-all"
+                                  >
+                                    {t.megaPaddlePrefix} {b.label}
+                                  </Link>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Single-column Submenu Dropdown */}
+                  {isOpen && !item.isMegaBrands && item.children && (
+                    <div className="absolute left-0 top-full pt-2 z-50">
+                      <ul className="w-60 rounded-md bg-white border border-store-border-sage shadow-drawer py-1.5 text-ink-primary">
+                        {item.children.map((child) => (
+                          <li key={child.href}>
+                            <Link
+                              href={child.href}
+                              onClick={() => setActiveMenu(null)}
+                              className="block px-4 py-2 text-sm font-medium text-ink-secondary hover:bg-store-surface-sage hover:text-store-forest"
+                            >
+                              {child.label}
+                            </Link>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
               );
             })}
           </nav>
 
-          {/* Right Actions */}
-          <div className="flex items-center gap-1">
+          {/* Right Utility Actions (Search box -> Cart -> VI flag -> EN flag -> 3-Currency dropdown) */}
+          <div className="flex items-center gap-2.5 lg:gap-3.5 shrink-0">
             <button
               type="button"
               onClick={() => setSearchOpen(true)}
-              aria-label="Tìm kiếm sản phẩm"
-              className="inline-flex items-center justify-center w-11 h-11 rounded-lg text-ink-primary hover:bg-surface-muted hover:text-brand-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+              aria-label={isEn ? "Search products" : "Tìm kiếm sản phẩm"}
+              className="hidden lg:inline-flex w-[46px] h-[46px] rounded-[10px] border border-white/25 bg-transparent hover:bg-white/10 items-center justify-center text-white transition-colors"
             >
-              <Search className="w-5 h-5" aria-hidden="true" />
+              <Search className="w-[22px] h-[22px]" aria-hidden="true" />
             </button>
-
-            <Link
-              href="/tai-khoan"
-              aria-label="Tài khoản khách hàng"
-              className="hidden sm:inline-flex items-center justify-center w-11 h-11 rounded-lg text-ink-primary hover:bg-surface-muted hover:text-brand-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
-            >
-              <User className="w-5 h-5" aria-hidden="true" />
-            </Link>
 
             <button
               type="button"
               onClick={openDrawer}
-              aria-label={`Mở giỏ hàng (${totalItems} sản phẩm)`}
-              className="relative inline-flex items-center justify-center w-11 h-11 rounded-lg text-ink-primary hover:bg-surface-muted hover:text-brand-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+              aria-label={
+                isEn ? `Cart (${totalItems})` : `Giỏ hàng (${totalItems} sản phẩm)`
+              }
+              className="relative inline-flex items-center justify-center w-8 h-10 text-white hover:opacity-85 transition-opacity"
             >
-              <ShoppingBag className="w-5 h-5" aria-hidden="true" />
+              <ShoppingCart className="w-[22px] h-[22px]" aria-hidden="true" />
               {totalItems > 0 && (
-                <span className="absolute top-1.5 right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-accent-hot text-white font-mono text-[11px] font-bold flex items-center justify-center leading-none">
-                  {totalItems > 99 ? "99+" : totalItems}
+                <span className="absolute -top-0.5 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-store-mint-bg text-store-mint-ink font-mono text-[10px] font-extrabold flex items-center justify-center">
+                  {totalItems}
                 </span>
               )}
             </button>
-          </div>
-        </div>
 
-        {/* Desktop Mega Menu Panel */}
-        {activeGroup && (
-          <div
-            onMouseEnter={() => handleMouseEnter(activeGroup.label, true)}
-            className="hidden lg:block absolute inset-x-0 top-full bg-white border-b border-surface-border shadow-drawer z-40"
-          >
-            <div className="max-w-7xl mx-auto px-6 py-6 grid grid-cols-12 gap-6">
-              {activeGroup.subcategories && (
-                <div className="col-span-4">
-                  <p className="text-xs font-bold uppercase tracking-wider text-ink-muted mb-3">
-                    Danh mục {activeGroup.label}
-                  </p>
-                  <ul className="space-y-1.5">
-                    {activeGroup.subcategories.map((sub) => (
-                      <li key={sub.href}>
-                        <Link
-                          href={sub.href}
-                          onClick={() => setActiveMenu(null)}
-                          className="inline-flex items-center gap-2 py-1.5 text-sm font-medium text-ink-secondary hover:text-brand-primary transition-colors"
-                        >
-                          <span>{sub.label}</span>
-                          {sub.badge && (
-                            <span
-                              className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                                sub.badge === "HOT"
-                                  ? "bg-accent-hot text-white"
-                                  : "bg-accent-volt text-ink-primary"
-                              }`}
-                            >
-                              {sub.badge}
-                            </span>
-                          )}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {activeGroup.brands && (
-                <div className="col-span-4">
-                  <p className="text-xs font-bold uppercase tracking-wider text-ink-muted mb-3">
-                    Thương hiệu nổi bật
-                  </p>
-                  <ul className="space-y-1.5">
-                    {activeGroup.brands.map((brand) => (
-                      <li key={brand.href}>
-                        <Link
-                          href={brand.href}
-                          onClick={() => setActiveMenu(null)}
-                          className="inline-flex items-center gap-2 py-1.5 text-sm font-medium text-ink-secondary hover:text-brand-primary transition-colors"
-                        >
-                          <span>{brand.label}</span>
-                          {brand.badge && (
-                            <span
-                              className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                                brand.badge === "HOT"
-                                  ? "bg-accent-hot text-white"
-                                  : "bg-accent-volt text-ink-primary"
-                              }`}
-                            >
-                              {brand.badge}
-                            </span>
-                          )}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {activeGroup.promo && (
-                <div className="col-span-4">
-                  <div className="rounded-xl bg-brand-tint border border-brand-border p-4 h-full flex flex-col justify-between">
-                    <div>
-                      <span className="inline-block px-2 py-0.5 rounded bg-brand-primary text-white text-[11px] font-bold mb-2">
-                        Ưu đãi 11 Sport
-                      </span>
-                      <h3 className="text-base font-bold text-ink-primary">
-                        {activeGroup.promo.title}
-                      </h3>
-                      <p className="text-sm text-ink-secondary mt-1">
-                        {activeGroup.promo.subtitle}
-                      </p>
-                    </div>
-                    <Link
-                      href={activeGroup.promo.href}
-                      onClick={() => setActiveMenu(null)}
-                      className="inline-flex items-center gap-1 text-sm font-semibold text-brand-primary hover:text-brand-primary-hover mt-4"
-                    >
-                      <span>Khám phá ngay</span>
-                      <ChevronRight className="w-4 h-4" aria-hidden="true" />
-                    </Link>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </header>
-
-      {/* Mobile Navigation Drawer */}
-      {mobileMenuOpen && (
-        <div
-          className="fixed inset-0 z-50 lg:hidden flex"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Menu điều hướng di động"
-        >
-          <div
-            className="fixed inset-0 bg-ink-primary/50"
-            onClick={() => setMobileMenuOpen(false)}
-            aria-hidden="true"
-          />
-          <div className="relative w-[85vw] max-w-[360px] bg-white h-full shadow-drawer flex flex-col z-10">
-            <div className="flex items-center justify-between px-4 h-[60px] border-b border-surface-border">
-              <span className="font-extrabold text-lg text-ink-primary">
-                11 SPORT
-              </span>
-              <button
-                type="button"
-                onClick={() => setMobileMenuOpen(false)}
-                aria-label="Đóng menu"
-                className="inline-flex items-center justify-center w-11 h-11 rounded-lg text-ink-primary hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
-              >
-                <X className="w-5 h-5" aria-hidden="true" />
-              </button>
-            </div>
-
-            <nav className="flex-1 overflow-y-auto p-4 space-y-1">
-              {NAV_ITEMS.map((item) => {
-                const hasSub = Boolean(item.subcategories?.length);
-                const isExpanded = expandedMobileGroup === item.label;
-                return (
-                  <div
-                    key={item.label}
-                    className="border-b border-surface-border last:border-b-0 pb-1"
-                  >
-                    <div className="flex items-center justify-between">
-                      <Link
-                        href={item.href}
-                        onClick={() => setMobileMenuOpen(false)}
-                        className="flex-1 py-3 text-base font-semibold text-ink-primary min-h-[44px] flex items-center"
-                      >
-                        {item.label}
-                      </Link>
-                      {hasSub && (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setExpandedMobileGroup(isExpanded ? null : item.label)
-                          }
-                          aria-label={`Mở danh mục con ${item.label}`}
-                          aria-expanded={isExpanded}
-                          className="w-11 h-11 inline-flex items-center justify-center rounded-lg text-ink-secondary hover:bg-surface-muted"
-                        >
-                          <ChevronDown
-                            className={`w-5 h-5 transition-transform ${
-                              isExpanded ? "rotate-180" : ""
-                            }`}
-                            aria-hidden="true"
-                          />
-                        </button>
-                      )}
-                    </div>
-                    {hasSub && isExpanded && (
-                      <ul className="pl-3 pb-2 space-y-1">
-                        {item.subcategories?.map((sub) => (
-                          <li key={sub.href}>
-                            <Link
-                              href={sub.href}
-                              onClick={() => setMobileMenuOpen(false)}
-                              className="flex items-center gap-2 py-2.5 text-sm font-medium text-ink-secondary hover:text-brand-primary min-h-[44px]"
-                            >
-                              <span>{sub.label}</span>
-                            </Link>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                );
-              })}
-            </nav>
-
-            <div className="p-4 border-t border-surface-border bg-surface-subtle space-y-2">
+            <div className="flex items-center gap-2 lg:gap-3">
               <Link
-                href="/tai-khoan"
-                onClick={() => setMobileMenuOpen(false)}
-                className="w-full min-h-[44px] inline-flex items-center justify-center gap-2 rounded-lg border border-surface-border bg-white text-sm font-semibold text-ink-primary hover:bg-surface-muted"
+                href={viTarget}
+                aria-label="Tiếng Việt"
+                className={`w-5 h-5 lg:w-[26px] lg:h-[26px] rounded-full overflow-hidden flex items-center justify-center shrink-0 ring-1 ${
+                  !isEn
+                    ? "ring-white"
+                    : "ring-white/40 opacity-85 hover:opacity-100"
+                }`}
               >
-                <User className="w-4 h-4" aria-hidden="true" />
-                <span>Tài khoản của tôi</span>
+                <VietnamFlagSvg />
+              </Link>
+              <Link
+                href={enTarget}
+                aria-label="English"
+                className={`w-5 h-5 rounded-full overflow-hidden flex items-center justify-center shrink-0 ring-1 ${
+                  isEn
+                    ? "ring-white"
+                    : "ring-white/40 opacity-85 hover:opacity-100"
+                }`}
+              >
+                <UsFlagSvg />
               </Link>
             </div>
+
+            {/* White 3-Currency Dropdown Pill (Desktop only, matching live mipik.vn) */}
+            <div
+              ref={currencyDropdownRef}
+              className="relative hidden lg:block shrink-0"
+            >
+              <button
+                type="button"
+                onClick={() => setCurrencyOpen((o) => !o)}
+                aria-haspopup="listbox"
+                aria-expanded={currencyOpen}
+                aria-label="Chuyển đổi tiền tệ"
+                className="inline-flex items-center gap-1.5 h-6 px-2 rounded-full bg-white text-ink-primary text-[11px] font-bold shadow-sm whitespace-nowrap shrink-0 hover:bg-[#f4f7f5]"
+              >
+                <span className="w-4 h-4 rounded-full overflow-hidden flex items-center justify-center shrink-0">
+                  <CurrencyFlag code={activeCurrency} />
+                </span>
+                <span>{currentCurrencyMeta.label}</span>
+                <ChevronDown
+                  className="w-3 h-3 text-ink-muted"
+                  aria-hidden="true"
+                />
+              </button>
+
+              {currencyOpen && (
+                <ul
+                  role="listbox"
+                  aria-label="Chọn đơn vị tiền tệ"
+                  className="absolute right-0 top-full mt-1.5 w-28 rounded-md bg-white border border-store-border-sage shadow-drawer py-1 z-50"
+                >
+                  {CURRENCY_OPTIONS.map((opt) => {
+                    const selected = opt.code === activeCurrency;
+                    return (
+                      <li key={opt.code}>
+                        <button
+                          type="button"
+                          role="option"
+                          aria-selected={selected}
+                          onClick={() => {
+                            setCurrency(opt.code);
+                            setCurrencyOpen(false);
+                          }}
+                          className={`w-full px-2.5 py-1.5 flex items-center gap-2 text-left text-[11.5px] font-semibold transition-colors ${
+                            selected
+                              ? "bg-store-surface-sage text-store-forest font-bold"
+                              : "text-ink-primary hover:bg-[#f4f7f5]"
+                          }`}
+                        >
+                          <span className="w-4 h-4 rounded-full overflow-hidden shrink-0">
+                            <CurrencyFlag code={opt.code} />
+                          </span>
+                          <span>{opt.label}</span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
           </div>
         </div>
-      )}
+      </header>
 
-      {/* Live Search Lightbox */}
+      {/* Centered Search Lightbox Modal */}
       {searchOpen && (
         <div
-          className="fixed inset-0 z-50 bg-ink-primary/50 backdrop-blur-sm px-4 pt-12 sm:pt-16"
           role="dialog"
           aria-modal="true"
-          aria-label="Tìm kiếm sản phẩm và bài viết"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setSearchOpen(false);
-          }}
+          aria-label={isEn ? "Search products" : "Tìm kiếm sản phẩm"}
+          className="fixed inset-0 z-50 bg-black/65 backdrop-blur-xs flex items-start justify-center pt-20 px-4"
+          onClick={() => setSearchOpen(false)}
         >
-          <div className="max-w-3xl mx-auto bg-white rounded-2xl shadow-drawer overflow-hidden">
+          <div
+            className="w-full max-w-3xl rounded-lg bg-white border border-store-border-sage shadow-drawer p-4 sm:p-5 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
             <form
               onSubmit={handleSearchSubmit}
-              className="flex items-center gap-2 px-4 py-3 border-b border-surface-border"
+              className="flex items-center gap-2"
             >
-              <Search className="w-5 h-5 text-ink-muted shrink-0" aria-hidden="true" />
               <input
                 ref={searchInputRef}
                 type="search"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Tìm vợt Pickleball, giày Asics, thương hiệu Joola..."
-                className="flex-1 h-11 text-base text-ink-primary placeholder:text-ink-muted focus:outline-none"
-                aria-label="Từ khóa tìm kiếm"
+                placeholder={t.searchPlaceholder}
+                className="flex-1 h-12 px-4 rounded-md border border-store-border-sage text-base text-ink-primary focus:outline-none focus:border-store-forest"
               />
+              <button
+                type="submit"
+                aria-label={isEn ? "Submit search" : "Tìm kiếm"}
+                className="w-12 h-12 rounded-md bg-store-forest text-white flex items-center justify-center hover:bg-store-forest-hover transition-colors shrink-0"
+              >
+                <Search className="w-5 h-5" aria-hidden="true" />
+              </button>
               <button
                 type="button"
                 onClick={() => setSearchOpen(false)}
-                aria-label="Đóng tìm kiếm"
-                className="inline-flex items-center justify-center w-11 h-11 rounded-lg text-ink-secondary hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+                aria-label={isEn ? "Close search" : "Đóng tìm kiếm"}
+                className="w-12 h-12 rounded-md border border-store-border-sage flex items-center justify-center text-ink-secondary hover:bg-store-surface-sage shrink-0"
               >
                 <X className="w-5 h-5" aria-hidden="true" />
               </button>
             </form>
 
-            <div className="p-4 sm:p-6 space-y-4">
-              {!debouncedQuery ? (
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-ink-muted mb-2.5">
-                    Từ khóa phổ biến
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {[
-                      "Vợt Joola",
-                      "Giày Asics",
-                      "Vợt Carbon T700",
-                      "Bóng Pickleball",
-                      "Quấn cán",
-                    ].map((keyword) => (
-                      <button
-                        key={keyword}
-                        type="button"
-                        onClick={() => {
-                          setSearchOpen(false);
-                          router.push(`/tim-kiem?q=${encodeURIComponent(keyword)}`);
-                        }}
-                        className="min-h-[44px] px-3.5 rounded-lg bg-surface-subtle border border-surface-border text-sm font-medium text-ink-secondary hover:border-brand-primary hover:text-brand-primary transition-colors"
+            {searchQuery.trim() ? (
+              <div className="space-y-3 max-h-80 overflow-y-auto">
+                {searchResults.products.length > 0 && (
+                  <div className="divide-y divide-store-border-sage">
+                    {searchResults.products.map((p) => (
+                      <Link
+                        key={p._id}
+                        href={localizeHref(`/${p.slug}`, locale)}
+                        onClick={() => setSearchOpen(false)}
+                        className="flex items-center justify-between gap-3 py-2.5 px-2 hover:bg-store-surface-sage rounded"
                       >
-                        {keyword}
-                      </button>
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="relative w-10 h-10 rounded border border-store-border-card bg-white shrink-0 overflow-hidden">
+                            {resolveMediaUrl(p.thumbnailUrl) && (
+                              <Image
+                                src={resolveMediaUrl(p.thumbnailUrl)}
+                                alt={p.name}
+                                fill
+                                sizes="40px"
+                                className="object-contain p-0.5"
+                              />
+                            )}
+                          </div>
+                          <span className="text-sm font-medium text-ink-primary truncate">
+                            {p.name}
+                          </span>
+                        </div>
+                        <span className="text-sm font-bold text-store-forest shrink-0">
+                          {formatPriceByCurrency(
+                            p.sellingPrice,
+                            activeCurrency
+                          )}
+                        </span>
+                      </Link>
                     ))}
                   </div>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <p className="text-sm text-ink-secondary">
-                    Nhấn Enter để tìm kiếm kết quả cho{" "}
-                    <strong className="text-ink-primary">
-                      &ldquo;{debouncedQuery}&rdquo;
-                    </strong>
-                  </p>
-                  <Link
-                    href={`/tim-kiem?q=${encodeURIComponent(debouncedQuery)}`}
-                    onClick={() => setSearchOpen(false)}
-                    className="inline-flex items-center gap-1.5 min-h-[44px] px-4 rounded-lg bg-brand-primary hover:bg-brand-primary-hover text-white text-sm font-semibold transition-colors"
+                )}
+
+                <Link
+                  href={localizeHref(
+                    `/tim-kiem?q=${encodeURIComponent(searchQuery.trim())}`,
+                    locale
+                  )}
+                  onClick={() => setSearchOpen(false)}
+                  className="block text-center py-2.5 rounded bg-store-surface-sage text-xs font-bold text-store-forest hover:underline"
+                >
+                  {t.allResultsPrefix} &ldquo;{searchQuery.trim()}&rdquo; →
+                </Link>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      )}
+
+      {/* Mobile Navigation Drawer */}
+      {mobileMenuOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Menu danh mục"
+          className="fixed inset-0 z-50 bg-black/50 lg:hidden flex"
+          onClick={() => setMobileMenuOpen(false)}
+        >
+          <div
+            className="w-[300px] max-w-[85vw] h-full bg-white p-5 overflow-y-auto flex flex-col justify-between"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="space-y-4">
+              <div className="flex items-center justify-between border-b border-store-border-sage pb-3">
+                <span className="text-xl font-extrabold text-store-forest lowercase">
+                  {wordmark}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setMobileMenuOpen(false)}
+                  aria-label="Đóng menu"
+                  className="w-9 h-9 rounded-full border border-store-border-sage flex items-center justify-center text-ink-secondary"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <form onSubmit={handleSearchSubmit} className="relative">
+                <Search className="w-4 h-4 text-ink-muted absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="search"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder={t.searchPlaceholder}
+                  className="w-full h-10 pl-9 pr-3 rounded-full bg-store-form-bg border border-store-border-sage text-sm text-ink-primary"
+                />
+              </form>
+
+              <ul className="divide-y divide-store-border-sage">
+                {navItems.map((item) => {
+                  const subList = item.isMegaBrands
+                    ? [...BRANDS_A_K, ...BRANDS_L_Z].map((b) => ({
+                        label: `${t.megaPaddlePrefix} ${b.label}`,
+                        href: localizeHref(b.href, locale),
+                      }))
+                    : item.children;
+                  const isExpanded = expandedMobileGroup === item.label;
+
+                  return (
+                    <li key={item.label} className="py-2">
+                      <div className="flex items-center justify-between">
+                        <Link
+                          href={item.href}
+                          onClick={() => setMobileMenuOpen(false)}
+                          className={`text-sm font-bold ${
+                            item.isHighlightedMint
+                              ? "px-3 py-1 rounded-full bg-store-mint-bg text-store-mint-ink"
+                              : "text-ink-primary"
+                          }`}
+                        >
+                          {item.label}
+                        </Link>
+                        {subList && subList.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setExpandedMobileGroup(
+                                isExpanded ? null : item.label
+                              )
+                            }
+                            aria-label={`Mở danh mục con ${item.label}`}
+                            className="p-2 text-ink-muted"
+                          >
+                            <ChevronRight
+                              className={`w-4 h-4 transition-transform ${
+                                isExpanded ? "rotate-90" : ""
+                              }`}
+                            />
+                          </button>
+                        )}
+                      </div>
+                      {isExpanded && subList && (
+                        <ul className="mt-2 pl-3 space-y-1.5 border-l-2 border-store-border-sage">
+                          {subList.map((sub) => (
+                            <li key={sub.href}>
+                              <Link
+                                href={sub.href}
+                                onClick={() => setMobileMenuOpen(false)}
+                                className="block py-1 text-xs font-medium text-ink-secondary hover:text-store-forest"
+                              >
+                                {sub.label}
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+
+            <div className="pt-4 border-t border-store-border-sage space-y-2">
+              <div className="flex items-center gap-1.5 pb-1">
+                {CURRENCY_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.code}
+                    type="button"
+                    onClick={() => setCurrency(opt.code)}
+                    className={`flex-1 py-1.5 rounded text-[11px] font-bold border ${
+                      activeCurrency === opt.code
+                        ? "bg-store-forest text-white border-store-forest"
+                        : "bg-white text-ink-primary border-store-border-sage"
+                    }`}
                   >
-                    <span>
-                      Xem tất cả kết quả cho &ldquo;{debouncedQuery}&rdquo;
-                    </span>
-                    <ChevronRight className="w-4 h-4" aria-hidden="true" />
-                  </Link>
-                </div>
-              )}
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              <Link
+                href={localizeHref("/tai-khoan", locale)}
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center justify-center gap-2 w-full h-10 rounded-full bg-store-forest text-white text-xs font-bold uppercase tracking-wider"
+              >
+                <User className="w-4 h-4" />
+                <span>{t.accountAndOrders}</span>
+              </Link>
             </div>
           </div>
         </div>
