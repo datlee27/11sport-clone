@@ -198,7 +198,7 @@ export default function InvoicePdfModal({ order, onClose }: InvoicePdfModalProps
             <button
               type="button"
               onClick={onClose}
-              className="md:hidden w-10 h-10 shrink-0 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center"
+              className="md:hidden w-10 h-10 shrink-0 rounded-lg bg-slate-800 hover:bg-slate-700 !text-white flex items-center justify-center"
               title="Đóng"
             >
               <X className="w-5 h-5" />
@@ -215,7 +215,7 @@ export default function InvoicePdfModal({ order, onClose }: InvoicePdfModalProps
             <button
               type="button"
               onClick={handlePrint}
-              className="min-h-[44px] px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-semibold text-sm flex items-center justify-center gap-1.5 shadow cursor-pointer"
+              className="min-h-[44px] px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 !text-white font-semibold text-sm flex items-center justify-center gap-1.5 shadow cursor-pointer"
             >
               <Download className="w-4 h-4" />
               In / Lưu PDF (K80)
@@ -224,7 +224,7 @@ export default function InvoicePdfModal({ order, onClose }: InvoicePdfModalProps
             <button
               type="button"
               onClick={onClose}
-              className="hidden md:flex w-10 h-10 items-center justify-center rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white"
+              className="hidden md:flex w-10 h-10 items-center justify-center rounded-lg bg-slate-800 hover:bg-slate-700 !text-white"
               title="Đóng"
             >
               <X className="w-5 h-5" />
