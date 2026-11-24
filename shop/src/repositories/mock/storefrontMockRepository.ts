@@ -754,7 +754,9 @@ export const storefrontMockRepository = {
       const freeShipThreshold =
         MOCK_SITE_SETTINGS.shipping?.freeShipThreshold ?? 500_000;
       const defaultFee = MOCK_SITE_SETTINGS.shipping?.defaultFee ?? 30_000;
-      const shippingFee = rawSubtotal >= freeShipThreshold ? 0 : defaultFee;
+      // Miễn phí vận chuyển nếu đạt ngưỡng freeShip hoặc đơn hàng test <= 10.000₫
+      const shippingFee =
+        rawSubtotal >= freeShipThreshold || rawSubtotal <= 10_000 ? 0 : defaultFee;
       const totalAmount = Math.max(
         0,
         rawSubtotal - tierDiscountTotal - couponDiscount + shippingFee
@@ -843,7 +845,8 @@ export const storefrontMockRepository = {
             fulfillmentStatus: "PENDING",
             ...(gateway === "PAYOS" || gateway === "VIETQR"
               ? {
-                  paymentUrl: `https://pay.payos.vn/web/${orderCode}`,
+                  // Ở chế độ Mock không redirect sang pay.payos.vn (vì đơn mock không tồn tại trên PayOS thật)
+                  paymentUrl: `/thanh-toan/order-received/${orderCode}`,
                   qrCode: `00020101021238570010A0000007270127000697042201131903888899990208QRIBFTTA53037045407${
                     priceCheck?.data?.totalAmount ?? 0
                   }5802VN62190815${orderCode}6304ABCD`,

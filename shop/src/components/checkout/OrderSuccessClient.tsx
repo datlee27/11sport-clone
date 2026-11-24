@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { formatPriceByCurrency } from "@/lib/format";
+import { useCartStore } from "@/store/cartStore";
 import { useCurrencyStore } from "@/store/currencyStore";
 
 interface StoredOrder {
@@ -55,6 +56,7 @@ export function OrderSuccessClient({
   const [orderDateStr, setOrderDateStr] = useState<string>("");
 
   const activeCurrency = mounted ? currency : "VND";
+  const clearCart = useCartStore((s) => s.clearCart);
 
   useEffect(() => {
     setMounted(true);
@@ -90,6 +92,13 @@ export function OrderSuccessClient({
   const orderCode = order?.orderCode || codeFromQuery;
   const isQrPayment =
     order?.paymentGateway === "PAYOS" || order?.paymentGateway === "VIETQR";
+
+  // Dọn sạch giỏ hàng khi đơn hàng đã thực sự thanh toán thành công (PAID) hoặc là đơn COD
+  useEffect(() => {
+    if (paymentStatus === "PAID" || (!isQrPayment && orderCode)) {
+      clearCart();
+    }
+  }, [paymentStatus, isQrPayment, orderCode, clearCart]);
 
   // Countdown 15:00
   useEffect(() => {
@@ -132,15 +141,35 @@ export function OrderSuccessClient({
 
         if (res?.data?.paymentStatus) {
           setPaymentStatus(res.data.paymentStatus);
+          if (res.data.paymentStatus === "PAID") {
+            clearCart();
+            try {
+              const current = sessionStorage.getItem("11sport_last_order");
+              if (current) {
+                const parsed = JSON.parse(current);
+                sessionStorage.setItem(
+                  "11sport_last_order",
+                  JSON.stringify({ ...parsed, paymentStatus: "PAID" })
+                );
+              }
+            } catch {
+              // Ignore
+            }
+          }
         }
       } catch {
         // Keep polling on transient network errors
       }
     };
 
-    const interval = setInterval(poll, 5000);
+    // Kiểm tra ngay lần đầu nếu có tham số từ redirect PayOS
+    if (searchParams.get("status") === "PAID") {
+      poll();
+    }
+
+    const interval = setInterval(poll, 3000);
     return () => clearInterval(interval);
-  }, [orderCode, isQrPayment, paymentStatus]);
+  }, [orderCode, isQrPayment, paymentStatus, searchParams]);
 
   const handleCopy = (text: string) => {
     navigator.clipboard?.writeText(text).then(() => {
@@ -230,16 +259,20 @@ export function OrderSuccessClient({
             </span>
           </div>
 
-          <div className="mx-auto w-56 h-56 border border-[#dce5da] bg-[#f8f9f5] flex flex-col items-center justify-center p-4 gap-2">
-            <QrCode className="w-24 h-24 text-[#224e40]" aria-hidden="true" />
-            {order?.qrCode ? (
-              <p className="font-mono text-[10px] text-[#666666] break-all line-clamp-3">
-                {order.qrCode}
-              </p>
+          <div className="mx-auto w-56 h-56 border border-[#dce5da] bg-[#f8f9f5] flex flex-col items-center justify-center p-3 gap-2">
+            {order?.qrCode && (order.qrCode.startsWith("http") || order.qrCode.startsWith("data:image")) ? (
+              <img
+                src={order.qrCode}
+                alt={`Mã QR thanh toán PayOS / VietQR cho đơn ${orderCode}`}
+                className="w-48 h-48 object-contain"
+              />
             ) : (
-              <p className="text-xs font-medium text-[#204b3e]">
-                Mã QR PayOS đang sẵn sàng
-              </p>
+              <>
+                <QrCode className="w-24 h-24 text-[#224e40]" aria-hidden="true" />
+                <p className="text-xs font-medium text-[#204b3e]">
+                  Mã QR PayOS đang sẵn sàng
+                </p>
+              </>
             )}
           </div>
 

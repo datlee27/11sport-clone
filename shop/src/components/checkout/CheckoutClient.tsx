@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AlertCircle } from "lucide-react";
-import { ApiError, apiFetch } from "@/lib/api";
+import { ApiError, apiFetch, isMockApiEnabled } from "@/lib/api";
 import {
   formatPhoneVN,
   formatPriceByCurrency,
@@ -27,6 +27,10 @@ const LABEL_CLS = "block text-[13px] font-bold text-[#222222] mb-1.5";
 
 export function CheckoutClient() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isCancelled =
+    searchParams.get("cancelled") === "1" ||
+    searchParams.get("cancel") === "true";
   const items = useCartStore((s) => s.items);
   const clearCart = useCartStore((s) => s.clearCart);
   const currency = useCurrencyStore((s) => s.currency);
@@ -313,15 +317,63 @@ export function CheckoutClient() {
 
       const orderData = res?.data;
       if (orderData?.orderCode) {
+        let finalPaymentUrl = orderData.paymentUrl || "";
+        let finalQrCode = orderData.qrCode || "";
+
+        // Nếu chọn thanh toán PAYOS:
+        // Đảm bảo luôn tạo Link và Mã QR PayOS THẬT từ máy chủ PayOS (kể cả khi FE đang mock dữ liệu sản phẩm)
+        // để người dùng có thể demo quét mã QR thực tế 100% cho khách hàng xem
+        if (paymentGateway === "PAYOS") {
+          try {
+            const payosRes = await fetch("/api/payos/create-payment-link", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                orderCode: orderData.orderCode,
+                amount: orderData.totalAmount || pricing?.totalAmount || 50000,
+                description: `11S ${orderData.orderCode}`.slice(0, 25),
+              }),
+            });
+            const payosJson = await payosRes.json();
+            if (payosJson.success && payosJson.data?.checkoutUrl) {
+              finalPaymentUrl = payosJson.data.checkoutUrl;
+              finalQrCode = payosJson.data.qrCode;
+            }
+          } catch (payosErr) {
+            console.error("Lỗi khi kết nối cổng thanh toán PayOS:", payosErr);
+          }
+        }
+
+        const finalOrderData = {
+          ...orderData,
+          paymentUrl: finalPaymentUrl,
+          qrCode: finalQrCode,
+        };
+
         try {
           sessionStorage.setItem(
             "11sport_last_order",
-            JSON.stringify(orderData)
+            JSON.stringify(finalOrderData)
           );
           sessionStorage.removeItem("11sport_checkout_prefs");
         } catch {
           // Ignore
         }
+
+        // Nếu có link thanh toán thật từ PayOS, chuyển hướng ngay sang cổng PayOS
+        // QUAN TRỌNG: KHÔNG gọi clearCart() tại đây!
+        // Giữ nguyên toàn bộ sản phẩm trong giỏ hàng để nếu khách bấm "Hủy" trên PayOS và quay về,
+        // sản phẩm vẫn còn nguyên. Chỉ xóa giỏ hàng khi đơn hàng thanh toán thành công (hoặc COD).
+        if (
+          paymentGateway === "PAYOS" &&
+          finalPaymentUrl &&
+          finalPaymentUrl.startsWith("http")
+        ) {
+          window.location.href = finalPaymentUrl;
+          return;
+        }
+
+        // Nếu là COD hoặc đơn hoàn tất tại shop: dọn sạch giỏ hàng và sang trang kết quả
         clearCart();
         router.push(
           `/thanh-toan/order-received/${encodeURIComponent(orderData.orderCode)}`
@@ -342,6 +394,21 @@ export function CheckoutClient() {
 
   return (
     <div className="space-y-6">
+      {/* Banner thông báo khi khách bấm Hủy thanh toán từ PayOS */}
+      {isCancelled && (
+        <div className="border border-[#f59e0b] bg-[#fffbeb] p-4 text-[#92400e] flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 shrink-0 text-[#d97706] mt-0.5" />
+          <div className="space-y-0.5">
+            <p className="font-bold text-[14px]">
+              Giao dịch thanh toán PayOS đã được hủy
+            </p>
+            <p className="text-[13px] text-[#b45309]">
+              Các sản phẩm bạn đã chọn vẫn được lưu đầy đủ trong giỏ hàng bên dưới. Bạn có thể chọn lại phương thức thanh toán khác hoặc điều chỉnh đơn hàng để tiếp tục đặt hàng.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Top 1-Line Coupon Toggle (1:1 mipik.vn) */}
       <div className="border-b border-[#ececec] pb-4 text-[13.5px]">
         <p className="text-[#333333]">

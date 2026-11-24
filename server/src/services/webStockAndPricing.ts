@@ -11,6 +11,7 @@ import { memoryStore } from '../config/repository';
 import { IProduct, IProductVariant } from '../models/Product';
 import { OnlineStockMode } from '../models/WebSiteSetting';
 import { ApiError } from '../utils/errors';
+import { createPayosPaymentLink, getPayOSClient } from './payos.service';
 
 export interface CartPriceItemInput {
   productId: string;
@@ -630,50 +631,40 @@ export function verifyPayosWebhookSignature(
 
 export async function createPayosOrVietQrPayment(params: {
   orderCode: string;
+  payosOrderCode?: number;
   amount: number;
   description: string;
-}): Promise<{ paymentUrl: string; qrCode: string }> {
-  const setting = await getOnlineSiteSetting();
-  const clientId = (setting as any).payosClientId || process.env.PAYOS_CLIENT_ID || '';
-  const apiKey = (setting as any).payosApiKey || process.env.PAYOS_API_KEY || '';
-  const checksumKey = (setting as any).payosChecksumKey || process.env.PAYOS_CHECKSUM_KEY || '';
+  items?: Array<{ name: string; quantity: number; price: number }>;
+}): Promise<{ paymentUrl: string; qrCode: string; payosOrderCode: number }> {
+  const numericOrderCode =
+    params.payosOrderCode ||
+    Number(`${Date.now().toString().slice(-8)}${Math.floor(10 + Math.random() * 90)}`);
 
-  if (clientId && apiKey && checksumKey) {
+  const shopUrl = process.env.SHOP_URL || 'http://localhost:3002';
+  const returnUrl = `${shopUrl}/thanh-toan/order-received/${encodeURIComponent(params.orderCode)}`;
+  const cancelUrl = `${shopUrl}/thanh-toan?cancelled=1`;
+
+  const payosClient = getPayOSClient();
+  if (payosClient) {
     try {
-      const numericOrderCode = Number(Date.now().toString().slice(-9));
-      const shopUrl = process.env.SHOP_URL || 'http://localhost:3002';
-      const returnUrl = `${shopUrl}/order-success?code=${encodeURIComponent(params.orderCode)}`;
-      const cancelUrl = `${shopUrl}/checkout?cancelled=1`;
-      const sigStr = `amount=${params.amount}&cancelUrl=${cancelUrl}&description=${params.description}&orderCode=${numericOrderCode}&returnUrl=${returnUrl}`;
-      const signature = crypto.createHmac('sha256', checksumKey).update(sigStr).digest('hex');
-
-      const res = await fetch('https://api-merchant.payos.vn/v2/payment-requests', {
-        method: 'POST',
-        headers: {
-          'x-client-id': clientId,
-          'x-api-key': apiKey,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          orderCode: numericOrderCode,
-          amount: params.amount,
-          description: params.description.slice(0, 25),
-          returnUrl,
-          cancelUrl,
-          signature,
-        }),
+      const linkRes = await createPayosPaymentLink({
+        orderCode: numericOrderCode,
+        amount: params.amount,
+        description: params.description || `DH ${numericOrderCode}`,
+        returnUrl,
+        cancelUrl,
+        items: params.items,
       });
-      if (res.ok) {
-        const json = (await res.json()) as any;
-        if (json?.data?.checkoutUrl) {
-          return {
-            paymentUrl: json.data.checkoutUrl,
-            qrCode: json.data.qrCode || json.data.checkoutUrl,
-          };
-        }
+
+      if (linkRes?.checkoutUrl) {
+        return {
+          paymentUrl: linkRes.checkoutUrl,
+          qrCode: linkRes.qrCode || linkRes.checkoutUrl,
+          payosOrderCode: numericOrderCode,
+        };
       }
     } catch (err) {
-      console.error('[PayOS] Request failed, falling back to VietQR:', err);
+      console.error('[PayOS] SDK createPaymentLink failed, fallback to VietQR:', err);
     }
   }
 
@@ -684,6 +675,7 @@ export async function createPayosOrVietQrPayment(params: {
   return {
     paymentUrl: qrUrl,
     qrCode: qrUrl,
+    payosOrderCode: numericOrderCode,
   };
 }
 

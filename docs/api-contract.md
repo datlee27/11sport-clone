@@ -1629,6 +1629,7 @@
         "fulfillmentStatus": "PENDING",
         "paymentUrl": "https://pay.payos.vn/web/...",
         "qrCode": "000201010212...",
+        "payosOrderCode": 1732456789,
         "reservedUntil": "2026-11-20T04:05:00.000Z"
       }
     }
