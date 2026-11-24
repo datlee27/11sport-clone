@@ -5,6 +5,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Shield,
+  ShieldCheck,
   Sparkles,
 } from "lucide-react";
 import type { LocaleCode } from "@/lib/format";
@@ -187,20 +188,24 @@ export function BreadcrumbBar({
           const isLast = idx === items.length - 1;
           return (
             <React.Fragment key={`${item.name}-${idx}`}>
-              {idx > 0 && <span className="text-[#aaaaaa]">/</span>}
+              {idx > 0 && (
+                <span aria-hidden="true" className="text-[#6b7280]">
+                  /
+                </span>
+              )}
               {item.href ? (
                 <Link
                   href={item.href}
                   className={
                     isLast
-                      ? "font-bold text-[#666666] hover:text-store-forest"
-                      : "text-[#888888] hover:text-store-forest font-normal"
+                      ? "font-bold text-ink-secondary hover:text-store-forest"
+                      : "text-[#595959] hover:text-store-forest font-normal"
                   }
                 >
                   {item.name}
                 </Link>
               ) : (
-                <span className="font-bold text-ink-primary truncate max-w-[260px] sm:max-w-md">
+                <span className="font-bold text-ink-primary truncate max-w-full sm:max-w-md">
                   {item.name}
                 </span>
               )}
@@ -254,7 +259,7 @@ export function PageHeroBanner({
     <section
       className={`w-full text-white px-3.5 sm:px-4 lg:px-5 ${
         isNews
-          ? "bg-[#92a3c4] py-10 sm:py-14"
+          ? "bg-[#485a7d] py-10 sm:py-14"
           : "bg-[#224e40] py-8 sm:py-11"
       }`}
     >
@@ -265,11 +270,11 @@ export function PageHeroBanner({
         {breadcrumbs && breadcrumbs.length > 0 && (
           <nav
             aria-label="Breadcrumb"
-            className="flex flex-wrap items-center gap-1.5 text-[12.5px] sm:text-[13px] text-white/95"
+            className="flex flex-wrap items-center gap-1.5 text-[12.5px] sm:text-[13px] text-white"
           >
             {breadcrumbs.map((b, i) => (
               <React.Fragment key={`${b.name}-${i}`}>
-                {i > 0 && <span className="opacity-85">»</span>}
+                {i > 0 && <span aria-hidden="true">»</span>}
                 {b.href ? (
                   <Link href={b.href} className="hover:underline">
                     {b.name}
@@ -288,7 +293,7 @@ export function PageHeroBanner({
 
 /**
  * 8. Store/Blog/EditorialCallout (3:8149)
- * Expert note box with 4px left border in #4A7C48 (.mipik-blog-note).
+ * Expert note box with clean full border and icon header badge.
  */
 export function EditorialCallout({
   title = "Lưu ý chuyên gia 11Sport",
@@ -298,9 +303,17 @@ export function EditorialCallout({
   children: React.ReactNode;
 }) {
   return (
-    <aside className="rounded-lg bg-store-surface-sage border-l-4 border-l-store-blog-note p-4 sm:p-5 space-y-1">
-      <p className="text-sm font-bold text-store-forest">{title}</p>
-      <div className="text-sm text-ink-secondary leading-relaxed">
+    <aside className="rounded-lg bg-store-surface-sage border border-[#cfe0d7] p-4 sm:p-5 space-y-1.5">
+      <div className="flex items-center gap-2">
+        <span
+          className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-store-forest text-white shrink-0"
+          aria-hidden="true"
+        >
+          <ShieldCheck className="w-3.5 h-3.5" />
+        </span>
+        <p className="text-sm font-bold text-store-forest">{title}</p>
+      </div>
+      <div className="text-sm text-ink-secondary leading-relaxed max-w-[68ch]">
         {children}
       </div>
     </aside>

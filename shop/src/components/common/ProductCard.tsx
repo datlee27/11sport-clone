@@ -22,10 +22,10 @@ interface ProductCardProps {
 }
 
 /**
- * Product Card 1:1 with live mipik.vn:
+ * Product Card 1:1 with live 11Sport storefront design system:
  * - Home density: 14px radius, #ebebeb border, centered title/swatches/price, 0 CTA buttons
- * - Category density: 8px radius, #eeeeee border, left-aligned title/swatches/price, compact gradient CTA (`CHỌN` / `THÊM VÀO GIỎ HÀNG`)
- * - Top-left dark forest `-N%` pill + Bottom-left dark forest `TẶNG ÁO` (or `Mới`) pill
+ * - Category density: 8px radius, #eeeeee border, left-aligned title/swatches/price, solid high-contrast CTA (`CHỌN` / `THÊM VÀO GIỎ HÀNG`)
+ * - Top-left dark forest `-N%` pill + soft mint `TẶNG ÁO` / `Mới` pills
  */
 export function ProductCard({
   product,
@@ -154,7 +154,7 @@ export function ProductCard({
 
         {/* Top-right `Mới` pill only if product also carries `TẶNG ÁO` */}
         {product.isNew && product.hasGift && (
-          <span className="absolute top-2 right-1.5 z-10 px-2.5 py-0.5 rounded-full bg-store-forest text-white text-[11px] font-bold leading-tight whitespace-nowrap">
+          <span className="absolute top-2 right-1.5 z-10 px-2.5 py-0.5 rounded-full bg-[#eef7f2] text-[#224e40] border border-[#c0e2d5] text-[11px] font-semibold leading-tight whitespace-nowrap">
             {t.newBadge}
           </span>
         )}
@@ -163,12 +163,12 @@ export function ProductCard({
         {(product.hasGift || (product.isNew && !product.hasGift)) && (
           <div className="absolute bottom-2 left-1.5 z-10 flex items-center gap-1">
             {product.hasGift && (
-              <span className="px-2.5 py-1 rounded-full bg-store-forest text-white text-[11px] font-bold uppercase tracking-wide leading-none whitespace-nowrap">
+              <span className="px-2.5 py-1 rounded-full bg-store-mint-bg text-[#224e40] border border-[#c0e2d5] text-[11px] font-bold uppercase tracking-wide leading-none whitespace-nowrap">
                 {t.freeGiftBadge}
               </span>
             )}
             {product.isNew && !product.hasGift && (
-              <span className="px-2.5 py-1 rounded-full bg-store-forest text-white text-[11px] font-bold leading-none whitespace-nowrap">
+              <span className="px-2.5 py-1 rounded-full bg-[#eef7f2] text-[#224e40] border border-[#c0e2d5] text-[11px] font-semibold leading-none whitespace-nowrap">
                 {t.newBadge}
               </span>
             )}
@@ -184,10 +184,10 @@ export function ProductCard({
         )}
       </Link>
 
-      {/* 2. Square 30x30 Color Swatches (up to 5) + Plain `+N` Overflow */}
+      {/* 2. Square 36x36 Color Swatches (up to 5) + Plain `+N` Overflow */}
       {visibleColors.length > 0 && (
         <div
-          className={`pt-2.5 flex flex-wrap items-center gap-1.5 min-h-[38px] ${
+          className={`pt-2.5 flex flex-wrap items-center gap-1.5 min-h-[44px] ${
             isCategory ? "justify-start" : "justify-center"
           }`}
         >
@@ -202,7 +202,7 @@ export function ProductCard({
                 onMouseEnter={() => setSelectedColorIdx(idx)}
                 aria-label={`Chọn màu ${col.color} cho ${product.name}`}
                 aria-pressed={isSelected}
-                className={`relative w-[30px] h-[30px] rounded-[3px] border overflow-hidden bg-white transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-store-forest ${
+                className={`relative w-9 h-9 rounded-[4px] border overflow-hidden bg-white transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-store-forest ${
                   isSelected
                     ? "border-store-forest ring-1 ring-store-forest"
                     : "border-[#dcdcdc] hover:border-store-forest"
@@ -213,7 +213,7 @@ export function ProductCard({
                     src={thumb}
                     alt={col.color}
                     fill
-                    sizes="30px"
+                    sizes="36px"
                     className="object-contain p-0.5"
                   />
                 ) : (
@@ -245,7 +245,7 @@ export function ProductCard({
         </Link>
       </div>
 
-      {/* 4. Price + Signature Compact Gradient CTA on Category Pages */}
+      {/* 4. Price + High-Contrast CTA on Category Pages */}
       <div className="pt-1 mt-auto space-y-2">
         <div
           className={`flex flex-wrap items-baseline gap-x-1.5 ${
@@ -253,7 +253,7 @@ export function ProductCard({
           }`}
         >
           {discountPercent > 0 && product.compareAtPrice && (
-            <span className="text-[13px] line-through text-[#9ca3af] font-normal">
+            <span className="text-[13px] line-through text-[#6b7280] font-normal">
               {formatPriceByCurrency(product.compareAtPrice, activeCurrency)}
             </span>
           )}
@@ -266,7 +266,7 @@ export function ProductCard({
           (colors.length > 1 && product.inStock ? (
             <Link
               href={productHref}
-              className="mt-1 inline-flex items-center justify-center h-[30px] px-3.5 rounded-[2px] text-[11px] font-bold uppercase tracking-wide text-white transition-all bg-[linear-gradient(90deg,#224e40,#f8eee9)] hover:bg-none hover:bg-store-forest self-start"
+              className="mt-1 inline-flex items-center justify-center min-h-[38px] px-3.5 sm:px-4 py-1.5 max-w-full rounded-[4px] text-[11px] font-bold uppercase tracking-wide text-center leading-tight text-white bg-store-forest hover:bg-store-forest-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-store-forest focus-visible:ring-offset-1 self-start"
             >
               {t.selectOption}
             </Link>
@@ -275,7 +275,7 @@ export function ProductCard({
               type="button"
               onClick={handleQuickAdd}
               disabled={!product.inStock}
-              className="mt-1 inline-flex items-center justify-center h-[30px] px-3.5 rounded-[2px] text-[11px] font-bold uppercase tracking-wide text-white transition-all bg-[linear-gradient(90deg,#224e40,#f8eee9)] hover:bg-none hover:bg-store-forest disabled:opacity-50 self-start"
+              className="mt-1 inline-flex items-center justify-center min-h-[38px] px-3.5 sm:px-4 py-1.5 max-w-full rounded-[4px] text-[11px] font-bold uppercase tracking-wide text-center leading-tight text-white bg-store-forest hover:bg-store-forest-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-store-forest focus-visible:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed self-start"
             >
               {!product.inStock ? t.outOfStock.toUpperCase() : t.addToCart}
             </button>

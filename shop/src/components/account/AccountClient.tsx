@@ -28,7 +28,7 @@ import type {
 const CUSTOMER_TOKEN_KEY = "11sport_customer_token";
 
 const SHARP_INPUT_CLS =
-  "w-full h-[40px] px-3 rounded-none border border-[#dddddd] bg-white text-[14px] text-[#0a0a0a] placeholder:text-[#999999] focus:outline-none focus:border-[#224e40]";
+  "w-full min-h-[44px] px-3 py-2 rounded-none border border-[#dddddd] bg-white text-base sm:text-[14px] text-[#0a0a0a] placeholder:text-[#6b7280] focus:outline-none focus:border-[#224e40]";
 const LABEL_CLS = "block text-[13px] font-bold text-[#222222] mb-1.5";
 
 /**
@@ -350,27 +350,29 @@ export function AccountClient() {
             {guestMode === "login" ? "ĐĂNG NHẬP" : "TRA CỨU ĐƠN HÀNG"}
           </h2>
 
-          <div className="flex items-center gap-4 text-[13px]">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px]">
             <button
               type="button"
               onClick={() => setGuestMode("login")}
-              className={
+              aria-pressed={guestMode === "login"}
+              className={`py-2.5 min-h-[40px] inline-flex items-center ${
                 guestMode === "login"
                   ? "font-bold text-[#224e40] underline underline-offset-4"
-                  : "text-[#666666] hover:text-[#0a0a0a]"
-              }
+                  : "text-[#555555] hover:text-[#0a0a0a]"
+              }`}
             >
               Đăng nhập tài khoản
             </button>
-            <span className="text-[#cccccc]">|</span>
+            <span className="text-[#cccccc]" aria-hidden="true">|</span>
             <button
               type="button"
               onClick={() => setGuestMode("lookup")}
-              className={
+              aria-pressed={guestMode === "lookup"}
+              className={`py-2.5 min-h-[40px] inline-flex items-center ${
                 guestMode === "lookup"
                   ? "font-bold text-[#224e40] underline underline-offset-4"
-                  : "text-[#666666] hover:text-[#0a0a0a]"
-              }
+                  : "text-[#555555] hover:text-[#0a0a0a]"
+              }`}
             >
               Tra cứu đơn hàng
             </button>
@@ -417,7 +419,7 @@ export function AccountClient() {
                     type="button"
                     onClick={handleRequestOtp}
                     disabled={otpSending || otpCooldown > 0}
-                    className="h-[40px] px-4 rounded-none border border-[#224e40] bg-white hover:bg-[#f4f7f5] text-[#224e40] text-[12.5px] font-bold uppercase tracking-wider transition-colors disabled:opacity-55 whitespace-nowrap shrink-0"
+                    className="min-h-[44px] px-4 rounded-none border border-[#224e40] bg-white hover:bg-[#f4f7f5] text-[#224e40] text-[12.5px] font-bold uppercase tracking-wider transition-colors disabled:opacity-55 whitespace-nowrap shrink-0"
                   >
                     {otpSending
                       ? "ĐANG GỬI..."
@@ -461,7 +463,7 @@ export function AccountClient() {
                 <button
                   type="submit"
                   disabled={authLoading}
-                  className="h-[40px] px-7 rounded-none bg-[#224e40] hover:bg-[#193b30] text-white text-[13px] font-bold uppercase tracking-wider transition-colors disabled:opacity-60"
+                  className="min-h-[44px] px-7 rounded-none bg-[#224e40] hover:bg-[#193b30] text-white text-[13px] font-bold uppercase tracking-wider transition-colors disabled:opacity-60"
                 >
                   {authLoading ? "ĐANG ĐĂNG NHẬP..." : "ĐĂNG NHẬP"}
                 </button>
@@ -518,7 +520,7 @@ export function AccountClient() {
               <button
                 type="submit"
                 disabled={lookupLoading}
-                className="h-[40px] px-7 rounded-none bg-[#224e40] hover:bg-[#193b30] text-white text-[13px] font-bold uppercase tracking-wider transition-colors disabled:opacity-60"
+                className="min-h-[44px] px-7 rounded-none bg-[#224e40] hover:bg-[#193b30] text-white text-[13px] font-bold uppercase tracking-wider transition-colors disabled:opacity-60"
               >
                 {lookupLoading ? "ĐANG TRA CỨU..." : "TRA CỨU ĐƠN HÀNG"}
               </button>
@@ -919,13 +921,13 @@ export function AccountClient() {
                 type="email"
                 disabled
                 value={profile?.email || ""}
-                className="w-full h-[40px] px-3 rounded-none border border-[#dddddd] bg-[#f5f5f5] text-[14px] text-[#666666]"
+                className="w-full min-h-[44px] px-3 py-2 rounded-none border border-[#dddddd] bg-[#f5f5f5] text-base sm:text-[14px] text-[#555555]"
               />
             </div>
             <button
               type="submit"
               disabled={savingProfile}
-              className="h-[40px] px-6 rounded-none bg-[#224e40] hover:bg-[#193b30] text-white text-[13px] font-bold uppercase tracking-wider"
+              className="min-h-[44px] px-6 rounded-none bg-[#224e40] hover:bg-[#193b30] text-white text-[13px] font-bold uppercase tracking-wider"
             >
               {savingProfile ? "ĐANG LƯU..." : "LƯU THAY ĐỔI"}
             </button>

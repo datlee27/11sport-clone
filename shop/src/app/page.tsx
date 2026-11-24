@@ -163,6 +163,13 @@ export default async function HomePage() {
               const rawTitle =
                 section.title || block?.category?.name || "SẢN PHẨM NỔI BẬT";
               const title = localizeHomeSectionTitle(rawTitle, locale);
+              const displayedProducts = products.slice(0, 25);
+              const desktopGridColsClass =
+                displayedProducts.length <= 3
+                  ? "grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-3"
+                  : displayedProducts.length === 4
+                  ? "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4"
+                  : "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5";
 
               return (
                 <section
@@ -172,8 +179,8 @@ export default async function HomePage() {
                   <MotionReveal className="space-y-5" immediate={isFirstGrid}>
                     <BoxedSectionTitle title={title} />
 
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5 sm:gap-3.5">
-                      {products.slice(0, 25).map((product) => (
+                    <div className={`grid ${desktopGridColsClass} gap-2.5 sm:gap-3.5`}>
+                      {displayedProducts.map((product) => (
                         <ProductCard
                           key={product._id}
                           product={product}

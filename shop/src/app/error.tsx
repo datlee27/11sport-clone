@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
-import { AlertTriangle, Home, RotateCcw } from "lucide-react";
+import { Home, RotateCcw } from "lucide-react";
 
 /**
  * 11Sport Error Boundary — bắt mọi unhandled error runtime ở App Router.

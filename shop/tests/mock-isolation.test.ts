@@ -159,8 +159,8 @@ describe("Shop Centralized Mock Vault, Global Slug Uniqueness & Navigation Cover
       body: JSON.stringify({
         items: [
           {
-            productId: "prod-joola-perseus-power-fx",
-            variantKey: "prod-joola-perseus-power-fx__blaze-red__16mm-(control)",
+            productId: "prod-selkirk-boomstik",
+            variantKey: "crimson-16mm",
             quantity: 5,
           },
         ],
@@ -420,5 +420,74 @@ describe("P0 & P1 Contracts · 11sport Fashion Aliases & Strict API Mode", () =>
         `Product "${prod.slug}" must have >= 2 unique image URLs`
       ).toBeGreaterThanOrEqual(2);
     }
+  });
+});
+
+describe("PayOS Config-Driven Fallback (feature/website)", () => {
+  const originalEnv = {
+    PAYOS_CLIENT_ID: process.env.PAYOS_CLIENT_ID,
+    PAYOS_API_KEY: process.env.PAYOS_API_KEY,
+    PAYOS_CHECKSUM_KEY: process.env.PAYOS_CHECKSUM_KEY,
+  };
+
+  afterEach(() => {
+    process.env.PAYOS_CLIENT_ID = originalEnv.PAYOS_CLIENT_ID;
+    process.env.PAYOS_API_KEY = originalEnv.PAYOS_API_KEY;
+    process.env.PAYOS_CHECKSUM_KEY = originalEnv.PAYOS_CHECKSUM_KEY;
+    vi.unstubAllGlobals();
+  });
+
+  it("uses Demo PayOS credentials from feature/website when PAYOS_* env vars are absent, and overrides them when attached", async () => {
+    delete process.env.PAYOS_CLIENT_ID;
+    delete process.env.PAYOS_API_KEY;
+    delete process.env.PAYOS_CHECKSUM_KEY;
+
+    const fetchSpy = vi.fn(async () =>
+      new Response(
+        JSON.stringify({
+          code: "00",
+          data: {
+            checkoutUrl: "https://pay.payos.vn/web/demo-qr",
+            qrCode: "000201DEMO",
+          },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    );
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const { POST } = await import("@/app/api/payos/create-payment-link/route");
+    const demoRes = await POST(
+      new Request("http://localhost:3002/api/payos/create-payment-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderCode: "ONL-DEMO-1", amount: 5000 }),
+      })
+    );
+    expect(demoRes.status).toBe(200);
+    const demoHeaders = (fetchSpy.mock.calls[0]?.[1] as RequestInit)
+      ?.headers as Record<string, string>;
+    expect(demoHeaders["x-client-id"]).toBe(
+      "e9f36b27-df3f-4012-82fd-37d5df09692d"
+    );
+
+    // Khi gắn key mới vào env -> tắt key demo mặc định và dùng key mới
+    process.env.PAYOS_CLIENT_ID = "live-client-id-11sport";
+    process.env.PAYOS_API_KEY = "live-api-key-11sport";
+    process.env.PAYOS_CHECKSUM_KEY =
+      "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789";
+
+    const liveRes = await POST(
+      new Request("http://localhost:3002/api/payos/create-payment-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderCode: "ONL-LIVE-1", amount: 5000 }),
+      })
+    );
+    expect(liveRes.status).toBe(200);
+    const liveHeaders = (fetchSpy.mock.calls[1]?.[1] as RequestInit)
+      ?.headers as Record<string, string>;
+    expect(liveHeaders["x-client-id"]).toBe("live-client-id-11sport");
+    expect(liveHeaders["x-api-key"]).toBe("live-api-key-11sport");
   });
 });

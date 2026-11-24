@@ -4,8 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
-import type { BrandSummary } from "@/types/storefront";
 import { resolveMediaUrl } from "@/lib/format";
+import type { BrandSummary } from "@/types/storefront";
 
 interface BrandCarouselProps {
   brands: BrandSummary[];
@@ -94,7 +94,8 @@ export function BrandCarousel({
             <Link
               key={`${brand._id}-${idx}`}
               href={href}
-              className={`relative aspect-square bg-store-forest hover:bg-store-forest-hover text-white overflow-hidden flex items-center justify-center text-center transition-colors ${
+              aria-label={brand.name}
+              className={`group/tile relative aspect-square bg-store-forest hover:bg-store-forest-hover text-white overflow-hidden flex items-center justify-center text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white ${
                 idx >= 4 ? "hidden lg:flex" : "flex"
               }`}
             >
@@ -104,10 +105,13 @@ export function BrandCarousel({
                   alt={brand.name}
                   fill
                   sizes="(max-width: 1024px) 25vw, 15vw"
-                  className="object-cover transition-transform duration-200 hover:scale-105"
+                  className="object-cover transition-transform duration-200 group-hover/tile:scale-105"
                 />
               ) : (
-                <span className="text-base sm:text-xl font-extrabold uppercase tracking-wider text-white">
+                <span
+                  aria-hidden="true"
+                  className="px-1.5 sm:px-3 text-xs sm:text-base lg:text-lg xl:text-xl font-extrabold uppercase tracking-wide sm:tracking-[0.12em] text-white leading-tight break-words transition-transform duration-200 group-hover/tile:scale-105"
+                >
                   {brand.name}
                 </span>
               )}
@@ -127,7 +131,7 @@ export function BrandCarousel({
               )
             }
             aria-label="Thương hiệu trước"
-            className="hidden lg:inline-flex items-center justify-center w-9 h-9 rounded-full bg-white/90 text-ink-primary shadow-md hover:bg-white opacity-0 group-hover:opacity-100 transition-opacity absolute left-3 top-1/2 -translate-y-1/2 z-10"
+            className="hidden lg:inline-flex items-center justify-center w-10 h-10 rounded-full bg-white/95 text-ink-primary shadow-md hover:bg-white opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity absolute left-3 top-1/2 -translate-y-1/2 z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-store-forest"
           >
             <ChevronLeft className="w-5 h-5" aria-hidden="true" />
           </button>
@@ -137,7 +141,7 @@ export function BrandCarousel({
               setStartOffset((prev) => (prev + 1) % sortedList.length)
             }
             aria-label="Thương hiệu tiếp theo"
-            className="hidden lg:inline-flex items-center justify-center w-9 h-9 rounded-full bg-white/90 text-ink-primary shadow-md hover:bg-white opacity-0 group-hover:opacity-100 transition-opacity absolute right-3 top-1/2 -translate-y-1/2 z-10"
+            className="hidden lg:inline-flex items-center justify-center w-10 h-10 rounded-full bg-white/95 text-ink-primary shadow-md hover:bg-white opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity absolute right-3 top-1/2 -translate-y-1/2 z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-store-forest"
           >
             <ChevronRight className="w-5 h-5" aria-hidden="true" />
           </button>

@@ -93,7 +93,7 @@ export function Footer({ settings }: { settings?: SiteSettingsData | null }) {
                     {branch.phone && (
                       <a
                         href={`tel:${branch.phone.replace(/\D/g, "")}`}
-                        className="text-white/90 hover:text-store-gold-divider transition-colors"
+                        className="mt-1.5 inline-block py-1 text-white/90 hover:text-store-gold-divider transition-colors"
                       >
                         ({branch.phone})
                       </a>
@@ -168,27 +168,60 @@ export function Footer({ settings }: { settings?: SiteSettingsData | null }) {
 
             {/* Bộ Công Thương Verified Badge */}
             <div className="mt-3">
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#0072BC] text-white border border-white/25 shadow-xs">
-                <svg
-                  viewBox="0 0 24 24"
-                  className="w-4 h-4 fill-none stroke-current shrink-0"
-                  strokeWidth="2.5"
+              <svg
+                role="img"
+                aria-label="Đã thông báo Bộ Công Thương"
+                viewBox="0 0 162 44"
+                className="w-[162px] h-[44px] block"
+              >
+                <rect
+                  x="0.5"
+                  y="0.5"
+                  width="161"
+                  height="43"
+                  rx="5.5"
+                  fill="#0072BC"
+                  stroke="rgba(255,255,255,0.28)"
+                />
+                <circle
+                  cx="21"
+                  cy="22"
+                  r="10"
+                  fill="none"
+                  stroke="#FFFFFF"
+                  strokeWidth="2.2"
+                />
+                <path
+                  d="m16.5 22.5 3 3 5.5-6"
+                  fill="none"
+                  stroke="#FFFFFF"
+                  strokeWidth="2.2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  aria-hidden="true"
+                />
+                <text
+                  x="38"
+                  y="17.5"
+                  fill="#FFFFFF"
+                  fontSize="8.5"
+                  fontWeight="700"
+                  letterSpacing="0.8"
+                  fontFamily="system-ui, -apple-system, sans-serif"
                 >
-                  <circle cx="12" cy="12" r="9" />
-                  <path d="m8.5 12.5 2.5 2.5 4.5-5" />
-                </svg>
-                <div className="leading-none">
-                  <p className="text-[7px] font-bold uppercase tracking-wider opacity-95">
-                    ĐÃ THÔNG BÁO
-                  </p>
-                  <p className="text-[8px] font-extrabold uppercase tracking-tight">
-                    BỘ CÔNG THƯƠNG
-                  </p>
-                </div>
-              </div>
+                  ĐÃ THÔNG BÁO
+                </text>
+                <text
+                  x="38"
+                  y="30.5"
+                  fill="#FFFFFF"
+                  fontSize="10.2"
+                  fontWeight="800"
+                  letterSpacing="-0.2"
+                  fontFamily="system-ui, -apple-system, sans-serif"
+                >
+                  BỘ CÔNG THƯƠNG
+                </text>
+              </svg>
             </div>
           </div>
 
@@ -269,17 +302,44 @@ export function Footer({ settings }: { settings?: SiteSettingsData | null }) {
           <div className="flex items-center gap-1.5">
             <div
               title="Cash on Delivery"
-              className="w-[50px] h-[31px] rounded bg-white/10 border border-white/15 flex items-center justify-center text-[7px] font-extrabold leading-tight text-center text-white/85 px-1"
+              className="w-[50px] h-[31px] rounded bg-white/10 border border-white/15 flex items-center justify-center"
             >
-              CASH ON
-              <br />
-              DELIVERY
+              <svg
+                role="img"
+                aria-label="Cash on Delivery"
+                viewBox="0 0 50 31"
+                className="w-[50px] h-[31px] block"
+              >
+                <text
+                  x="25"
+                  y="13"
+                  textAnchor="middle"
+                  fill="rgba(255,255,255,0.88)"
+                  fontSize="7.2"
+                  fontWeight="800"
+                  fontFamily="system-ui, -apple-system, sans-serif"
+                >
+                  CASH ON
+                </text>
+                <text
+                  x="25"
+                  y="22.5"
+                  textAnchor="middle"
+                  fill="rgba(255,255,255,0.88)"
+                  fontSize="7.2"
+                  fontWeight="800"
+                  fontFamily="system-ui, -apple-system, sans-serif"
+                >
+                  DELIVERY
+                </text>
+              </svg>
             </div>
             <div
               title="MasterCard"
               className="w-[50px] h-[31px] rounded bg-white/10 border border-white/15 flex items-center justify-center"
             >
               <svg
+                role="img"
                 viewBox="0 0 36 22"
                 className="w-8 h-5"
                 aria-label="MasterCard"

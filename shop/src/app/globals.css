@@ -177,11 +177,19 @@
     scroll-behavior: auto;
   }
 
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+  .mipik-pulse-red::before,
+  .mipik-pulse-blue::before,
+  .mipik-zalo-zoom,
+  .mipik-mint-pill::after {
+    animation: none !important;
+  }
+
+  .mipik-pulse-red::before,
+  .mipik-pulse-blue::before {
+    display: none;
+  }
+
+  .mipik-card-lift:hover {
+    transform: none;
   }
 }

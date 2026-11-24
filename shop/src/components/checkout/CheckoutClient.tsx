@@ -1,10 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AlertCircle } from "lucide-react";
-import { ApiError, apiFetch, isMockApiEnabled } from "@/lib/api";
+import { ApiError, apiFetch } from "@/lib/api";
 import {
   formatPhoneVN,
   formatPriceByCurrency,
@@ -22,8 +22,24 @@ import type {
 const CUSTOMER_TOKEN_KEY = "11sport_customer_token";
 
 const SHARP_INPUT_CLS =
-  "w-full h-[40px] px-3 rounded-none border border-[#dddddd] bg-white text-[14px] text-[#0a0a0a] placeholder:text-[#999999] focus:outline-none focus:border-[#224e40]";
+  "w-full min-h-[44px] px-3 py-2 rounded-none border border-[#dddddd] bg-white text-base sm:text-[14px] text-[#0a0a0a] placeholder:text-[#6b7280] focus:outline-none focus:border-[#224e40]";
+const SHARP_INPUT_ERROR_CLS =
+  "w-full min-h-[44px] px-3 py-2 rounded-none border border-[#dd3333] bg-white text-base sm:text-[14px] text-[#0a0a0a] placeholder:text-[#6b7280] focus:outline-none focus:border-[#dd3333]";
 const LABEL_CLS = "block text-[13px] font-bold text-[#222222] mb-1.5";
+
+type CheckoutFieldKey =
+  | "name"
+  | "phone"
+  | "address"
+  | "province"
+  | "altName"
+  | "altAddress";
+
+function focusInvalidField(el: HTMLInputElement | null) {
+  if (!el) return;
+  el.focus({ preventScroll: true });
+  el.scrollIntoView({ behavior: "smooth", block: "center" });
+}
 
 export function CheckoutClient() {
   const router = useRouter();
@@ -63,6 +79,14 @@ export function CheckoutClient() {
 
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [fieldError, setFieldError] = useState<CheckoutFieldKey | null>(null);
+
+  const nameRef = useRef<HTMLInputElement>(null);
+  const phoneRef = useRef<HTMLInputElement>(null);
+  const addressRef = useRef<HTMLInputElement>(null);
+  const provinceRef = useRef<HTMLInputElement>(null);
+  const altNameRef = useRef<HTMLInputElement>(null);
+  const altAddressRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -169,7 +193,7 @@ export function CheckoutClient() {
         </p>
         <Link
           href="/vot-pickleball"
-          className="inline-flex items-center justify-center h-[39px] px-7 rounded-none bg-[linear-gradient(90deg,#224e40_0%,#224e40_52%,#b5c7be_100%)] text-white text-[13px] font-bold uppercase tracking-wider transition-opacity hover:opacity-95 [text-shadow:0_1px_2px_rgba(0,0,0,0.35)]"
+          className="inline-flex items-center justify-center min-h-[44px] px-7 rounded-none bg-store-forest hover:bg-store-forest-hover text-white text-[13px] font-bold uppercase tracking-wider transition-colors"
         >
           QUAY TRỞ LẠI CỬA HÀNG
         </Link>
@@ -231,20 +255,41 @@ export function CheckoutClient() {
     if (submitting) return;
 
     setErrorMsg(null);
+    setFieldError(null);
     if (!fullName.trim()) {
+      setFieldError("name");
       setErrorMsg("Vui lòng nhập họ và tên người nhận.");
+      focusInvalidField(nameRef.current);
       return;
     }
     if (!isValidPhoneVN(phone)) {
+      setFieldError("phone");
       setErrorMsg("Số điện thoại không hợp lệ (VD: 0909 123 456).");
+      focusInvalidField(phoneRef.current);
       return;
     }
-    if (!addressLine.trim() || !province.trim()) {
+    if (!addressLine.trim()) {
+      setFieldError("address");
       setErrorMsg("Vui lòng điền đầy đủ địa chỉ giao hàng.");
+      focusInvalidField(addressRef.current);
       return;
     }
-    if (shipToDifferent && (!altAddress.trim() || !altFullName.trim())) {
+    if (!province.trim()) {
+      setFieldError("province");
+      setErrorMsg("Vui lòng điền đầy đủ địa chỉ giao hàng.");
+      focusInvalidField(provinceRef.current);
+      return;
+    }
+    if (shipToDifferent && !altFullName.trim()) {
+      setFieldError("altName");
       setErrorMsg("Vui lòng điền đầy đủ tên và địa chỉ người nhận thay thế.");
+      focusInvalidField(altNameRef.current);
+      return;
+    }
+    if (shipToDifferent && !altAddress.trim()) {
+      setFieldError("altAddress");
+      setErrorMsg("Vui lòng điền đầy đủ tên và địa chỉ người nhận thay thế.");
+      focusInvalidField(altAddressRef.current);
       return;
     }
 
@@ -445,7 +490,7 @@ export function CheckoutClient() {
               <button
                 type="button"
                 onClick={() => setAppliedCoupon(couponInput.trim().toUpperCase())}
-                className="h-[40px] px-6 rounded-none bg-[#224e40] hover:bg-[#193b30] text-white text-[12.5px] font-bold uppercase tracking-wider transition-colors whitespace-nowrap"
+                className="min-h-[44px] px-6 rounded-none bg-[#224e40] hover:bg-[#193b30] text-white text-[12.5px] font-bold uppercase tracking-wider transition-colors whitespace-nowrap"
               >
                 ÁP DỤNG
               </button>
@@ -467,6 +512,7 @@ export function CheckoutClient() {
 
       {/* Main 7:5 Checkout Form */}
       <form
+        noValidate
         onSubmit={handleSubmit}
         className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start"
       >
@@ -492,13 +538,20 @@ export function CheckoutClient() {
                 Họ và Tên <span className="text-[#dd3333]">*</span>
               </label>
               <input
+                ref={nameRef}
                 id="checkout-name"
                 type="text"
                 required
+                aria-invalid={fieldError === "name"}
                 value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
+                onChange={(e) => {
+                  setFullName(e.target.value);
+                  if (fieldError === "name") setFieldError(null);
+                }}
                 placeholder="Họ và tên"
-                className={SHARP_INPUT_CLS}
+                className={
+                  fieldError === "name" ? SHARP_INPUT_ERROR_CLS : SHARP_INPUT_CLS
+                }
               />
             </div>
 
@@ -507,13 +560,20 @@ export function CheckoutClient() {
                 Số điện thoại <span className="text-[#dd3333]">*</span>
               </label>
               <input
+                ref={phoneRef}
                 id="checkout-phone"
                 type="tel"
                 required
+                aria-invalid={fieldError === "phone"}
                 value={phone}
-                onChange={(e) => setPhone(formatPhoneVN(e.target.value))}
+                onChange={(e) => {
+                  setPhone(formatPhoneVN(e.target.value));
+                  if (fieldError === "phone") setFieldError(null);
+                }}
                 placeholder="Số điện thoại"
-                className={`${SHARP_INPUT_CLS} tabular-nums`}
+                className={`${
+                  fieldError === "phone" ? SHARP_INPUT_ERROR_CLS : SHARP_INPUT_CLS
+                } tabular-nums`}
               />
             </div>
 
@@ -536,13 +596,22 @@ export function CheckoutClient() {
                 Địa chỉ <span className="text-[#dd3333]">*</span>
               </label>
               <input
+                ref={addressRef}
                 id="checkout-address"
                 type="text"
                 required
+                aria-invalid={fieldError === "address"}
                 value={addressLine}
-                onChange={(e) => setAddressLine(e.target.value)}
+                onChange={(e) => {
+                  setAddressLine(e.target.value);
+                  if (fieldError === "address") setFieldError(null);
+                }}
                 placeholder="Địa chỉ"
-                className={SHARP_INPUT_CLS}
+                className={
+                  fieldError === "address"
+                    ? SHARP_INPUT_ERROR_CLS
+                    : SHARP_INPUT_CLS
+                }
               />
             </div>
 
@@ -552,12 +621,21 @@ export function CheckoutClient() {
                   Tỉnh / Thành phố <span className="text-[#dd3333]">*</span>
                 </label>
                 <input
+                  ref={provinceRef}
                   id="checkout-province"
                   type="text"
                   required
+                  aria-invalid={fieldError === "province"}
                   value={province}
-                  onChange={(e) => setProvince(e.target.value)}
-                  className={SHARP_INPUT_CLS}
+                  onChange={(e) => {
+                    setProvince(e.target.value);
+                    if (fieldError === "province") setFieldError(null);
+                  }}
+                  className={
+                    fieldError === "province"
+                      ? SHARP_INPUT_ERROR_CLS
+                      : SHARP_INPUT_CLS
+                  }
                 />
               </div>
 
@@ -578,7 +656,7 @@ export function CheckoutClient() {
 
             {/* Ship to different address checkbox */}
             <div className="pt-1">
-              <label className="inline-flex items-center gap-2.5 text-[14px] text-[#333333] cursor-pointer select-none">
+              <label className="inline-flex items-center gap-2.5 min-h-[44px] text-[14px] text-[#333333] cursor-pointer select-none">
                 <input
                   type="checkbox"
                   checked={shipToDifferent}
@@ -596,12 +674,21 @@ export function CheckoutClient() {
                         Họ tên người nhận <span className="text-[#dd3333]">*</span>
                       </label>
                       <input
+                        ref={altNameRef}
                         id="alt-name"
                         type="text"
+                        aria-invalid={fieldError === "altName"}
                         value={altFullName}
-                        onChange={(e) => setAltFullName(e.target.value)}
+                        onChange={(e) => {
+                          setAltFullName(e.target.value);
+                          if (fieldError === "altName") setFieldError(null);
+                        }}
                         placeholder="Tên người nhận hàng"
-                        className={SHARP_INPUT_CLS}
+                        className={
+                          fieldError === "altName"
+                            ? SHARP_INPUT_ERROR_CLS
+                            : SHARP_INPUT_CLS
+                        }
                       />
                     </div>
                     <div>
@@ -614,7 +701,7 @@ export function CheckoutClient() {
                         value={altPhone}
                         onChange={(e) => setAltPhone(formatPhoneVN(e.target.value))}
                         placeholder="Số điện thoại người nhận"
-                        className={SHARP_INPUT_CLS}
+                        className={`${SHARP_INPUT_CLS} tabular-nums`}
                       />
                     </div>
                   </div>
@@ -623,12 +710,21 @@ export function CheckoutClient() {
                       Địa chỉ nhận hàng <span className="text-[#dd3333]">*</span>
                     </label>
                     <input
+                      ref={altAddressRef}
                       id="alt-address"
                       type="text"
+                      aria-invalid={fieldError === "altAddress"}
                       value={altAddress}
-                      onChange={(e) => setAltAddress(e.target.value)}
+                      onChange={(e) => {
+                        setAltAddress(e.target.value);
+                        if (fieldError === "altAddress") setFieldError(null);
+                      }}
                       placeholder="Số nhà, đường, quận/huyện, tỉnh thành..."
-                      className={SHARP_INPUT_CLS}
+                      className={
+                        fieldError === "altAddress"
+                          ? SHARP_INPUT_ERROR_CLS
+                          : SHARP_INPUT_CLS
+                      }
                     />
                   </div>
                 </div>
@@ -650,7 +746,7 @@ export function CheckoutClient() {
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 placeholder="Ghi chú về đơn hàng, ví dụ: thời gian hay chỉ dẫn địa điểm giao hàng chi tiết hơn."
-                className="w-full p-3 rounded-none border border-[#dddddd] bg-white text-[14px] text-[#0a0a0a] placeholder:text-[#999999] focus:outline-none focus:border-[#224e40]"
+                className="w-full p-3 rounded-none border border-[#dddddd] bg-white text-base sm:text-[14px] text-[#0a0a0a] placeholder:text-[#6b7280] focus:outline-none focus:border-[#224e40]"
               />
             </div>
           </div>
