@@ -53,6 +53,14 @@ export const metadata: Metadata = {
     locale: "vi_VN",
     type: "website",
   },
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/logo-11sport-icon.svg", type: "image/svg+xml" },
+    ],
+    shortcut: "/logo-11sport-icon.svg",
+    apple: "/logo-11sport-icon.svg",
+  },
 };
 
 export default async function RootLayout({
