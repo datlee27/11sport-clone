@@ -1,43 +1,36 @@
 import Link from "next/link";
 import Image from "next/image";
-import { Calendar, ChevronRight, Newspaper } from "lucide-react";
+import { Newspaper } from "lucide-react";
 import { resolveMediaUrl } from "@/lib/format";
 import type { ArticleSummary } from "@/types/storefront";
+import { BoxedSectionTitle } from "@/components/store/StorefrontDesignSystem";
 
 interface ArticleGridSectionProps {
   articles: ArticleSummary[];
   title?: string;
 }
 
+/**
+ * Store/News/ArticleCard (3:4901) inside a 3-column grid with BoxedSectionTitle.
+ */
 export function ArticleGridSection({
   articles,
-  title = "Tin tức & Hướng dẫn chọn đồ",
+  title = "TIN TỨC & KIẾN THỨC PICKLEBALL",
 }: ArticleGridSectionProps) {
   if (!articles.length) return null;
 
   return (
     <section aria-label={title} className="space-y-5">
-      <div className="flex items-center justify-between gap-4">
-        <h2 className="text-xl lg:text-[26px] font-bold text-ink-primary">
-          {title}
-        </h2>
-        <Link
-          href="/tin-tuc"
-          className="inline-flex items-center gap-1 text-sm font-semibold text-brand-primary hover:text-brand-primary-hover min-h-[44px]"
-        >
-          <span>Xem thêm</span>
-          <ChevronRight className="w-4 h-4" aria-hidden="true" />
-        </Link>
-      </div>
+      <BoxedSectionTitle title={title} />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         {articles.slice(0, 3).map((article) => (
           <article
             key={article._id}
-            className="group rounded-xl border border-surface-border bg-white shadow-card hover:shadow-card-hover transition-shadow overflow-hidden flex flex-col"
+            className="group mipik-card-lift rounded-xl border border-store-border-card bg-white shadow-card overflow-hidden flex flex-col text-center"
           >
             <Link
-              href={`/tin-tuc/${article.slug}`}
+              href={`/${article.slug}`}
               className="relative aspect-[16/9] bg-surface-muted overflow-hidden block"
             >
               {resolveMediaUrl(article.thumbnailUrl) ? (
@@ -55,30 +48,28 @@ export function ArticleGridSection({
               )}
             </Link>
 
-            <div className="p-4 flex-1 flex flex-col">
-              <div className="flex items-center gap-2 text-xs text-ink-muted mb-2">
+            <div className="p-4 flex-1 flex flex-col justify-between space-y-2">
+              <div className="space-y-2">
                 {article.category?.name && (
-                  <span className="px-2 py-0.5 rounded bg-brand-tint text-brand-primary font-semibold">
+                  <span className="inline-block px-2.5 py-0.5 rounded-full bg-store-surface-sage text-store-forest text-xs font-bold">
                     {article.category.name}
                   </span>
                 )}
-                {article.publishedAt && (
-                  <span className="inline-flex items-center gap-1">
-                    <Calendar className="w-3.5 h-3.5" aria-hidden="true" />
-                    {new Date(article.publishedAt).toLocaleDateString("vi-VN")}
-                  </span>
+                <h3 className="text-base font-extrabold text-ink-primary group-hover:text-store-forest line-clamp-2 leading-snug">
+                  <Link href={`/${article.slug}`}>{article.title}</Link>
+                </h3>
+                {article.excerpt && (
+                  <p className="text-xs sm:text-sm text-ink-muted line-clamp-2">
+                    {article.excerpt}
+                  </p>
                 )}
               </div>
-
-              <h3 className="text-base font-bold text-ink-primary group-hover:text-brand-primary line-clamp-2 leading-snug">
-                <Link href={`/tin-tuc/${article.slug}`}>{article.title}</Link>
-              </h3>
-
-              {article.excerpt && (
-                <p className="mt-2 text-sm text-ink-secondary line-clamp-2">
-                  {article.excerpt}
-                </p>
-              )}
+              <Link
+                href={`/${article.slug}`}
+                className="text-xs font-bold text-store-forest hover:underline pt-1"
+              >
+                Xem bài viết →
+              </Link>
             </div>
           </article>
         ))}

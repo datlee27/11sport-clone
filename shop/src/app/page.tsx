@@ -1,27 +1,55 @@
 import Link from "next/link";
 import Image from "next/image";
-import { ChevronRight } from "lucide-react";
+import { headers } from "next/headers";
+import { PackageOpen } from "lucide-react";
 import { buildMetadata } from "@/lib/seo";
 import { resolveMediaUrl } from "@/lib/format";
+import { STORE_I18N } from "@/lib/i18n";
 import { fetchHomeData } from "@/lib/storefront";
 import { MotionReveal } from "@/components/common/MotionReveal";
 import { ProductCard } from "@/components/common/ProductCard";
-import { ProductCarousel } from "@/components/common/ProductCarousel";
 import { HeroSlider } from "@/components/home/HeroSlider";
-import { UspStrip } from "@/components/home/UspStrip";
-import { FlashSaleSection } from "@/components/home/FlashSaleSection";
 import { BrandCarousel } from "@/components/home/BrandCarousel";
-import { ArticleGridSection } from "@/components/home/ArticleGridSection";
+import {
+  BoxedSectionTitle,
+  DistributorBanner,
+  GuaranteePillsHome,
+} from "@/components/store/StorefrontDesignSystem";
 import type { HomeSectionItem } from "@/types/storefront";
 
 export const metadata = buildMetadata({
-  title: "11 Sport — Dụng cụ Pickleball & Thể thao Chính hãng",
+  title: "11Sport — Hệ Thống Vợt & Phụ Kiện Pickleball Chính Hãng",
   description:
-    "Mua vợt Pickleball Joola, Selkirk, CRBN, giày Asics, Mizuno và phụ kiện thể thao chính hãng tại 11 Sport. Freeship đơn từ 500k, đổi trả 7 ngày.",
+    "Đại lý phân phối vợt Pickleball Joola, Selkirk, Kamito, Facolos, CRBN, giày Asics, Skechers chính hãng 100% tại 11Sport. Ưu đãi giá sỉ từ 3 sản phẩm, lỗi 1 đổi 1, freeship toàn quốc.",
   path: "/",
 });
 
+function localizeHomeSectionTitle(
+  rawTitle: string,
+  locale: "vi" | "en"
+): string {
+  if (locale === "vi") return rawTitle;
+  const upper = rawTitle.trim().toUpperCase();
+  const en = STORE_I18N.en.home;
+  if (upper.includes("VỢT") || upper.includes("PADDLE")) return en.paddles;
+  if (upper.includes("THỜI TRANG") || upper.includes("FASHION")) {
+    return en.fashion;
+  }
+  if (upper.includes("GIÀY") || upper.includes("SHOE")) return en.shoes;
+  if (upper.includes("BALO") || upper.includes("TÚI") || upper.includes("BAG")) {
+    return en.bags;
+  }
+  if (upper.includes("PHỤ KIỆN") || upper.includes("GEAR")) {
+    return en.accessories;
+  }
+  if (upper.includes("THƯƠNG HIỆU") || upper.includes("BRAND")) {
+    return en.brands;
+  }
+  return rawTitle;
+}
+
 export default async function HomePage() {
+  const locale = headers().get("x-locale") === "en" ? "en" : "vi";
   const homeData = await fetchHomeData();
 
   const banners = (homeData?.banners ?? []).filter(
@@ -29,30 +57,39 @@ export default async function HomePage() {
   );
   const heroBanners = banners.filter((b) => b.position === "HERO");
   const inlineBanners = banners.filter((b) => b.position !== "HERO");
-  const flashSale = homeData?.flashSale ?? null;
   const categoryBlocks = homeData?.categoryBlocks ?? [];
   const featuredProducts = homeData?.featuredProducts ?? [];
   const brands = homeData?.brands ?? [];
-  const articles = homeData?.articles ?? [];
   const uspItems = homeData?.usp ?? [];
+
+  const defaultCategorySections: HomeSectionItem[] =
+    categoryBlocks.length > 0
+      ? categoryBlocks.map((cb, idx) => ({
+          _id: `cat-${cb.category?.slug || idx}`,
+          type: "CATEGORY_GRID" as const,
+          title: cb.category?.name?.toUpperCase() || "SẢN PHẨM",
+          viewAllUrl: cb.category?.slug ? `/${cb.category.slug}` : "/cua-hang",
+          sortOrder: idx === 0 ? 2 : 4 + idx,
+        }))
+      : [
+          {
+            _id: "featured",
+            type: "CATEGORY_GRID" as const,
+            title: "VỢT PICKLEBALL",
+            viewAllUrl: "/vot-pickleball",
+            sortOrder: 2,
+          },
+        ];
 
   const sections: HomeSectionItem[] =
     homeData?.homeSections && homeData.homeSections.length > 0
       ? [...homeData.homeSections].sort((a, b) => a.sortOrder - b.sortOrder)
       : [
           { _id: "hero", type: "HERO", sortOrder: 1 },
-          { _id: "usp", type: "USP", sortOrder: 2 },
-          { _id: "flash-sale", type: "FLASH_SALE", sortOrder: 3 },
-          {
-            _id: "featured",
-            type: "CATEGORY_CAROUSEL",
-            title: "Sản phẩm nổi bật",
-            viewAllUrl: "/tim-kiem",
-            sortOrder: 4,
-          },
-          { _id: "brands", type: "BRANDS", sortOrder: 5 },
-          { _id: "blog", type: "BLOG", sortOrder: 6 },
-        ];
+          ...defaultCategorySections,
+          { _id: "usp", type: "USP", sortOrder: 3 },
+          { _id: "brands", type: "BRANDS", sortOrder: 99 },
+        ].sort((a, b) => a.sortOrder - b.sortOrder);
 
   let categoryBlockIndex = 0;
   let inlineBannerIndex = 0;
@@ -61,154 +98,149 @@ export default async function HomePage() {
     <>
       {/* Duy nhất 1 thẻ <h1> trên trang chủ */}
       <h1 className="sr-only">
-        11 Sport — Hệ thống bán lẻ dụng cụ Pickleball &amp; Thể thao chính hãng
+        {locale === "en"
+          ? "11Sport — Authorized Pickleball Paddles, Shoes & Gear Storefront"
+          : "11Sport — Hệ thống phân phối Vợt, Giày & Phụ kiện Pickleball chính hãng"}
       </h1>
-      <div className="pb-10 lg:pb-12 space-y-10 lg:space-y-12">
+
+      <div className="bg-white">
         {sections.map((section) => {
-        switch (section.type) {
-          case "HERO":
-            return <HeroSlider key={section._id} banners={heroBanners} />;
+          switch (section.type) {
+            case "HERO":
+              return <HeroSlider key={section._id} banners={heroBanners} />;
 
-          case "USP":
-            return (
-              <div key={section._id} className="max-w-7xl mx-auto px-4 lg:px-6">
-                <MotionReveal>
-                  <UspStrip items={uspItems} />
-                </MotionReveal>
-              </div>
-            );
-
-          case "FLASH_SALE":
-            return (
-              <div key={section._id} className="max-w-7xl mx-auto px-4 lg:px-6">
-                <MotionReveal>
-                  <FlashSaleSection flashSale={flashSale} />
-                </MotionReveal>
-              </div>
-            );
-
-          case "CATEGORY_GRID":
-          case "CATEGORY_CAROUSEL": {
-            const block = categoryBlocks[categoryBlockIndex];
-            const products = block?.products?.length
-              ? block.products
-              : categoryBlockIndex === 0
-              ? featuredProducts
-              : [];
-            categoryBlockIndex += 1;
-
-            if (!products.length) return null;
-
-            const title =
-              section.title || block?.category?.name || "Sản phẩm nổi bật";
-            const viewAllUrl =
-              section.viewAllUrl ||
-              (block?.category?.slug
-                ? `/danh-muc/${block.category.slug}`
-                : "/tim-kiem");
-
-            return (
-              <div key={section._id} className="max-w-7xl mx-auto px-4 lg:px-6">
-                <MotionReveal className="space-y-5">
-                  <div className="flex items-center justify-between gap-4">
-                    <div>
-                      <h2 className="text-xl lg:text-[26px] font-bold text-ink-primary">
-                        {title}
-                      </h2>
-                      {section.subtitle && (
-                        <p className="text-sm text-ink-muted mt-0.5">
-                          {section.subtitle}
-                        </p>
-                      )}
-                    </div>
-                    <Link
-                      href={viewAllUrl}
-                      className="inline-flex items-center gap-1 text-sm font-semibold text-brand-primary hover:text-brand-primary-hover min-h-[44px] shrink-0"
-                    >
-                      <span>Xem tất cả</span>
-                      <ChevronRight className="w-4 h-4" aria-hidden="true" />
-                    </Link>
+            case "USP":
+              return (
+                <div key={section._id} className="mt-2">
+                  <GuaranteePillsHome items={uspItems} locale={locale} />
+                  <div className="mt-[3px]">
+                    <DistributorBanner />
                   </div>
+                </div>
+              );
 
-                  {section.type === "CATEGORY_GRID" ? (
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
-                      {products.slice(0, 10).map((product) => (
-                        <ProductCard key={product._id} product={product} />
+            case "FLASH_SALE":
+            case "BLOG":
+              return null;
+
+            case "CATEGORY_GRID":
+            case "CATEGORY_CAROUSEL": {
+              const block = categoryBlocks[categoryBlockIndex];
+              const isFirstGrid = categoryBlockIndex === 0;
+              const products = block?.products?.length
+                ? block.products
+                : isFirstGrid
+                ? featuredProducts
+                : [];
+              categoryBlockIndex += 1;
+
+              // Khi không có sản phẩm nào:
+              // - Chỉ hiển thị 1 thông báo rỗng duy nhất ở mục đầu tiên (không lặp lại)
+              // - Bỏ hoàn toàn ô tiêu đề danh mục (bỏ ô VỢT PICKLEBALL), chỉ hiển thị khung thông báo
+              if (!products.length) {
+                if (!isFirstGrid) return null;
+
+                return (
+                  <section
+                    key={section._id}
+                    className="max-w-container mx-auto px-3 sm:px-4 lg:px-5 pt-7 lg:pt-9 pb-2"
+                  >
+                    <MotionReveal className="space-y-5" immediate>
+                      <div className="rounded-[8px] border border-dashed border-[#dce5da] bg-[#fbfcfb] py-12 px-4 text-center space-y-2">
+                        <div className="w-12 h-12 mx-auto rounded-full bg-white border border-[#dce5da] flex items-center justify-center text-[#224e40]/60">
+                          <PackageOpen className="w-6 h-6" aria-hidden="true" />
+                        </div>
+                        <p className="text-sm font-medium text-[#555555]">
+                          Chưa có dữ liệu
+                        </p>
+                      </div>
+                    </MotionReveal>
+                  </section>
+                );
+              }
+
+              // Khi có sản phẩm: Hiển thị đầy đủ tiêu đề hộp và lưới sản phẩm
+              const rawTitle =
+                section.title || block?.category?.name || "SẢN PHẨM NỔI BẬT";
+              const title = localizeHomeSectionTitle(rawTitle, locale);
+
+              return (
+                <section
+                  key={section._id}
+                  className="max-w-container mx-auto px-3 sm:px-4 lg:px-5 pt-7 lg:pt-9 pb-2"
+                >
+                  <MotionReveal className="space-y-5" immediate={isFirstGrid}>
+                    <BoxedSectionTitle title={title} />
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5 sm:gap-3.5">
+                      {products.slice(0, 25).map((product) => (
+                        <ProductCard
+                          key={product._id}
+                          product={product}
+                          density="home"
+                        />
                       ))}
                     </div>
+                  </MotionReveal>
+                </section>
+              );
+            }
+
+            case "CUSTOM_BANNER": {
+              const banner = inlineBanners[inlineBannerIndex];
+              inlineBannerIndex += 1;
+              if (!banner) return null;
+
+              const imgNode = (
+                <div className="relative w-full aspect-[16/9] sm:aspect-[1440/360] overflow-hidden bg-surface-muted my-6">
+                  <Image
+                    src={resolveMediaUrl(banner.desktopImageUrl)}
+                    alt={banner.altText || banner.title}
+                    fill
+                    sizes="100vw"
+                    className="hidden sm:block object-cover"
+                  />
+                  <Image
+                    src={resolveMediaUrl(
+                      banner.desktopImageUrl || banner.mobileImageUrl
+                    )}
+                    alt={banner.altText || banner.title}
+                    fill
+                    sizes="100vw"
+                    className="sm:hidden object-cover"
+                  />
+                </div>
+              );
+
+              return (
+                <MotionReveal key={section._id}>
+                  {banner.linkUrl ? (
+                    <Link href={banner.linkUrl} className="block">
+                      {imgNode}
+                    </Link>
                   ) : (
-                    <ProductCarousel products={products} showDots />
+                    imgNode
                   )}
                 </MotionReveal>
-              </div>
-            );
-          }
+              );
+            }
 
-          case "CUSTOM_BANNER": {
-            const banner = inlineBanners[inlineBannerIndex];
-            inlineBannerIndex += 1;
-            if (!banner) return null;
-
-            const imgNode = (
-              <div className="relative w-full aspect-[21/9] sm:aspect-[1440/360] overflow-hidden bg-surface-muted">
-                <Image
-                  src={resolveMediaUrl(banner.desktopImageUrl)}
-                  alt={banner.altText || banner.title}
-                  fill
-                  sizes="100vw"
-                  className="hidden sm:block object-cover"
+            case "BRANDS":
+              return (
+                <BrandCarousel
+                  key={section._id}
+                  brands={brands}
+                  title={localizeHomeSectionTitle(
+                    section.title || "THƯƠNG HIỆU PHÂN PHỐI CHÍNH HÃNG",
+                    locale
+                  )}
                 />
-                <Image
-                  src={resolveMediaUrl(banner.mobileImageUrl || banner.desktopImageUrl)}
-                  alt={banner.altText || banner.title}
-                  fill
-                  sizes="100vw"
-                  className="sm:hidden object-cover"
-                />
-              </div>
-            );
+              );
 
-            return (
-              <MotionReveal key={section._id}>
-                {banner.linkUrl ? (
-                  <Link href={banner.linkUrl} className="block">
-                    {imgNode}
-                  </Link>
-                ) : (
-                  imgNode
-                )}
-              </MotionReveal>
-            );
+            default:
+              return null;
           }
-
-          case "BRANDS":
-            return (
-              <div key={section._id} className="max-w-7xl mx-auto px-4 lg:px-6">
-                <MotionReveal>
-                  <BrandCarousel
-                    brands={brands}
-                    title={section.title || "Thương hiệu đối tác chính hãng"}
-                  />
-                </MotionReveal>
-              </div>
-            );
-
-          case "BLOG":
-            return (
-              <div key={section._id} className="max-w-7xl mx-auto px-4 lg:px-6">
-                <MotionReveal>
-                  <ArticleGridSection
-                    articles={articles}
-                    title={section.title || "Tin tức & Hướng dẫn chọn đồ"}
-                  />
-                </MotionReveal>
-              </div>
-            );
-
-          default:
-            return null;
-        }
-      })}
+        })}
       </div>
     </>
   );

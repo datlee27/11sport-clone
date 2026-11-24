@@ -236,6 +236,10 @@ export interface WebSiteSettingData {
   payosClientId?: string;
   payosApiKey?: string;
   payosChecksumKey?: string;
+  cloudinaryCloudName?: string;
+  cloudinaryApiKey?: string;
+  cloudinaryApiSecret?: string;
+  cloudinaryFolder?: string;
   webhookSecret?: string;
   revalidateSecret?: string;
 }
@@ -339,4 +343,20 @@ export async function uploadWebImageFile(file: File): Promise<string> {
     body: JSON.stringify({ dataUrl, fileName: file.name }),
   });
   return res.data.url;
+}
+
+export async function testCloudinaryConnectionApi(params: {
+  cloudName: string;
+  apiKey: string;
+  apiSecret: string;
+  folder?: string;
+}): Promise<{ connected: boolean; message: string; testUrl?: string }> {
+  const res = await apiRequest<{ connected: boolean; message: string; testUrl?: string }>(
+    "/cms/web/cloudinary/test-connection",
+    {
+      method: "POST",
+      body: JSON.stringify(params),
+    }
+  );
+  return res.data;
 }

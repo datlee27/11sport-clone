@@ -1,109 +1,111 @@
 import type { MetadataRoute } from "next";
-import { apiFetch } from "@/lib/api";
+import { isMockApiEnabled } from "@/lib/api";
 import { SITE_URL } from "@/lib/seo";
-
-interface SitemapEntry {
-  slug: string;
-  updatedAt?: string;
-}
-
-interface SitemapDataResponse {
-  categories?: SitemapEntry[];
-  brands?: SitemapEntry[];
-  products?: SitemapEntry[];
-  articles?: SitemapEntry[];
-  pages?: SitemapEntry[];
-}
+import {
+  fetchArticles,
+  fetchProducts,
+  fetchSitemapData,
+  getAllBrandsList,
+  getAllCategoriesList,
+  getAllPolicyPages,
+  getAllProgramPages,
+} from "@/lib/storefront";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
 
-  const staticRoutes: MetadataRoute.Sitemap = [
-    {
-      url: `${SITE_URL}/`,
-      lastModified: now,
-      changeFrequency: "daily",
-      priority: 1,
-    },
-    {
-      url: `${SITE_URL}/tin-tuc`,
-      lastModified: now,
-      changeFrequency: "daily",
-      priority: 0.8,
-    },
-    {
-      url: `${SITE_URL}/lien-he`,
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.7,
-    },
+  const makeEntry = (
+    path: string,
+    priority: number,
+    changeFrequency: MetadataRoute.Sitemap[number]["changeFrequency"] = "daily",
+    lastMod?: string
+  ): MetadataRoute.Sitemap[number] => {
+    const clean = path === "/" ? "" : path;
+    const viUrl = `${SITE_URL}${clean}`;
+    const enUrl = `${SITE_URL}/en${clean}`;
+    return {
+      url: viUrl,
+      lastModified: lastMod ? new Date(lastMod) : now,
+      changeFrequency,
+      priority,
+      alternates: {
+        languages: {
+          vi: viUrl,
+          en: enUrl,
+        },
+      },
+    };
+  };
+
+  const entries: MetadataRoute.Sitemap = [
+    makeEntry("/", 1.0, "daily"),
+    makeEntry("/cua-hang", 0.9, "daily"),
+    makeEntry("/tin-tuc", 0.8, "daily"),
+    makeEntry("/lien-he", 0.8, "monthly"),
   ];
 
-  const dynamicRoutes: MetadataRoute.Sitemap = [];
-
-  try {
-    const res = await apiFetch<{ data: SitemapDataResponse }>(
-      "/public/sitemap-data",
-      {
-        next: { revalidate: 300, tags: ["sitemap"] },
+  if (!isMockApiEnabled()) {
+    const apiData = await fetchSitemapData();
+    if (apiData) {
+      for (const cat of apiData.categories ?? []) {
+        entries.push(makeEntry(`/${cat.slug}`, 0.9, "daily", cat.updatedAt));
       }
-    );
-    const data = res?.data;
-
-    if (data) {
-      for (const cat of data.categories ?? []) {
-        dynamicRoutes.push({
-          url: `${SITE_URL}/danh-muc/${cat.slug}`,
-          lastModified: cat.updatedAt ? new Date(cat.updatedAt) : now,
-          changeFrequency: "daily",
-          priority: 0.9,
-        });
+      for (const br of apiData.brands ?? []) {
+        entries.push(makeEntry(`/thuong-hieu/${br.slug}`, 0.8, "weekly", br.updatedAt));
       }
-
-      for (const brand of data.brands ?? []) {
-        dynamicRoutes.push({
-          url: `${SITE_URL}/thuong-hieu/${brand.slug}`,
-          lastModified: brand.updatedAt ? new Date(brand.updatedAt) : now,
-          changeFrequency: "weekly",
-          priority: 0.8,
-        });
+      for (const prod of apiData.products ?? []) {
+        entries.push(makeEntry(`/${prod.slug}`, 0.85, "daily", prod.updatedAt));
       }
-
-      for (const prod of data.products ?? []) {
-        dynamicRoutes.push({
-          url: `${SITE_URL}/san-pham/${prod.slug}`,
-          lastModified: prod.updatedAt ? new Date(prod.updatedAt) : now,
-          changeFrequency: "daily",
-          priority: 0.8,
-        });
+      for (const art of apiData.articles ?? []) {
+        entries.push(makeEntry(`/${art.slug}`, 0.75, "weekly", art.updatedAt));
       }
-
-      for (const article of data.articles ?? []) {
-        dynamicRoutes.push({
-          url: `${SITE_URL}/tin-tuc/${article.slug}`,
-          lastModified: article.updatedAt ? new Date(article.updatedAt) : now,
-          changeFrequency: "weekly",
-          priority: 0.7,
-        });
-      }
-
-      for (const page of data.pages ?? []) {
-        dynamicRoutes.push({
-          url: `${SITE_URL}/${page.slug}`,
-          lastModified: page.updatedAt ? new Date(page.updatedAt) : now,
-          changeFrequency: "monthly",
-          priority: 0.6,
-        });
+      for (const pg of apiData.pages ?? []) {
+        entries.push(makeEntry(`/${pg.slug}`, 0.7, "monthly", pg.updatedAt));
       }
     }
-  } catch {
-    // Fallback an toàn về staticRoutes khi backend chưa chạy
+  } else {
+    const categories = getAllCategoriesList();
+    for (const cat of categories) {
+      entries.push(makeEntry(`/${cat.slug}`, 0.9, "daily"));
+    }
+
+    const brands = getAllBrandsList();
+    for (const brand of brands) {
+      entries.push(makeEntry(`/${brand.rootCategorySlug}`, 0.85, "weekly"));
+      entries.push(makeEntry(`/thuong-hieu/${brand.slug}`, 0.8, "weekly"));
+    }
+
+    const [productsRes, articlesRes] = await Promise.all([
+      fetchProducts({ limit: 500 }),
+      fetchArticles({ limit: 200 }),
+    ]);
+
+    for (const prod of productsRes.data) {
+      entries.push(makeEntry(`/${prod.slug}`, 0.85, "daily"));
+    }
+
+    // Canonical root slug for editorial articles (matching mipik.vn/post-sitemap.xml)
+    for (const art of articlesRes.data) {
+      entries.push(makeEntry(`/${art.slug}`, 0.75, "weekly"));
+    }
+
+    for (const cat of articlesRes.categories ?? []) {
+      entries.push(makeEntry(`/tin-tuc/${cat.slug}`, 0.75, "weekly"));
+    }
+
+    for (const pol of getAllPolicyPages()) {
+      entries.push(makeEntry(`/${pol.slug}`, 0.6, "monthly"));
+    }
+
+    for (const prog of getAllProgramPages()) {
+      entries.push(makeEntry(`/${prog.slug}`, 0.7, "monthly"));
+    }
   }
 
   const deduped = new Map<string, MetadataRoute.Sitemap[number]>();
-  for (const entry of [...staticRoutes, ...dynamicRoutes]) {
-    if (!deduped.has(entry.url)) {
-      deduped.set(entry.url, entry);
+  for (const item of entries) {
+    if (!deduped.has(item.url)) {
+      deduped.set(item.url, item);
     }
   }
 

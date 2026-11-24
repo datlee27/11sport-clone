@@ -105,16 +105,42 @@ export interface ProductVariant {
 
 export interface TierPricingRule {
   minQty: number;
+  discountType?: "PERCENT" | "AMOUNT" | string;
+  discountValue?: number;
   discountPercent?: number;
   discountAmount?: number;
   label?: string;
 }
 
+export interface GiftPromotionItem {
+  productId?: string;
+  productCode?: string;
+  productName: string;
+  unit?: string;
+  imageUrl?: string;
+  quantity?: number;
+}
+
 export interface GiftPromotion {
   _id?: string;
-  title: string;
+  title?: string;
+  name?: string;
   description?: string;
   giftProductName?: string;
+  minQuantity?: number;
+  minOrderAmount?: number;
+  gifts?: GiftPromotionItem[];
+}
+
+export interface MenuNode {
+  _id: string;
+  label: string;
+  url: string;
+  icon?: string;
+  badge?: string;
+  openInNewTab?: boolean;
+  sortOrder: number;
+  children?: MenuNode[];
 }
 
 export interface ProductSpec {

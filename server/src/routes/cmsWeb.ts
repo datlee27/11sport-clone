@@ -225,10 +225,11 @@ cmsWebRouter.post('/upload', async (req: Request, res: Response, next: NextFunct
       throw new ApiError(400, 'IMAGE_TOO_LARGE', 'Kích thước ảnh tối đa 5MB');
     }
 
-    const cloudName = String(process.env.CLOUDINARY_CLOUD_NAME || '').trim();
-    const apiKey = String(process.env.CLOUDINARY_API_KEY || '').trim();
-    const apiSecret = String(process.env.CLOUDINARY_API_SECRET || '').trim();
-    const cloudFolder = String(process.env.CLOUDINARY_FOLDER || '11sport-web').trim() || '11sport-web';
+    const siteSetting = await getOnlineSiteSetting().catch(() => null);
+    const cloudName = String(siteSetting?.cloudinaryCloudName || process.env.CLOUDINARY_CLOUD_NAME || '').trim();
+    const apiKey = String(siteSetting?.cloudinaryApiKey || process.env.CLOUDINARY_API_KEY || '').trim();
+    const apiSecret = String(siteSetting?.cloudinaryApiSecret || process.env.CLOUDINARY_API_SECRET || '').trim();
+    const cloudFolder = String(siteSetting?.cloudinaryFolder || process.env.CLOUDINARY_FOLDER || '11sport-web').trim() || '11sport-web';
 
     if (cloudName && apiKey && apiSecret) {
       const timestamp = Math.floor(Date.now() / 1000);
@@ -621,13 +622,31 @@ cmsWebRouter.patch('/products/:id/web', async (req: Request, res: Response, next
     if (seo !== undefined) patch.seo = seo;
 
     if (Array.isArray(variantImages) && Array.isArray(existing.variants)) {
-      const imgMap = new Map<string, string>(
-        variantImages.map((vi: any) => [String(vi.variantKey), String(vi.imageUrl || '')])
-      );
-      patch.variants = existing.variants.map((v) => ({
-        ...v,
-        imageUrl: imgMap.has(v.variantKey) ? imgMap.get(v.variantKey) : v.imageUrl,
-      }));
+      const imgMapByKey = new Map<string, string>();
+      const imgMapByColor = new Map<string, string>();
+      for (const vi of variantImages) {
+        if (!vi || typeof vi !== 'object') continue;
+        const img = typeof vi.imageUrl === 'string' ? vi.imageUrl.trim() : '';
+        if (vi.variantKey) {
+          imgMapByKey.set(String(vi.variantKey), img);
+        }
+        if (vi.color) {
+          imgMapByColor.set(String(vi.color).trim().toLowerCase(), img);
+        }
+      }
+      patch.variants = existing.variants.map((v) => {
+        const cKey = String(v.color || '').trim().toLowerCase();
+        let nextImg = v.imageUrl || '';
+        if (imgMapByKey.has(v.variantKey)) {
+          nextImg = imgMapByKey.get(v.variantKey) || '';
+        } else if (cKey && imgMapByColor.has(cKey)) {
+          nextImg = imgMapByColor.get(cKey) || '';
+        }
+        return {
+          ...v,
+          imageUrl: nextImg,
+        };
+      });
     }
 
     const updated = await productRepo.updateById(String(existing._id), patch);
@@ -963,6 +982,10 @@ const TECHNICAL_SETTING_FIELDS = [
   'payosClientId',
   'payosApiKey',
   'payosChecksumKey',
+  'cloudinaryCloudName',
+  'cloudinaryApiKey',
+  'cloudinaryApiSecret',
+  'cloudinaryFolder',
   'webhookSecret',
   'onlineStockMode',
   'ga4Id',
@@ -970,12 +993,67 @@ const TECHNICAL_SETTING_FIELDS = [
   'revalidateSecret',
 ];
 
+cmsWebRouter.post('/cloudinary/test-connection', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const siteSetting = await getOnlineSiteSetting().catch(() => null);
+    const body = req.body || {};
+    const cloudName = String(body.cloudName || siteSetting?.cloudinaryCloudName || process.env.CLOUDINARY_CLOUD_NAME || '').trim();
+    const apiKey = String(body.apiKey || siteSetting?.cloudinaryApiKey || process.env.CLOUDINARY_API_KEY || '').trim();
+    const apiSecret = String(body.apiSecret || siteSetting?.cloudinaryApiSecret || process.env.CLOUDINARY_API_SECRET || '').trim();
+    const folder = String(body.folder || siteSetting?.cloudinaryFolder || process.env.CLOUDINARY_FOLDER || '11sport-web').trim() || '11sport-web';
+
+    if (!cloudName || !apiKey || !apiSecret) {
+      throw new ApiError(400, 'CLOUDINARY_MISSING_CONFIG', 'Vui lòng cung cấp đầy đủ Cloud Name, API Key và API Secret');
+    }
+
+    const timestamp = Math.floor(Date.now() / 1000);
+    const testFolder = `${folder}/test-connection`;
+    const signatureBase = `folder=${testFolder}&timestamp=${timestamp}${apiSecret}`;
+    const signature = crypto.createHash('sha1').update(signatureBase).digest('hex');
+
+    // 1x1 transparent GIF (43 bytes)
+    const testPixel = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+
+    const form = new URLSearchParams();
+    form.set('file', testPixel);
+    form.set('api_key', apiKey);
+    form.set('timestamp', String(timestamp));
+    form.set('folder', testFolder);
+    form.set('signature', signature);
+
+    const uploadRes = await fetch(`https://api.cloudinary.com/v1_1/${encodeURIComponent(cloudName)}/image/upload`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: form.toString(),
+    });
+
+    const uploadJson: any = await uploadRes.json().catch(() => ({}));
+    if (!uploadRes.ok || !uploadJson?.secure_url) {
+      const msg = uploadJson?.error?.message || 'Không thể kết nối tới Cloudinary với thông tin đã cung cấp';
+      throw new ApiError(400, 'CLOUDINARY_TEST_FAILED', msg);
+    }
+
+    res.json({
+      success: true,
+      data: {
+        connected: true,
+        cloudName,
+        folder,
+        testUrl: uploadJson.secure_url,
+        message: 'Kết nối và xác thực tài khoản Cloudinary thành công!',
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 cmsWebRouter.get('/settings', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const setting = await getOnlineSiteSetting();
     const copy = { ...(setting as any) };
     if (req.user?.role !== 'ADMIN') {
-      for (const secretField of ['payosApiKey', 'payosChecksumKey', 'webhookSecret', 'revalidateSecret']) {
+      for (const secretField of ['payosApiKey', 'payosChecksumKey', 'cloudinaryApiSecret', 'webhookSecret', 'revalidateSecret']) {
         if (copy[secretField]) copy[secretField] = '********';
       }
     }

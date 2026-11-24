@@ -1629,6 +1629,7 @@
         "fulfillmentStatus": "PENDING",
         "paymentUrl": "https://pay.payos.vn/web/...",
         "qrCode": "000201010212...",
+        "payosOrderCode": 1732456789,
         "reservedUntil": "2026-11-20T04:05:00.000Z"
       }
     }
@@ -1686,7 +1687,8 @@
 | **Dashboard CEO** | `GET /api/v1/cms/web/dashboard` | `ADMIN`, `CEO` | KPI doanh thu Online (tháng/30 ngày), số đơn QR vs COD, tỷ lệ thành công QR, top 10 SP bán chạy Online, review chờ duyệt, 5 audit log mới nhất. Query: `?from=&to=`. |
 | **Audit Log** | `GET /api/v1/cms/web/audit-logs` | `ADMIN`, `CEO` | Nhật ký thao tác trên tab Quản lý Website. Query: `actorId`, `entityType`, `action`, `page`, `limit`. |
 | **Revalidate** | `POST /api/v1/cms/web/revalidate` | `ADMIN`, `CEO` | Kích hoạt On-demand Revalidate sang `shop/api/revalidate`. Body: `{ "paths"?: ["/"], "tags"?: ["home", "menu"] }`. |
-| **Upload** | `POST /api/v1/cms/web/upload` | `ADMIN`, `CEO` | Upload ảnh banner/sản phẩm/bài viết (multipart/form-data), trả về `{ "data": { "url": "...", "width", "height" } }`. |
+| **Upload** | `POST /api/v1/cms/web/upload` | `ADMIN`, `CEO` | Upload ảnh banner/sản phẩm/bài viết (dataUrl/dataBase64). Tự động đẩy lên Cloudinary CDN theo cấu hình `WebSiteSetting` (hoặc `server/.env`), fallback local `/uploads/web/`. Trả về `{ "data": { "url": "https://res.cloudinary.com/...", "publicId", "provider": "cloudinary", "size", "mimeType" } }`. |
+| **Cloudinary Test** | `POST /api/v1/cms/web/cloudinary/test-connection` | **`ADMIN ONLY`** | Kiểm tra kết nối tài khoản Cloudinary (gửi `{ cloudName, apiKey, apiSecret, folder }` hoặc dùng key đã lưu). Trả về `{ "data": { "connected": true, "cloudName", "message" } }`. |
 | **Banners** | `GET /api/v1/cms/web/banners` | `ADMIN`, `CEO` | Danh sách banner/slider. |
 | | `POST /api/v1/cms/web/banners` | `ADMIN`, `CEO` | Tạo banner (bắt buộc `desktopImageUrl` & `mobileImageUrl`, `position`, `startDate`, `endDate`, `status`, `sortOrder`). |
 | | `PATCH /api/v1/cms/web/banners/:id` | `ADMIN`, `CEO` | Cập nhật / bật tắt / duyệt xuất bản banner. |
@@ -1723,6 +1725,6 @@
 | | `PATCH /api/v1/cms/web/redirects/:id` | **`ADMIN ONLY`** | Sửa / bật tắt Redirect (`CEO` -> `403 FORBIDDEN`). |
 | | `DELETE /api/v1/cms/web/redirects/:id` | **`ADMIN ONLY`** | Xóa Redirect (`CEO` -> `403 FORBIDDEN`). |
 | **Site Settings** | `GET /api/v1/cms/web/settings` | `ADMIN`, `CEO` | Lấy cấu hình site (che/mask các key nhạy cảm nếu role là `CEO`). |
-| | `PUT /api/v1/cms/web/settings` | `ADMIN`, `CEO` | Cập nhật thông tin hiển thị (logo, hotline, showroom, USP, footer, phí ship). **Nếu payload chứa trường kỹ thuật (`payosClientId`, `payosApiKey`, `payosChecksumKey`, `webhookSecret`, `onlineStockMode`, `ga4Id`, `gtmId`, `revalidateSecret`) và role là `CEO` -> chặn `403 TECHNICAL_SETTINGS_ADMIN_ONLY`.** |
+| | `PUT /api/v1/cms/web/settings` | `ADMIN`, `CEO` | Cập nhật thông tin hiển thị (logo, hotline, showroom, USP, footer, phí ship). **Nếu payload chứa trường kỹ thuật (`payosClientId`, `payosApiKey`, `payosChecksumKey`, `cloudinaryCloudName`, `cloudinaryApiKey`, `cloudinaryApiSecret`, `cloudinaryFolder`, `webhookSecret`, `onlineStockMode`, `ga4Id`, `gtmId`, `revalidateSecret`) và role là `CEO` -> chặn `403 TECHNICAL_SETTINGS_ADMIN_ONLY`.** |
 | **Online Orders** | `GET /api/v1/cms/web/orders` | `ADMIN`, `CEO` | Danh sách đơn hàng `channel: 'ONLINE'` (lọc `paymentStatus`, `fulfillmentStatus`, `paymentGateway`, `q`, `from`, `to`). |
 | | `PATCH /api/v1/cms/web/orders/:id/fulfillment` | `ADMIN`, `CEO` | Cập nhật trạng thái giao hàng (`CONFIRMED`, `PACKING`, `SHIPPING`, `DELIVERED`, `CANCELLED`), `trackingCode`. Nếu hủy đơn đã trừ kho -> hoàn kho atomic + ghi `StockMovement`. |

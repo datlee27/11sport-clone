@@ -1,53 +1,82 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { ChevronDown, List } from "lucide-react";
+import {
+  extractHeadingsFromHtml,
+  type TocHeading,
+} from "@/lib/articleHtml";
 
-export interface TocHeading {
-  id: string;
-  text: string;
-  level: 2 | 3;
-}
+export type { TocHeading };
 
 interface ArticleTocProps {
-  headings: TocHeading[];
+  headings?: TocHeading[];
+  contentHtml?: string;
 }
 
-export function ArticleToc({ headings }: ArticleTocProps) {
+export function ArticleToc({ headings, contentHtml }: ArticleTocProps) {
   const [open, setOpen] = useState(true);
 
-  if (!headings.length) return null;
+  const numberedItems = useMemo(() => {
+    const raw =
+      headings && headings.length > 0
+        ? headings
+        : contentHtml
+        ? extractHeadingsFromHtml(contentHtml)
+        : [];
+    let h2Index = 0;
+    let h3Index = 0;
+    return raw.map((item) => {
+      if (item.level <= 2) {
+        h2Index += 1;
+        h3Index = 0;
+        return { ...item, num: `${h2Index}` };
+      }
+      if (h2Index === 0) h2Index = 1;
+      h3Index += 1;
+      return { ...item, num: `${h2Index}.${h3Index}` };
+    });
+  }, [headings, contentHtml]);
+
+  if (!numberedItems.length) return null;
 
   return (
     <nav
       aria-label="Mục lục bài viết"
-      className="rounded-xl border border-surface-border bg-surface-subtle p-4"
+      className="border border-[#333333] rounded-none overflow-hidden bg-[#e8f5e9]"
     >
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
         aria-expanded={open}
-        className="w-full flex items-center justify-between gap-2 min-h-[40px] text-left font-bold text-sm text-ink-primary"
+        className="w-full flex items-center justify-between gap-2 px-4 py-2.5 bg-white border-b border-[#333333]/25 text-left font-bold text-[15px] text-[#0a0a0a]"
       >
         <span className="inline-flex items-center gap-2">
-          <List className="w-4 h-4 text-brand-primary" aria-hidden="true" />
+          <List className="w-4 h-4 text-[#0a0a0a]" aria-hidden="true" />
           <span>Mục lục bài viết</span>
         </span>
         <ChevronDown
-          className={`w-4 h-4 transition-transform ${open ? "rotate-180" : ""}`}
+          className={`w-4 h-4 text-[#333333] transition-transform ${
+            open ? "rotate-180" : ""
+          }`}
           aria-hidden="true"
         />
       </button>
 
       {open && (
-        <ul className="mt-3 space-y-1.5 border-t border-surface-border pt-3">
-          {headings.map((h) => (
-            <li key={h.id} className={h.level === 3 ? "pl-4" : ""}>
+        <ul className="px-4 py-3 space-y-1.5 bg-[#e8f5e9]">
+          {numberedItems.map((h) => (
+            <li key={h.id} className={h.level >= 3 ? "pl-5" : ""}>
               <a
                 href={`#${h.id}`}
-                className="block py-1 text-sm text-ink-secondary hover:text-brand-primary transition-colors"
+                className="inline-flex items-baseline gap-2 text-[13.5px] text-[#204b3e] hover:text-[#14352b] leading-snug"
               >
-                {h.text}
+                <span className="font-semibold tabular-nums shrink-0 no-underline">
+                  {h.num}
+                </span>
+                <span className="underline underline-offset-2 font-medium">
+                  {h.text}
+                </span>
               </a>
             </li>
           ))}

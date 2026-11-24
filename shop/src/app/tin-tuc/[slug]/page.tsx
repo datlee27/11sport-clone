@@ -1,205 +1,202 @@
 import Link from "next/link";
-import Image from "next/image";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { Calendar, ChevronRight, User } from "lucide-react";
 import {
   buildArticleJsonLd,
   buildBreadcrumbJsonLd,
   buildMetadata,
 } from "@/lib/seo";
-import { fetchArticleDetail } from "@/lib/storefront";
+import { fetchArticleDetail, fetchArticles } from "@/lib/storefront";
 import { JsonLd } from "@/components/seo/JsonLd";
-import { ArticleToc, type TocHeading } from "@/components/blog/ArticleToc";
 import { QuickConsultForm } from "@/components/blog/QuickConsultForm";
-import { ProductCard } from "@/components/common/ProductCard";
+import {
+  ArticleDetailBody,
+  ArticleGridCard,
+} from "@/components/blog/ArticleViews";
+import { PageHeroBanner } from "@/components/store/StorefrontDesignSystem";
 
-interface ArticleDetailPageProps {
+interface ArticleOrCategorySlugProps {
   params: { slug: string };
+  searchParams?: Record<string, string | string[] | undefined>;
 }
 
-function formatSlugTitle(slug: string): string {
-  return slug
-    .split("-")
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(" ");
-}
-
-function parseHeadingsAndInjectIds(html: string): {
-  processedHtml: string;
-  headings: TocHeading[];
-} {
-  const headings: TocHeading[] = [];
-  let idx = 0;
-
-  const processedHtml = html.replace(
-    /<h([23])([^>]*)>([\s\S]*?)<\/h\1>/gi,
-    (_match, levelStr: string, attrs: string, innerHtml: string) => {
-      const level = Number(levelStr) as 2 | 3;
-      const plainText = innerHtml.replace(/<[^>]+>/g, "").trim();
-      const idMatch = attrs.match(/\sid=["']([^"']+)["']/i);
-      const id = idMatch ? idMatch[1] : `muc-${++idx}`;
-
-      if (plainText) {
-        headings.push({ id, text: plainText, level });
-      }
-
-      if (idMatch) {
-        return `<h${level}${attrs}>${innerHtml}</h${level}>`;
-      }
-      return `<h${level} id="${id}"${attrs}>${innerHtml}</h${level}>`;
-    }
-  );
-
-  return { processedHtml, headings };
-}
+const BLOG_CATEGORY_MAP: Record<
+  string,
+  { name: string; description: string }
+> = {
+  "kien-thuc-pickleball": {
+    name: "Kiến thức Pickleball",
+    description:
+      "Luật chơi, cách tính điểm, kỹ thuật Dink, Third-Shot Drop và kích thước sân Pickleball chuẩn USAPA.",
+  },
+  "review-danh-gia": {
+    name: "Review & Đánh giá",
+    description:
+      "Đánh giá thực chiến các dòng vợt Pickleball Joola, Selkirk, Kamito, Facolos, CRBN mới nhất.",
+  },
+  "tu-van-dung-cu-pickleball": {
+    name: "Tư vấn dụng cụ Pickleball",
+    description:
+      "Hướng dẫn chọn độ dày lõi 14mm vs 16mm, trọng lượng vợt, giày và phụ kiện theo trình độ.",
+  },
+  "tin-tuc-cong-dong": {
+    name: "Tin tức & Cộng đồng",
+    description:
+      "Tin tức giải đấu PPA Tour, cộng đồng CLB và sự kiện tại hệ thống 3 showroom.",
+  },
+};
 
 export async function generateMetadata({
   params,
-}: ArticleDetailPageProps): Promise<Metadata> {
+  searchParams,
+}: ArticleOrCategorySlugProps): Promise<Metadata> {
+  const catMeta = BLOG_CATEGORY_MAP[params.slug];
+  if (catMeta) {
+    return buildMetadata({
+      title: `${catMeta.name} — Tin Tức & Cẩm Nang Pickleball`,
+      description: catMeta.description,
+      path: `/tin-tuc/${params.slug}`,
+      searchParams,
+    });
+  }
+
   const { data: article } = await fetchArticleDetail(params.slug);
   if (!article) {
     return buildMetadata({
-      title: formatSlugTitle(params.slug),
+      title: "Bài viết Pickleball",
       path: `/tin-tuc/${params.slug}`,
-      type: "article",
     });
   }
 
   return buildMetadata({
     title: article.seo?.title || article.title,
-    description: article.seo?.description || article.excerpt,
-    path: `/tin-tuc/${params.slug}`,
+    description:
+      article.seo?.description || article.excerpt || article.title,
+    path: `/${article.slug}`,
     image: article.seo?.ogImage || article.thumbnailUrl,
     type: "article",
   });
 }
 
-export default async function ArticleDetailPage({
+export default async function NewsCategoryOrArticlePage({
   params,
-}: ArticleDetailPageProps) {
+}: ArticleOrCategorySlugProps) {
+  const catMeta = BLOG_CATEGORY_MAP[params.slug];
+
+  // 1. BLOG CATEGORY HUB
+  if (catMeta) {
+    const articlesRes = await fetchArticles({
+      category: params.slug,
+      limit: 12,
+    });
+
+    const breadcrumbs = [
+      { name: "Trang chủ", href: "/" },
+      { name: "Tin tức", href: "/tin-tuc" },
+      { name: catMeta.name },
+    ];
+
+    return (
+      <div>
+        <JsonLd
+          data={buildBreadcrumbJsonLd([
+            { name: "Trang chủ", path: "/" },
+            { name: "Tin tức", path: "/tin-tuc" },
+            { name: catMeta.name, path: `/tin-tuc/${params.slug}` },
+          ])}
+        />
+
+        <PageHeroBanner
+          title={catMeta.name}
+          breadcrumbs={breadcrumbs}
+          tone="news"
+        />
+
+        <div className="max-w-container mx-auto px-3.5 sm:px-4 lg:px-5 py-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          <div className="lg:col-span-9 space-y-6">
+            <div className="flex flex-wrap items-center gap-2 border-b border-[#ececec] pb-3.5">
+              <Link
+                href="/tin-tuc"
+                className="h-8 px-3.5 rounded-none border border-[#dddddd] bg-white text-xs font-bold uppercase tracking-wider text-[#555555] hover:border-[#224e40] hover:text-[#224e40] inline-flex items-center"
+              >
+                Tất cả bài viết
+              </Link>
+              {Object.entries(BLOG_CATEGORY_MAP).map(([slugKey, info]) => (
+                <Link
+                  key={slugKey}
+                  href={`/tin-tuc/${slugKey}`}
+                  className={`h-8 px-3.5 rounded-none border text-xs font-bold uppercase tracking-wider inline-flex items-center transition-colors ${
+                    slugKey === params.slug
+                      ? "border-[#224e40] bg-[#224e40] text-white"
+                      : "border-[#dddddd] bg-white text-[#555555] hover:border-[#224e40] hover:text-[#224e40]"
+                  }`}
+                >
+                  {info.name}
+                </Link>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-8">
+              {articlesRes.data.map((post) => (
+                <ArticleGridCard key={post._id} article={post} />
+              ))}
+            </div>
+          </div>
+
+          <aside className="lg:col-span-3 lg:sticky lg:top-24">
+            <QuickConsultForm
+              variant="sidebar"
+              sourceUrl={`/tin-tuc/${params.slug}`}
+            />
+          </aside>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. BLOG ARTICLE DETAIL (/tin-tuc/[post-slug])
   const { data: article, notFound: isNotFound } = await fetchArticleDetail(
     params.slug
   );
-
-  if (isNotFound) {
+  if (isNotFound || !article) {
     notFound();
   }
-
-  const title = article?.title || formatSlugTitle(params.slug);
-  const rawHtml =
-    article?.contentHtml ||
-    "<p>Nội dung bài viết đang được cập nhật từ hệ thống 11 Sport.</p>";
-  const { processedHtml, headings } = parseHeadingsAndInjectIds(rawHtml);
 
   const breadcrumbs = [
     { name: "Trang chủ", path: "/" },
     { name: "Tin tức", path: "/tin-tuc" },
-    { name: title, path: `/tin-tuc/${params.slug}` },
+    ...(article.category
+      ? [
+          {
+            name: article.category.name,
+            path: `/tin-tuc/${article.category.slug}`,
+          },
+        ]
+      : []),
+    { name: article.title, path: `/tin-tuc/${params.slug}` },
   ];
 
-  const articleJsonLd = buildArticleJsonLd({
-    title,
-    description: article?.excerpt || title,
-    slug: params.slug,
-    image: article?.thumbnailUrl || "/og-default.jpg",
-    publishedAt: article?.publishedAt || new Date().toISOString(),
-    updatedAt: article?.updatedAt,
-    authorName: article?.authorName,
-  });
-
   return (
-    <div className="max-w-7xl mx-auto px-4 lg:px-6 py-6 lg:py-8 space-y-6">
-      <JsonLd data={[buildBreadcrumbJsonLd(breadcrumbs), articleJsonLd]} />
+    <div>
+      <JsonLd
+        data={[
+          buildBreadcrumbJsonLd(breadcrumbs),
+          buildArticleJsonLd({
+            title: article.title,
+            description: article.excerpt || article.title,
+            slug: article.slug,
+            image: article.thumbnailUrl || "/images/mock/news-cover-1.svg",
+            publishedAt: article.publishedAt || new Date().toISOString(),
+            updatedAt: article.updatedAt,
+            authorName: article.authorName,
+          }),
+        ]}
+      />
 
-      {/* Breadcrumb */}
-      <nav
-        aria-label="Breadcrumb"
-        className="flex flex-wrap items-center gap-1.5 text-xs sm:text-sm text-ink-muted"
-      >
-        <Link href="/" className="hover:text-brand-primary">
-          Trang chủ
-        </Link>
-        <ChevronRight className="w-4 h-4 shrink-0" aria-hidden="true" />
-        <Link href="/tin-tuc" className="hover:text-brand-primary">
-          Tin tức
-        </Link>
-        <ChevronRight className="w-4 h-4 shrink-0" aria-hidden="true" />
-        <span className="font-semibold text-ink-primary truncate">{title}</span>
-      </nav>
-
-      {/* 2-Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Left: Main Article */}
-        <article className="lg:col-span-8 space-y-6 max-w-[740px]">
-          <header className="space-y-3">
-            {article?.category?.name && (
-              <span className="inline-block px-2.5 py-0.5 rounded bg-brand-tint text-brand-primary text-xs font-bold">
-                {article.category.name}
-              </span>
-            )}
-
-            <h1 className="text-2xl sm:text-3xl lg:text-[34px] font-extrabold text-ink-primary leading-tight">
-              {title}
-            </h1>
-
-            <div className="flex flex-wrap items-center gap-4 text-xs sm:text-sm text-ink-muted">
-              <span className="inline-flex items-center gap-1.5">
-                <User className="w-4 h-4" aria-hidden="true" />
-                <span>{article?.authorName || "Ban biên tập 11 Sport"}</span>
-              </span>
-              {article?.publishedAt && (
-                <span className="inline-flex items-center gap-1.5">
-                  <Calendar className="w-4 h-4" aria-hidden="true" />
-                  <span>
-                    {new Date(article.publishedAt).toLocaleDateString("vi-VN")}
-                  </span>
-                </span>
-              )}
-            </div>
-          </header>
-
-          {article?.thumbnailUrl && (
-            <div className="relative aspect-[16/9] rounded-2xl overflow-hidden bg-surface-muted border border-surface-border">
-              <Image
-                src={article.thumbnailUrl}
-                alt={title}
-                fill
-                priority
-                sizes="(max-width: 1024px) 100vw, 740px"
-                className="object-cover"
-              />
-            </div>
-          )}
-
-          {/* Auto Table of Contents */}
-          <ArticleToc headings={headings} />
-
-          {/* Article Body */}
-          <div
-            className="prose prose-slate max-w-none text-base text-ink-secondary leading-relaxed prose-headings:text-ink-primary prose-a:text-brand-primary"
-            dangerouslySetInnerHTML={{ __html: processedHtml }}
-          />
-        </article>
-
-        {/* Right: Sidebar */}
-        <aside className="lg:col-span-4 space-y-6 lg:sticky lg:top-24">
-          <QuickConsultForm sourceUrl={`/tin-tuc/${params.slug}`} />
-
-          {article?.relatedProducts && article.relatedProducts.length > 0 && (
-            <div className="space-y-3">
-              <h2 className="text-base font-bold text-ink-primary">
-                Sản phẩm nhắc đến trong bài
-              </h2>
-              <div className="grid grid-cols-2 lg:grid-cols-1 gap-3">
-                {article.relatedProducts.slice(0, 3).map((prod) => (
-                  <ProductCard key={prod._id} product={prod} />
-                ))}
-              </div>
-            </div>
-          )}
-        </aside>
-      </div>
+      <ArticleDetailBody
+        article={article}
+        sourceUrl={`/tin-tuc/${article.slug}`}
+      />
     </div>
   );
 }

@@ -1,6 +1,12 @@
+import { storefrontMockRepository } from "@/repositories/mock/storefrontMockRepository";
+
 export const API_BASE_URL = (
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1"
 ).replace(/\/+$/, "");
+
+export function isMockApiEnabled(): boolean {
+  return (process.env.NEXT_PUBLIC_DATA_SOURCE || "mock") === "mock";
+}
 
 export class ApiError extends Error {
   status: number;
@@ -49,16 +55,44 @@ export async function apiFetch<T>(
   options: ApiFetchOptions = {}
 ): Promise<T> {
   const { params, headers, next, ...rest } = options;
+
+  if (isMockApiEnabled()) {
+    const mockRes = storefrontMockRepository.handlePublicApiRequest(path, {
+      method: rest.method,
+      params,
+      body: typeof rest.body === "string" ? rest.body : null,
+      headers: headers as Record<string, string> | undefined,
+    });
+    if (mockRes.status >= 400) {
+      const errPayload = mockRes.payload as { message?: string } | null;
+      throw new ApiError(
+        errPayload?.message || `Yêu cầu thất bại (${mockRes.status})`,
+        mockRes.status,
+        mockRes.payload
+      );
+    }
+    return mockRes.payload as T;
+  }
+
   const url = buildUrl(path, params);
 
-  const response = await fetch(url, {
-    ...rest,
-    headers: {
-      "Content-Type": "application/json",
-      ...headers,
-    },
-    ...(next ? { next } : {}),
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 4000);
+
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      ...rest,
+      signal: rest.signal || controller.signal,
+      headers: {
+        "Content-Type": "application/json",
+        ...headers,
+      },
+      ...(next ? { next } : {}),
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   const contentType = response.headers.get("content-type") || "";
   const isJson = contentType.includes("application/json");

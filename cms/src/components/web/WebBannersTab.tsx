@@ -206,16 +206,30 @@ export default function WebBannersTab() {
                 <tr key={b._id} className="hover:bg-slate-50">
                   <td className="p-3">
                     <div className="flex items-center gap-2">
-                      <img
-                        src={resolveWebMediaUrl(b.desktopImageUrl)}
-                        alt={b.title}
-                        className="w-24 h-10 object-cover rounded-lg border border-slate-200 bg-slate-100"
-                      />
-                      <img
-                        src={resolveWebMediaUrl(b.mobileImageUrl)}
-                        alt={`${b.title} mobile`}
-                        className="w-10 h-10 object-cover rounded-lg border border-slate-200 bg-slate-100"
-                      />
+                      <div className="relative">
+                        <img
+                          src={resolveWebMediaUrl(b.desktopImageUrl)}
+                          alt={b.title}
+                          className="w-24 h-10 object-cover rounded-lg border border-slate-200 bg-slate-100"
+                        />
+                        {b.desktopImageUrl?.includes("res.cloudinary.com") && (
+                          <span className="absolute bottom-0.5 right-0.5 px-1 rounded text-[8px] font-bold bg-teal-600 text-white shadow-sm">
+                            CDN
+                          </span>
+                        )}
+                      </div>
+                      <div className="relative">
+                        <img
+                          src={resolveWebMediaUrl(b.mobileImageUrl)}
+                          alt={`${b.title} mobile`}
+                          className="w-10 h-10 object-cover rounded-lg border border-slate-200 bg-slate-100"
+                        />
+                        {b.mobileImageUrl?.includes("res.cloudinary.com") && (
+                          <span className="absolute bottom-0.5 right-0.5 px-1 rounded text-[8px] font-bold bg-teal-600 text-white shadow-sm">
+                            CDN
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </td>
                   <td className="p-3">

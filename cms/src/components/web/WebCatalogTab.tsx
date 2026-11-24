@@ -6,20 +6,122 @@ import {
   extractWebImageUrl,
   resolveWebMediaUrl,
   slugifyVietnamese,
+  uploadWebImageFile,
   WebBrandItem,
   WebCategoryItem,
   WebProductItem,
 } from "@/lib/webApi";
 import {
   ImageUploadField,
+  MultiImageUploadField,
   SeoCharacterBar,
   TabEmptyState,
   TabFeedbackBanner,
   TabLoadingState,
 } from "./WebShared";
-import { Eye, EyeOff, Pencil, Search, Star, X } from "lucide-react";
+import { Eye, EyeOff, Loader2, Pencil, Search, Star, UploadCloud, X } from "lucide-react";
 
 type SubMode = "PRODUCTS" | "CATEGORIES" | "BRANDS";
+
+function VariantImageCard({
+  item,
+  onChange,
+}: {
+  item: { variantKey?: string; color: string; size?: string; imageUrl: string };
+  onChange: (url: string) => void;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null);
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const url = await uploadWebImageFile(file);
+      if (url) onChange(url);
+    } catch (err: any) {
+      alert("Tải ảnh thất bại: " + (err?.message || "Lỗi"));
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const isCloudinary = Boolean(
+    item.imageUrl && (item.imageUrl.includes("res.cloudinary.com") || item.imageUrl.includes("cloudinary"))
+  );
+  const displayUrl = item.imageUrl ? resolveWebMediaUrl(item.imageUrl) : "";
+
+  return (
+    <div className="flex items-center gap-3 p-2.5 rounded-xl border border-slate-200 bg-white hover:border-slate-300 transition-colors">
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleFile}
+      />
+      <div className="relative w-12 h-12 rounded-lg border border-slate-200 overflow-hidden bg-slate-50 flex items-center justify-center shrink-0">
+        {displayUrl ? (
+          <>
+            <img
+              src={displayUrl}
+              alt={`${item.color} ${item.size || ""}`.trim()}
+              className="w-full h-full object-contain p-0.5"
+            />
+            {isCloudinary && (
+              <span className="absolute bottom-0 inset-x-0 bg-emerald-600/90 text-[7px] font-bold text-white text-center leading-tight">
+                CDN
+              </span>
+            )}
+          </>
+        ) : (
+          <span className="text-[10px] text-slate-400 font-bold text-center leading-tight">Chưa có ảnh</span>
+        )}
+        {uploading && (
+          <div className="absolute inset-0 bg-black/50 flex items-center justify-center text-white">
+            <Loader2 className="w-4 h-4 animate-spin" />
+          </div>
+        )}
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <div className="text-xs font-bold text-slate-800 truncate">{item.color || "Màu mặc định"}</div>
+        <div className="text-[11px] font-medium text-emerald-700 truncate">
+          {item.size ? `Phiên bản: ${item.size}` : "Tiêu chuẩn"}
+        </div>
+      </div>
+
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          disabled={uploading}
+          onClick={() => fileInputRef.current?.click()}
+          className="p-1.5 rounded-lg border border-slate-200 hover:border-teal-500 hover:bg-teal-50 text-slate-700 hover:text-teal-700 text-[11px] font-bold flex items-center gap-1 cursor-pointer disabled:opacity-50"
+          title="Tải ảnh biến thể lên Cloudinary"
+        >
+          {uploading ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin text-teal-600" />
+          ) : (
+            <UploadCloud className="w-3.5 h-3.5" />
+          )}
+          <span>{item.imageUrl ? "Đổi" : "Tải"}</span>
+        </button>
+        {item.imageUrl && (
+          <button
+            type="button"
+            onClick={() => onChange("")}
+            className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600 cursor-pointer"
+            title="Gỡ ảnh này"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function WebCatalogTab() {
   const [mode, setMode] = useState<SubMode>("PRODUCTS");
@@ -40,8 +142,8 @@ export default function WebCatalogTab() {
   const [pPublished, setPPublished] = useState(false);
   const [pFeatured, setPFeatured] = useState(false);
   const [pCompareAt, setPCompareAt] = useState(0);
-  const [pImage0, setPImage0] = useState("");
-  const [pExtraImages, setPExtraImages] = useState("");
+  const [pImages, setPImages] = useState<string[]>([]);
+  const [pVariants, setPVariants] = useState<{ variantKey: string; color: string; size: string; imageUrl: string }[]>([]);
   const [pShortDesc, setPShortDesc] = useState("");
   const [pDescHtml, setPDescHtml] = useState("");
   const [pSeoTitle, setPSeoTitle] = useState("");
@@ -95,14 +197,19 @@ export default function WebCatalogTab() {
     setPPublished(Boolean(p.isPublishedOnline));
     setPFeatured(Boolean(p.isFeatured));
     setPCompareAt(Number(p.compareAtPrice || 0));
-    setPImage0(extractWebImageUrl(p.images?.[0]));
-    setPExtraImages(
-      (p.images || [])
-        .slice(1)
-        .map((img) => extractWebImageUrl(img))
-        .filter(Boolean)
-        .join("\n")
-    );
+    const rawImgs = (p.images || [])
+      .map((img) => extractWebImageUrl(img))
+      .filter(Boolean);
+    setPImages(rawImgs);
+
+    const vars = (p.variants || []).map((v) => ({
+      variantKey: v.variantKey || `${v.color || ""}_${v.size || ""}`,
+      color: v.color || "",
+      size: v.size || "",
+      imageUrl: v.imageUrl || "",
+    }));
+    setPVariants(vars);
+
     setPShortDesc(p.shortDescription || "");
     setPDescHtml(p.descriptionHtml || "");
     setPSeoTitle(p.seo?.title || "");
@@ -115,13 +222,8 @@ export default function WebCatalogTab() {
     setSaving(true);
     setError("");
     try {
-      const imgs = [
-        pImage0.trim(),
-        ...pExtraImages
-          .split("\n")
-          .map((s) => s.trim())
-          .filter(Boolean),
-      ]
+      let imgs = pImages
+        .map((s) => s.trim())
         .filter(Boolean)
         .map((url, idx) => ({
           url,
@@ -129,6 +231,25 @@ export default function WebCatalogTab() {
           isPrimary: idx === 0,
           sortOrder: idx,
         }));
+
+      const variantImages = pVariants.map((v) => ({
+        variantKey: v.variantKey,
+        color: v.color,
+        size: v.size,
+        imageUrl: v.imageUrl,
+      }));
+
+      // Nếu ảnh sản phẩm chung chưa có, tự động lấy ảnh từ các biến thể làm gallery & ảnh đại diện
+      if (imgs.length === 0) {
+        imgs = Array.from(
+          new Set(variantImages.map((v) => v.imageUrl).filter(Boolean))
+        ).map((url, idx) => ({
+          url,
+          alt: editProd.name,
+          isPrimary: idx === 0,
+          sortOrder: idx,
+        }));
+      }
 
       await apiRequest(`/cms/web/products/${editProd._id}/web`, {
         method: "PATCH",
@@ -138,6 +259,7 @@ export default function WebCatalogTab() {
           isFeatured: pFeatured,
           compareAtPrice: Number(pCompareAt || 0),
           images: imgs,
+          variantImages,
           shortDescription: pShortDesc,
           descriptionHtml: pDescHtml,
           seo: {
@@ -468,18 +590,49 @@ export default function WebCatalogTab() {
                 </label>
               </div>
 
-              <ImageUploadField label="Ảnh đại diện chính" value={pImage0} onChange={setPImage0} />
+              <MultiImageUploadField
+                label="Ảnh sản phẩm"
+                values={pImages}
+                onChange={setPImages}
+                maxImages={12}
+                hint="Tải ảnh lên Cloudinary. Ảnh có huy hiệu 'Chính' là ảnh đại diện hiển thị ngoài trang chủ & danh mục."
+              />
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                  Ảnh phụ (mỗi dòng 1 URL)
-                </label>
-                <textarea
-                  rows={2}
-                  value={pExtraImages}
-                  onChange={(e) => setPExtraImages(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 font-mono text-xs"
-                />
+              {/* Ảnh biến thể (Màu sắc + Phiên bản cho /shop) */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase">
+                      Ảnh biến thể theo Màu &amp; Phiên bản (cho /shop)
+                    </label>
+                    <p className="text-[11px] text-slate-500">
+                      Mỗi màu sắc hoặc phiên bản (độ dày 14mm, 16mm...) có thể có ảnh riêng hiển thị tương ứng khi khách bấm chọn trên Website bán hàng.
+                    </p>
+                  </div>
+                  <span className="text-[11px] font-bold text-slate-500">
+                    {pVariants.length} biến thể
+                  </span>
+                </div>
+
+                {pVariants.length === 0 ? (
+                  <p className="text-xs text-slate-400 italic">
+                    Sản phẩm này chưa có biến thể nào.
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {pVariants.map((v, idx) => (
+                      <VariantImageCard
+                        key={v.variantKey || idx}
+                        item={v}
+                        onChange={(url) => {
+                          setPVariants((prev) =>
+                            prev.map((item, i) => (i === idx ? { ...item, imageUrl: url } : item))
+                          );
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div>
