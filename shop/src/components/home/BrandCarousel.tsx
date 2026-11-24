@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import type { BrandSummary } from "@/types/storefront";
 import { resolveMediaUrl } from "@/lib/format";
 
@@ -35,7 +35,29 @@ export function BrandCarousel({
 }: BrandCarouselProps) {
   const [startOffset, setStartOffset] = useState(0);
 
-  if (!brands.length) return null;
+  if (!brands.length) {
+    return (
+      <section
+        aria-label={title}
+        className="group relative w-full bg-white py-[2px]"
+      >
+        <div className="grid grid-cols-4 lg:grid-cols-7 gap-[2px] bg-white">
+          {Array.from({ length: 7 }).map((_, idx) => (
+            <div
+              key={idx}
+              className={`relative aspect-square bg-[#224e40] flex flex-col items-center justify-center p-3 sm:p-4 ${
+                idx >= 4 ? "hidden lg:flex" : "flex"
+              }`}
+            >
+              <div className="w-10 h-10 rounded-full border border-white/20 flex items-center justify-center text-white/50">
+                <AlertCircle className="w-5 h-5" aria-hidden="true" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+    );
+  }
 
   const preferred = brands.filter(
     (b) => "featuredOnHome" in b && Boolean(b.featuredOnHome)
