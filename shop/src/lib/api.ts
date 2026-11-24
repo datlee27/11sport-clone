@@ -76,14 +76,23 @@ export async function apiFetch<T>(
 
   const url = buildUrl(path, params);
 
-  const response = await fetch(url, {
-    ...rest,
-    headers: {
-      "Content-Type": "application/json",
-      ...headers,
-    },
-    ...(next ? { next } : {}),
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 4000);
+
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      ...rest,
+      signal: rest.signal || controller.signal,
+      headers: {
+        "Content-Type": "application/json",
+        ...headers,
+      },
+      ...(next ? { next } : {}),
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   const contentType = response.headers.get("content-type") || "";
   const isJson = contentType.includes("application/json");

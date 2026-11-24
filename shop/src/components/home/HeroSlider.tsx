@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import useEmblaCarousel from "embla-carousel-react";
 import Autoplay from "embla-carousel-autoplay";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, ImageIcon } from "lucide-react";
 import { resolveMediaUrl } from "@/lib/format";
 import type { BannerItem } from "@/types/storefront";
 
@@ -54,25 +54,31 @@ export function HeroSlider({ banners }: HeroSliderProps) {
 
   if (!banners.length) {
     return (
-      <section className="w-full bg-store-forest text-white">
-        <div className="max-w-container mx-auto px-4 lg:px-6 py-12 flex flex-col justify-between gap-6">
-          <div className="max-w-2xl space-y-4">
-            <p className="text-2xl sm:text-3xl lg:text-[36px] font-extrabold leading-tight">
-              11Sport — Hệ thống Vợt &amp; Phụ kiện Pickleball Chính hãng
-            </p>
-            <p className="text-sm sm:text-base text-white/85 leading-relaxed">
-              Đại lý phân phối Joola, Selkirk, Kamito, Facolos, CRBN, giày Asics
-              và phụ kiện thi đấu chuẩn USAPA.
-            </p>
+      <section
+        aria-label="Khung banner quảng cáo 11Sport"
+        className="group relative w-full overflow-hidden bg-store-surface-sage border-b border-[#e2e8e5]"
+      >
+        <div className="relative w-full aspect-[16/9] sm:aspect-[1425/490] flex flex-col items-center justify-center text-center px-4 bg-[#eef3f0]">
+          <div className="w-12 h-12 rounded-full bg-white border border-[#dce5da] flex items-center justify-center text-[#224e40]/60 mb-2 shadow-sm">
+            <ImageIcon className="w-6 h-6" aria-hidden="true" />
           </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <Link
-              href="/vot-pickleball"
-              className="inline-flex items-center justify-center h-11 px-6 rounded-full bg-store-mint-bg text-store-mint-ink font-extrabold text-xs uppercase tracking-wider"
-            >
-              Khám phá Vợt Pickleball
-            </Link>
-          </div>
+          <p className="text-sm font-medium text-[#555555]">
+            Chưa có dữ liệu
+          </p>
+        </div>
+
+        {/* Nút mũi tên giả lập khung slider */}
+        <div className="hidden sm:inline-flex items-center justify-center w-10 h-10 rounded-full border border-black/10 bg-white/60 text-black/40 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
+          <ChevronLeft className="w-5 h-5" aria-hidden="true" />
+        </div>
+        <div className="hidden sm:inline-flex items-center justify-center w-10 h-10 rounded-full border border-black/10 bg-white/60 text-black/40 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
+          <ChevronRight className="w-5 h-5" aria-hidden="true" />
+        </div>
+
+        {/* Chấm phân trang giả lập */}
+        <div className="absolute bottom-2 sm:bottom-3.5 inset-x-0 flex items-center justify-center gap-2">
+          <span className="w-2.5 h-2.5 rounded-full bg-black/25" />
+          <span className="w-2.5 h-2.5 rounded-full bg-black/15" />
         </div>
       </section>
     );

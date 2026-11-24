@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { headers } from "next/headers";
+import { PackageOpen } from "lucide-react";
 import { buildMetadata } from "@/lib/seo";
 import { resolveMediaUrl } from "@/lib/format";
 import { STORE_I18N } from "@/lib/i18n";
@@ -61,21 +62,34 @@ export default async function HomePage() {
   const brands = homeData?.brands ?? [];
   const uspItems = homeData?.usp ?? [];
 
+  const defaultCategorySections: HomeSectionItem[] =
+    categoryBlocks.length > 0
+      ? categoryBlocks.map((cb, idx) => ({
+          _id: `cat-${cb.category?.slug || idx}`,
+          type: "CATEGORY_GRID" as const,
+          title: cb.category?.name?.toUpperCase() || "SẢN PHẨM",
+          viewAllUrl: cb.category?.slug ? `/${cb.category.slug}` : "/cua-hang",
+          sortOrder: idx === 0 ? 2 : 4 + idx,
+        }))
+      : [
+          {
+            _id: "featured",
+            type: "CATEGORY_GRID" as const,
+            title: "VỢT PICKLEBALL",
+            viewAllUrl: "/vot-pickleball",
+            sortOrder: 2,
+          },
+        ];
+
   const sections: HomeSectionItem[] =
     homeData?.homeSections && homeData.homeSections.length > 0
       ? [...homeData.homeSections].sort((a, b) => a.sortOrder - b.sortOrder)
       : [
           { _id: "hero", type: "HERO", sortOrder: 1 },
-          {
-            _id: "featured",
-            type: "CATEGORY_GRID",
-            title: "VỢT PICKLEBALL",
-            viewAllUrl: "/vot-pickleball",
-            sortOrder: 2,
-          },
+          ...defaultCategorySections,
           { _id: "usp", type: "USP", sortOrder: 3 },
-          { _id: "brands", type: "BRANDS", sortOrder: 4 },
-        ];
+          { _id: "brands", type: "BRANDS", sortOrder: 99 },
+        ].sort((a, b) => a.sortOrder - b.sortOrder);
 
   let categoryBlockIndex = 0;
   let inlineBannerIndex = 0;
@@ -120,8 +134,32 @@ export default async function HomePage() {
                 : [];
               categoryBlockIndex += 1;
 
-              if (!products.length) return null;
+              // Khi không có sản phẩm nào:
+              // - Chỉ hiển thị 1 thông báo rỗng duy nhất ở mục đầu tiên (không lặp lại)
+              // - Bỏ hoàn toàn ô tiêu đề danh mục (bỏ ô VỢT PICKLEBALL), chỉ hiển thị khung thông báo
+              if (!products.length) {
+                if (!isFirstGrid) return null;
 
+                return (
+                  <section
+                    key={section._id}
+                    className="max-w-container mx-auto px-3 sm:px-4 lg:px-5 pt-7 lg:pt-9 pb-2"
+                  >
+                    <MotionReveal className="space-y-5" immediate>
+                      <div className="rounded-[8px] border border-dashed border-[#dce5da] bg-[#fbfcfb] py-12 px-4 text-center space-y-2">
+                        <div className="w-12 h-12 mx-auto rounded-full bg-white border border-[#dce5da] flex items-center justify-center text-[#224e40]/60">
+                          <PackageOpen className="w-6 h-6" aria-hidden="true" />
+                        </div>
+                        <p className="text-sm font-medium text-[#555555]">
+                          Chưa có dữ liệu
+                        </p>
+                      </div>
+                    </MotionReveal>
+                  </section>
+                );
+              }
+
+              // Khi có sản phẩm: Hiển thị đầy đủ tiêu đề hộp và lưới sản phẩm
               const rawTitle =
                 section.title || block?.category?.name || "SẢN PHẨM NỔI BẬT";
               const title = localizeHomeSectionTitle(rawTitle, locale);
