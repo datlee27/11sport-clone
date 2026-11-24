@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AlertCircle } from "lucide-react";
-import { ApiError, apiFetch, isMockApiEnabled } from "@/lib/api";
+import { ApiError, apiFetch } from "@/lib/api";
 import {
   formatPhoneVN,
   formatPriceByCurrency,
@@ -365,22 +365,17 @@ export function CheckoutClient() {
         let finalPaymentUrl = orderData.paymentUrl || "";
         let finalQrCode = orderData.qrCode || "";
 
-        const payableAmount =
-          orderData.totalAmount ?? pricing?.totalAmount ?? 0;
-
-        // Chỉ tạo link PayOS thật khi không ở chế độ mock và số tiền phải thanh toán > 0₫
-        if (
-          paymentGateway === "PAYOS" &&
-          !isMockApiEnabled() &&
-          payableAmount > 0
-        ) {
+        // Nếu chọn thanh toán PAYOS:
+        // Đảm bảo luôn tạo Link và Mã QR PayOS THẬT từ máy chủ PayOS (kể cả khi FE đang mock dữ liệu sản phẩm)
+        // để người dùng có thể demo quét mã QR thực tế 100% cho khách hàng xem
+        if (paymentGateway === "PAYOS") {
           try {
             const payosRes = await fetch("/api/payos/create-payment-link", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 orderCode: orderData.orderCode,
-                amount: payableAmount,
+                amount: orderData.totalAmount || pricing?.totalAmount || 50000,
                 description: `11S ${orderData.orderCode}`.slice(0, 25),
               }),
             });

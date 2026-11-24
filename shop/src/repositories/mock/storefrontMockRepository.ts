@@ -752,7 +752,7 @@ export const storefrontMockRepository = {
       );
       const tierDiscountTotal = pricing.bulkDiscountSaved;
       const freeShipThreshold =
-        MOCK_SITE_SETTINGS.shipping?.freeShipThreshold ?? 0;
+        MOCK_SITE_SETTINGS.shipping?.freeShipThreshold ?? 500_000;
       const defaultFee = MOCK_SITE_SETTINGS.shipping?.defaultFee ?? 30_000;
       // Miễn phí vận chuyển nếu đạt ngưỡng freeShip hoặc đơn hàng test <= 10.000₫
       const shippingFee =
@@ -805,7 +805,7 @@ export const storefrontMockRepository = {
               {
                 productId: `gift-tier-${pricing.unlockedGift.minQty}`,
                 productName: pricing.unlockedGift.rewardTitle,
-                imageUrl: "/images/mock/fashion-jersey.svg",
+                imageUrl: "/images/mock/apparel-polo-mint.svg",
                 quantity: 1,
               },
             ]

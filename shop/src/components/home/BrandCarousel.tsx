@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
+import { resolveMediaUrl } from "@/lib/format";
 import type { BrandSummary } from "@/types/storefront";
 
 interface BrandCarouselProps {
@@ -87,6 +88,7 @@ export function BrandCarousel({
             typeof brand.rootCategorySlug === "string"
               ? `/${brand.rootCategorySlug}`
               : `/thuong-hieu/${brand.slug}`;
+          const logo = resolveMediaUrl(brand.logoUrl);
 
           return (
             <Link
@@ -97,12 +99,23 @@ export function BrandCarousel({
                 idx >= 4 ? "hidden lg:flex" : "flex"
               }`}
             >
-              <span
-                aria-hidden="true"
-                className="px-1.5 sm:px-3 text-xs sm:text-base lg:text-lg xl:text-xl font-extrabold uppercase tracking-wide sm:tracking-[0.12em] text-white leading-tight break-words transition-transform duration-200 group-hover/tile:scale-105"
-              >
-                {brand.name}
-              </span>
+              {logo ? (
+                <Image
+                  src={logo}
+                  alt={brand.name}
+                  fill
+                  sizes="(max-width: 1024px) 25vw, 15vw"
+                  className="object-cover transition-transform duration-200 group-hover/tile:scale-105"
+                />
+              ) : (
+                <span
+                  aria-hidden="true"
+                  className="px-1.5 sm:px-3 text-xs sm:text-base lg:text-lg xl:text-xl font-extrabold uppercase tracking-wide sm:tracking-[0.12em] text-white leading-tight break-words transition-transform duration-200 group-hover/tile:scale-105"
+                >
+                  {brand.name}
+                </span>
+              )}
+              <span className="sr-only">{brand.name}</span>
             </Link>
           );
         })}
