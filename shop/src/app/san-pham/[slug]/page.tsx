@@ -1,7 +1,5 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { ChevronRight } from "lucide-react";
 import {
   buildBreadcrumbJsonLd,
   buildMetadata,
@@ -14,6 +12,7 @@ import {
 } from "@/lib/storefront";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { ProductDetailClient } from "@/components/product/ProductDetailClient";
+import { BreadcrumbBar } from "@/components/store/StorefrontDesignSystem";
 import type { ProductDetail } from "@/types/storefront";
 
 interface ProductPageProps {
@@ -35,7 +34,7 @@ function buildFallbackProduct(slug: string): ProductDetail {
     stockAvailable: 0,
     variants: [],
     shortDescription:
-      "Thông tin sản phẩm đang được đồng bộ từ hệ thống 11 Sport.",
+      "Thông tin sản phẩm đang được đồng bộ từ hệ thống 11Sport.",
   };
 }
 
@@ -46,7 +45,7 @@ export async function generateMetadata({
   if (!product) {
     return buildMetadata({
       title: "Chi tiết sản phẩm",
-      path: `/san-pham/${params.slug}`,
+      path: `/${params.slug}`,
     });
   }
 
@@ -55,8 +54,8 @@ export async function generateMetadata({
     description:
       product.seo?.description ||
       product.shortDescription ||
-      `Mua ${product.name} chính hãng tại 11 Sport. Bảo hành đầy đủ, đổi trả 7 ngày.`,
-    path: `/san-pham/${params.slug}`,
+      `Mua ${product.name} chính hãng tại 11Sport. Bảo hành đầy đủ, lỗi 1 đổi 1, freeship toàn quốc.`,
+    path: `/${product.slug}`,
     image:
       product.seo?.ogImage ||
       product.thumbnailUrl ||
@@ -81,16 +80,34 @@ export default async function ProductPage({ params }: ProductPageProps) {
       ])
     : [[], null];
 
-  const breadcrumbs = [
+  const brandBreadcrumb =
+    product.brand && product.category?.slug === "vot-pickleball"
+      ? {
+          name: `Vợt Pickleball ${product.brand.name}`,
+          path: `/vot-pickleball-${product.brand.slug}`,
+        }
+      : product.brand
+      ? {
+          name: product.brand.name,
+          path: `/thuong-hieu/${product.brand.slug}`,
+        }
+      : null;
+
+  const visibleBreadcrumbs = [
     { name: "Trang chủ", path: "/" },
     ...(product.category
       ? [
           {
             name: product.category.name,
-            path: `/danh-muc/${product.category.slug}`,
+            path: `/${product.category.slug}`,
           },
         ]
       : []),
+    ...(brandBreadcrumb ? [brandBreadcrumb] : []),
+  ];
+
+  const jsonLdBreadcrumbs = [
+    ...visibleBreadcrumbs,
     { name: product.name, path: `/san-pham/${params.slug}` },
   ];
 
@@ -98,10 +115,10 @@ export default async function ProductPage({ params }: ProductPageProps) {
     name: product.name,
     description:
       product.shortDescription ||
-      `${product.name} chính hãng phân phối tại 11 Sport.`,
+      `${product.name} chính hãng phân phối tại 11Sport.`,
     slug: product.slug,
     sku: product.code,
-    brandName: product.brand?.name || "11 Sport",
+    brandName: product.brand?.name || "11Sport",
     images:
       product.images?.map((i) => i.url) ||
       (product.thumbnailUrl ? [product.thumbnailUrl] : []),
@@ -112,33 +129,19 @@ export default async function ProductPage({ params }: ProductPageProps) {
   });
 
   return (
-    <div className="max-w-7xl mx-auto px-4 lg:px-6 py-6 lg:py-8 space-y-6">
-      <JsonLd data={[buildBreadcrumbJsonLd(breadcrumbs), productJsonLd]} />
+    <div className="max-w-container mx-auto px-3.5 sm:px-4 lg:px-5 py-4 lg:py-6 space-y-4">
+      <JsonLd data={[buildBreadcrumbJsonLd(jsonLdBreadcrumbs), productJsonLd]} />
 
-      {/* Breadcrumb */}
-      <nav
-        aria-label="Breadcrumb"
-        className="flex flex-wrap items-center gap-1.5 text-xs sm:text-sm text-ink-muted"
-      >
-        <Link href="/" className="hover:text-brand-primary">
-          Trang chủ
-        </Link>
-        {product.category && (
-          <>
-            <ChevronRight className="w-4 h-4 shrink-0" aria-hidden="true" />
-            <Link
-              href={`/danh-muc/${product.category.slug}`}
-              className="hover:text-brand-primary"
-            >
-              {product.category.name}
-            </Link>
-          </>
-        )}
-        <ChevronRight className="w-4 h-4 shrink-0" aria-hidden="true" />
-        <span className="font-semibold text-ink-primary truncate">
-          {product.name}
-        </span>
-      </nav>
+      <BreadcrumbBar
+        items={visibleBreadcrumbs.map((b) => ({
+          name: b.name,
+          href: b.path,
+        }))}
+        prevNextHref={{
+          prev: relatedProducts[0] ? `/${relatedProducts[0].slug}` : "/vot-pickleball",
+          next: relatedProducts[1] ? `/${relatedProducts[1].slug}` : "/vot-pickleball",
+        }}
+      />
 
       <ProductDetailClient
         product={product}

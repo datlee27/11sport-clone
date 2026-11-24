@@ -68,7 +68,7 @@ export function ProductCarousel({
           type="button"
           onClick={() => emblaApi?.scrollPrev()}
           aria-label="Sản phẩm trước"
-          className="hidden sm:inline-flex items-center justify-center w-11 h-11 rounded-full bg-white/95 border border-surface-border text-ink-primary shadow-md hover:border-brand-primary hover:text-brand-primary absolute left-2 top-1/2 -translate-y-1/2 z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+          className="hidden sm:inline-flex items-center justify-center w-10 h-10 rounded-full bg-white/95 border border-store-border-sage text-ink-primary shadow-md hover:border-store-forest hover:text-store-forest absolute left-2 top-1/2 -translate-y-1/2 z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-store-forest"
         >
           <ChevronLeft className="w-5 h-5" aria-hidden="true" />
         </button>
@@ -79,7 +79,7 @@ export function ProductCarousel({
           type="button"
           onClick={() => emblaApi?.scrollNext()}
           aria-label="Sản phẩm tiếp theo"
-          className="hidden sm:inline-flex items-center justify-center w-11 h-11 rounded-full bg-white/95 border border-surface-border text-ink-primary shadow-md hover:border-brand-primary hover:text-brand-primary absolute right-2 top-1/2 -translate-y-1/2 z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+          className="hidden sm:inline-flex items-center justify-center w-10 h-10 rounded-full bg-white/95 border border-store-border-sage text-ink-primary shadow-md hover:border-store-forest hover:text-store-forest absolute right-2 top-1/2 -translate-y-1/2 z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-store-forest"
         >
           <ChevronRight className="w-5 h-5" aria-hidden="true" />
         </button>
@@ -96,8 +96,8 @@ export function ProductCarousel({
               aria-label={`Chuyển đến nhóm sản phẩm ${idx + 1}`}
               className={`h-2 rounded-full transition-all ${
                 idx === selectedIndex
-                  ? "w-6 bg-brand-primary"
-                  : "w-2 bg-surface-border hover:bg-ink-muted"
+                  ? "w-6 bg-store-forest"
+                  : "w-2 bg-store-border-sage hover:bg-store-forest/60"
               }`}
             />
           ))}

@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import useEmblaCarousel from "embla-carousel-react";
 import Autoplay from "embla-carousel-autoplay";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, ImageIcon } from "lucide-react";
 import { resolveMediaUrl } from "@/lib/format";
 import type { BannerItem } from "@/types/storefront";
 
@@ -13,6 +13,12 @@ interface HeroSliderProps {
   banners: BannerItem[];
 }
 
+/**
+ * Full-bleed Hero Slider 1:1 with live mipik.vn:
+ * - Desktop ~1425x490 wide banner, Mobile 1:1 square artwork
+ * - Hover-reveal circular white outline prev/next arrows
+ * - Circular 12px white outline pagination dots (solid white when active)
+ */
 export function HeroSlider({ banners }: HeroSliderProps) {
   const [reducedMotion, setReducedMotion] = useState(false);
 
@@ -22,7 +28,7 @@ export function HeroSlider({ banners }: HeroSliderProps) {
   }, []);
 
   const autoplayPlugin = useRef(
-    Autoplay({ delay: 5000, stopOnInteraction: false, stopOnMouseEnter: true })
+    Autoplay({ delay: 4500, stopOnInteraction: false, stopOnMouseEnter: true })
   );
 
   const [emblaRef, emblaApi] = useEmblaCarousel(
@@ -48,35 +54,31 @@ export function HeroSlider({ banners }: HeroSliderProps) {
 
   if (!banners.length) {
     return (
-      <section className="w-full bg-brand-primary-hover text-white">
-        <div className="max-w-7xl mx-auto px-4 lg:px-6 py-10 sm:py-14 lg:py-16 flex flex-col justify-between gap-6">
-          <div className="max-w-2xl space-y-4">
-            <span className="inline-block px-3 py-1 rounded-md bg-accent-volt text-ink-primary text-xs font-bold uppercase tracking-wider">
-              11 Sport Official Store
-            </span>
-            <p className="text-2xl sm:text-3xl lg:text-[36px] font-extrabold leading-tight">
-              Dụng cụ Pickleball &amp; Thể thao Chính hãng tại Việt Nam
-            </p>
-            <p className="text-sm sm:text-base text-emerald-100 leading-relaxed">
-              Khám phá vợt Pickleball Carbon T700, giày sân cứng Asics và phụ kiện
-              thi đấu chuyên nghiệp với chính sách đổi trả 7 ngày.
-            </p>
+      <section
+        aria-label="Khung banner quảng cáo 11Sport"
+        className="group relative w-full overflow-hidden bg-store-surface-sage border-b border-[#e2e8e5]"
+      >
+        <div className="relative w-full aspect-[16/9] sm:aspect-[1425/490] flex flex-col items-center justify-center text-center px-4 bg-[#eef3f0]">
+          <div className="w-12 h-12 rounded-full bg-white border border-[#dce5da] flex items-center justify-center text-[#224e40]/60 mb-2 shadow-sm">
+            <ImageIcon className="w-6 h-6" aria-hidden="true" />
           </div>
+          <p className="text-sm font-medium text-[#555555]">
+            Chưa có dữ liệu
+          </p>
+        </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <Link
-              href="/danh-muc/vot-pickleball"
-              className="inline-flex items-center justify-center min-h-[48px] px-6 rounded-lg bg-accent-volt text-ink-primary font-bold text-sm hover:opacity-95 transition-opacity"
-            >
-              Khám phá Vợt Pickleball
-            </Link>
-            <Link
-              href="/lien-he"
-              className="inline-flex items-center justify-center min-h-[48px] px-6 rounded-lg border border-white/40 text-white font-semibold text-sm hover:bg-white/10 transition-colors"
-            >
-              Hệ thống Showroom
-            </Link>
-          </div>
+        {/* Nút mũi tên giả lập khung slider */}
+        <div className="hidden sm:inline-flex items-center justify-center w-10 h-10 rounded-full border border-black/10 bg-white/60 text-black/40 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
+          <ChevronLeft className="w-5 h-5" aria-hidden="true" />
+        </div>
+        <div className="hidden sm:inline-flex items-center justify-center w-10 h-10 rounded-full border border-black/10 bg-white/60 text-black/40 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
+          <ChevronRight className="w-5 h-5" aria-hidden="true" />
+        </div>
+
+        {/* Chấm phân trang giả lập */}
+        <div className="absolute bottom-2 sm:bottom-3.5 inset-x-0 flex items-center justify-center gap-2">
+          <span className="w-2.5 h-2.5 rounded-full bg-black/25" />
+          <span className="w-2.5 h-2.5 rounded-full bg-black/15" />
         </div>
       </section>
     );
@@ -84,14 +86,14 @@ export function HeroSlider({ banners }: HeroSliderProps) {
 
   return (
     <section
-      aria-label="Banner nổi bật 11 Sport"
-      className="relative w-full overflow-hidden bg-surface-muted"
+      aria-label="Banner nổi bật 11Sport"
+      className="group relative w-full overflow-hidden bg-store-surface-sage"
     >
       <div className="overflow-hidden" ref={emblaRef}>
         <div className="flex">
           {banners.map((banner, idx) => {
             const slideContent = (
-              <div className="relative w-full aspect-square sm:aspect-[16/6] lg:aspect-[1440/495]">
+              <div className="relative w-full aspect-[16/9] sm:aspect-[1425/490]">
                 {/* Desktop Image */}
                 <Image
                   src={resolveMediaUrl(banner.desktopImageUrl)}
@@ -101,14 +103,16 @@ export function HeroSlider({ banners }: HeroSliderProps) {
                   sizes="100vw"
                   className="hidden sm:block object-cover"
                 />
-                {/* Mobile Image */}
+                {/* Mobile Image: scale theo tỉ lệ màn hình, không bị crop mất chữ */}
                 <Image
-                  src={resolveMediaUrl(banner.mobileImageUrl || banner.desktopImageUrl)}
+                  src={resolveMediaUrl(
+                    banner.desktopImageUrl || banner.mobileImageUrl
+                  )}
                   alt={banner.altText || banner.title}
                   fill
                   priority={idx === 0}
                   sizes="100vw"
-                  className="sm:hidden object-cover"
+                  className="sm:hidden object-cover object-center"
                 />
               </div>
             );
@@ -134,7 +138,7 @@ export function HeroSlider({ banners }: HeroSliderProps) {
             type="button"
             onClick={() => emblaApi?.scrollPrev()}
             aria-label="Banner trước"
-            className="inline-flex items-center justify-center w-11 h-11 rounded-full bg-white/90 text-ink-primary shadow-md hover:bg-white absolute left-3 top-1/2 -translate-y-1/2 z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+            className="hidden sm:inline-flex items-center justify-center w-10 h-10 rounded-full border border-white/75 bg-black/15 text-white hover:bg-black/35 opacity-0 group-hover:opacity-100 transition-opacity absolute left-4 top-1/2 -translate-y-1/2 z-10 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
           >
             <ChevronLeft className="w-5 h-5" aria-hidden="true" />
           </button>
@@ -143,22 +147,22 @@ export function HeroSlider({ banners }: HeroSliderProps) {
             type="button"
             onClick={() => emblaApi?.scrollNext()}
             aria-label="Banner tiếp theo"
-            className="inline-flex items-center justify-center w-11 h-11 rounded-full bg-white/90 text-ink-primary shadow-md hover:bg-white absolute right-3 top-1/2 -translate-y-1/2 z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+            className="hidden sm:inline-flex items-center justify-center w-10 h-10 rounded-full border border-white/75 bg-black/15 text-white hover:bg-black/35 opacity-0 group-hover:opacity-100 transition-opacity absolute right-4 top-1/2 -translate-y-1/2 z-10 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
           >
             <ChevronRight className="w-5 h-5" aria-hidden="true" />
           </button>
 
-          <div className="absolute bottom-3 inset-x-0 flex items-center justify-center gap-2 z-10">
+          <div className="absolute bottom-2 sm:bottom-3.5 inset-x-0 flex items-center justify-center gap-2 z-10">
             {banners.map((b, idx) => (
               <button
                 key={b._id}
                 type="button"
                 onClick={() => emblaApi?.scrollTo(idx)}
                 aria-label={`Xem banner ${idx + 1}`}
-                className={`h-2.5 rounded-full transition-all ${
+                className={`w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full border border-white transition-all ${
                   idx === selectedIndex
-                    ? "w-7 bg-accent-volt"
-                    : "w-2.5 bg-white/75 hover:bg-white"
+                    ? "bg-white scale-110"
+                    : "bg-transparent opacity-60 hover:opacity-100"
                 }`}
               />
             ))}

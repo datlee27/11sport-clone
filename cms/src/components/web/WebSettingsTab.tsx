@@ -2,14 +2,26 @@
 
 import React, { useEffect, useState, useCallback } from "react";
 import { apiRequest, UserRole } from "@/lib/api";
-import { WebShowroomItem, WebSiteSettingData } from "@/lib/webApi";
+import { testCloudinaryConnectionApi, WebShowroomItem, WebSiteSettingData } from "@/lib/webApi";
 import {
   AdminOnlyBadge,
   ImageUploadField,
   TabFeedbackBanner,
   TabLoadingState,
 } from "./WebShared";
-import { Lock, Plus, Save, Trash2 } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle,
+  Cloud,
+  Eye,
+  EyeOff,
+  Loader2,
+  Lock,
+  Plus,
+  Save,
+  Trash2,
+  Zap,
+} from "lucide-react";
 
 const DEFAULT_SHOWROOMS: WebShowroomItem[] = [
   { name: "Showroom 1", address: "", hotline: "", hours: "08:30 - 21:30" },
@@ -25,6 +37,13 @@ export default function WebSettingsTab({ role }: { role: UserRole }) {
   const [loading, setLoading] = useState(true);
   const [savingGeneral, setSavingGeneral] = useState(false);
   const [savingTech, setSavingTech] = useState(false);
+  const [savingCloudinary, setSavingCloudinary] = useState(false);
+  const [testingCloudinary, setTestingCloudinary] = useState(false);
+  const [cloudinaryStatus, setCloudinaryStatus] = useState<{
+    connected: boolean;
+    message: string;
+  } | null>(null);
+  const [showSecret, setShowSecret] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -133,6 +152,56 @@ export default function WebSettingsTab({ role }: { role: UserRole }) {
       setError(err?.message || "Lưu cấu hình kỹ thuật thất bại");
     } finally {
       setSavingTech(false);
+    }
+  };
+
+  const handleTestCloudinary = async () => {
+    setTestingCloudinary(true);
+    setCloudinaryStatus(null);
+    setError("");
+    try {
+      const res = await testCloudinaryConnectionApi({
+        cloudName: form.cloudinaryCloudName || "",
+        apiKey: form.cloudinaryApiKey || "",
+        apiSecret: form.cloudinaryApiSecret || "",
+        folder: form.cloudinaryFolder || "11sport-web",
+      });
+      setCloudinaryStatus({
+        connected: res.connected,
+        message: res.message || "Kết nối Cloudinary thành công!",
+      });
+    } catch (err: any) {
+      setCloudinaryStatus({
+        connected: false,
+        message: err?.message || "Kiểm tra kết nối Cloudinary thất bại",
+      });
+    } finally {
+      setTestingCloudinary(false);
+    }
+  };
+
+  const handleSaveCloudinary = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isAdmin) return;
+    setSavingCloudinary(true);
+    setError("");
+    setSuccess("");
+    try {
+      await apiRequest("/cms/web/settings", {
+        method: "PUT",
+        body: JSON.stringify({
+          cloudinaryCloudName: form.cloudinaryCloudName || "",
+          cloudinaryApiKey: form.cloudinaryApiKey || "",
+          cloudinaryApiSecret: form.cloudinaryApiSecret || "",
+          cloudinaryFolder: form.cloudinaryFolder || "11sport-web",
+        }),
+      });
+      setSuccess("Đã lưu cấu hình Cloudinary thành công!");
+      await loadSettings();
+    } catch (err: any) {
+      setError(err?.message || "Lưu cấu hình Cloudinary thất bại");
+    } finally {
+      setSavingCloudinary(false);
     }
   };
 
@@ -349,7 +418,138 @@ export default function WebSettingsTab({ role }: { role: UserRole }) {
             <option value="FLOOR_1">FLOOR_1 (Chỉ bán tồn kho Tầng 1)</option>
             <option value="ALL">ALL (Gộp Tầng 1 + Tầng 2)</option>
           </select>
+        </div>
+      </form>
 
+      {/* Phần 3: Cấu hình Lưu trữ Cloudinary (ADMIN ONLY) */}
+      <form
+        onSubmit={handleSaveCloudinary}
+        className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4"
+      >
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="w-8 h-8 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-600">
+              <Cloud className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-sm text-slate-900 flex items-center gap-2">
+                <span>Cấu hình Lưu trữ Đám mây Cloudinary</span>
+                {!isAdmin && <AdminOnlyBadge text="Chỉ ADMIN được cấu hình Cloudinary" />}
+              </h3>
+              <p className="text-xs text-slate-500">
+                Tự động tải ảnh Banner &amp; Sản phẩm lên Cloudinary CDN, tối ưu hiển thị cho Website bán hàng.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleTestCloudinary}
+              disabled={!isAdmin || testingCloudinary}
+              className="min-h-[40px] px-3.5 py-2 rounded-xl border border-teal-200 bg-teal-50 hover:bg-teal-100 text-teal-700 text-xs font-bold flex items-center gap-1.5 transition disabled:opacity-50"
+            >
+              {testingCloudinary ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Zap className="w-4 h-4" />
+              )}
+              <span>{testingCloudinary ? "Đang kiểm tra..." : "Kiểm tra kết nối"}</span>
+            </button>
+            <button
+              type="submit"
+              disabled={!isAdmin || savingCloudinary}
+              className={`min-h-[40px] px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 ${isAdmin
+                  ? "bg-teal-600 hover:bg-teal-700 text-white"
+                  : "bg-slate-200 text-slate-500 cursor-not-allowed"
+                }`}
+            >
+              {!isAdmin ? <Lock className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+              <span>{savingCloudinary ? "Đang lưu..." : "Lưu cấu hình Cloudinary"}</span>
+            </button>
+          </div>
+        </div>
+
+        {cloudinaryStatus && (
+          <div
+            className={`p-3.5 rounded-xl border text-xs flex items-center gap-2.5 ${cloudinaryStatus.connected
+                ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                : "bg-rose-50 border-rose-200 text-rose-800"
+              }`}
+          >
+            {cloudinaryStatus.connected ? (
+              <CheckCircle className="w-4 h-4 shrink-0 text-emerald-600" />
+            ) : (
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+            )}
+            <span className="font-semibold">{cloudinaryStatus.message}</span>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          <div>
+            <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+              Cloud Name <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              disabled={!isAdmin}
+              value={form.cloudinaryCloudName || ""}
+              onChange={(e) => setForm({ ...form, cloudinaryCloudName: e.target.value })}
+              placeholder="Ví dụ: dxy12345"
+              className="w-full px-3 py-2 rounded-xl border border-slate-300 font-mono text-sm disabled:bg-slate-100 disabled:text-slate-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+              API Key <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              disabled={!isAdmin}
+              value={form.cloudinaryApiKey || ""}
+              onChange={(e) => setForm({ ...form, cloudinaryApiKey: e.target.value })}
+              placeholder="Ví dụ: 871928471294821"
+              className="w-full px-3 py-2 rounded-xl border border-slate-300 font-mono text-sm disabled:bg-slate-100 disabled:text-slate-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+              API Secret <span className="text-red-500">*</span>
+            </label>
+            <div className="relative">
+              <input
+                type={showSecret ? "text" : "password"}
+                disabled={!isAdmin}
+                value={form.cloudinaryApiSecret || ""}
+                onChange={(e) => setForm({ ...form, cloudinaryApiSecret: e.target.value })}
+                placeholder="Ví dụ: aBcd12345efGh..."
+                className="w-full px-3 py-2 pr-10 rounded-xl border border-slate-300 font-mono text-sm disabled:bg-slate-100 disabled:text-slate-500"
+              />
+              <button
+                type="button"
+                onClick={() => setShowSecret(!showSecret)}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                {showSecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+              Thư mục lưu trữ (Folder)
+            </label>
+            <input
+              type="text"
+              disabled={!isAdmin}
+              value={form.cloudinaryFolder || ""}
+              onChange={(e) => setForm({ ...form, cloudinaryFolder: e.target.value })}
+              placeholder="Mặc định: 11sport-web"
+              className="w-full px-3 py-2 rounded-xl border border-slate-300 font-mono text-sm disabled:bg-slate-100 disabled:text-slate-500"
+            />
+          </div>
         </div>
       </form>
     </div>

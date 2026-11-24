@@ -42,6 +42,10 @@ export interface IWebSiteSetting extends Document {
   payosClientId?: string;
   payosApiKey?: string;
   payosChecksumKey?: string;
+  cloudinaryCloudName?: string;
+  cloudinaryApiKey?: string;
+  cloudinaryApiSecret?: string;
+  cloudinaryFolder?: string;
   webhookSecret?: string;
   revalidateSecret?: string;
   defaultSeo?: ISeoMeta;
@@ -100,6 +104,10 @@ const WebSiteSettingSchema = new Schema<IWebSiteSetting>(
     payosClientId: { type: String, default: '', trim: true },
     payosApiKey: { type: String, default: '', trim: true },
     payosChecksumKey: { type: String, default: '', trim: true },
+    cloudinaryCloudName: { type: String, default: '', trim: true },
+    cloudinaryApiKey: { type: String, default: '', trim: true },
+    cloudinaryApiSecret: { type: String, default: '', trim: true },
+    cloudinaryFolder: { type: String, default: '11sport-web', trim: true },
     webhookSecret: { type: String, default: '', trim: true },
     revalidateSecret: { type: String, default: '', trim: true },
     defaultSeo: {

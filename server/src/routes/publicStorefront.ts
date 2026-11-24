@@ -59,6 +59,7 @@ import {
 } from '../utils/customerAuth';
 import { ApiError } from '../utils/errors';
 import { getWebCache, setWebCache } from '../utils/webCache';
+import { getPayOSClient, verifyPayosWebhookData } from '../services/payos.service';
 
 export const publicStorefrontRouter = Router();
 
@@ -1180,6 +1181,10 @@ publicStorefrontRouter.post(
 
       const isQr = gateway === 'PAYOS' || gateway === 'VIETQR';
       const reservedUntil = isQr ? new Date(Date.now() + 15 * 60 * 1000) : null;
+      // Sinh mã số nguyên duy nhất cho PayOS (9-10 chữ số)
+      const payosOrderCode = isQr
+        ? Number(`${Date.now().toString().slice(-7)}${Math.floor(10 + Math.random() * 90)}`)
+        : undefined;
 
       const createdOrder = await orderRepo.create({
         orderCode,
@@ -1207,6 +1212,7 @@ publicStorefrontRouter.post(
         fulfillmentStatus: 'PENDING',
         paymentStatus: 'UNPAID',
         paymentGateway: gateway as any,
+        payosOrderCode,
         reservedUntil,
         shippingAddress: {
           fullName: String(shippingAddress.fullName).trim(),
@@ -1269,14 +1275,24 @@ publicStorefrontRouter.post(
 
       let paymentUrl = '';
       let qrCode = '';
+      let returnedPayosOrderCode = payosOrderCode;
       if (isQr) {
         const payRes = await createPayosOrVietQrPayment({
           orderCode,
+          payosOrderCode,
           amount: pricing.totalAmount,
-          description: orderCode,
+          description: `11S ${orderCode}`.slice(0, 25),
+          items: orderItems.map((item) => ({
+            name: item.productName.slice(0, 40),
+            quantity: item.quantity,
+            price: item.unitPrice,
+          })),
         });
         paymentUrl = payRes.paymentUrl;
         qrCode = payRes.qrCode;
+        if (payRes.payosOrderCode) {
+          returnedPayosOrderCode = payRes.payosOrderCode;
+        }
       }
 
       res.status(201).json({
@@ -1290,6 +1306,7 @@ publicStorefrontRouter.post(
           fulfillmentStatus: 'PENDING',
           paymentUrl,
           qrCode,
+          payosOrderCode: returnedPayosOrderCode,
           reservedUntil,
         },
       });
@@ -1366,25 +1383,66 @@ publicStorefrontRouter.post(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const body = req.body || {};
-      const setting = await getOnlineSiteSetting();
-      const checksumKey =
-        (setting as any).payosChecksumKey ||
-        (setting as any).webhookSecret ||
-        process.env.PAYOS_CHECKSUM_KEY ||
-        '11sport-payos-test-key';
+      let webhookData: any = body.data || {};
 
-      const signature = String(body.signature || req.headers['x-payos-signature'] || '');
-      if (!verifyPayosWebhookSignature(body, signature, checksumKey)) {
-        throw new ApiError(401, 'INVALID_SIGNATURE', 'Chữ ký webhook không hợp lệ');
+      // Xác thực chữ ký webhook PayOS qua SDK chính thức hoặc fallback signature
+      const payosClient = getPayOSClient();
+      if (payosClient) {
+        try {
+          webhookData = await verifyPayosWebhookData(body);
+        } catch (verifyErr: any) {
+          console.warn('[PayOS Webhook] SDK verify failed, checking fallback signature:', verifyErr?.message);
+          const setting = await getOnlineSiteSetting();
+          const checksumKey =
+            (setting as any).payosChecksumKey ||
+            (setting as any).webhookSecret ||
+            process.env.PAYOS_CHECKSUM_KEY ||
+            '';
+          const signature = String(body.signature || req.headers['x-payos-signature'] || '');
+          if (!checksumKey || !verifyPayosWebhookSignature(body, signature, checksumKey)) {
+            throw new ApiError(401, 'INVALID_SIGNATURE', 'Chữ ký webhook PayOS không hợp lệ');
+          }
+        }
+      } else {
+        const setting = await getOnlineSiteSetting();
+        const checksumKey =
+          (setting as any).payosChecksumKey ||
+          (setting as any).webhookSecret ||
+          process.env.PAYOS_CHECKSUM_KEY ||
+          '11sport-payos-test-key';
+        const signature = String(body.signature || req.headers['x-payos-signature'] || '');
+        if (!verifyPayosWebhookSignature(body, signature, checksumKey)) {
+          throw new ApiError(401, 'INVALID_SIGNATURE', 'Chữ ký webhook không hợp lệ');
+        }
       }
 
-      const data = body.data || {};
-      const orderCode = String(data.orderCode || data.description || '').trim().toUpperCase();
-      const txId = String(data.reference || data.transactionId || data.paymentLinkId || '').trim();
-      const amount = Number(data.amount || 0);
+      const rawOrderCode = webhookData.orderCode;
+      const numericOrderCode = typeof rawOrderCode === 'number' ? rawOrderCode : Number(rawOrderCode);
+      const strOrderCode = String(rawOrderCode || webhookData.description || '').trim();
+      const txId = String(webhookData.reference || webhookData.transactionId || webhookData.paymentLinkId || '').trim();
+      const amount = Number(webhookData.amount || 0);
 
-      const order = await orderRepo.findOne({ orderCode, channel: 'ONLINE' });
+      // 1. Tìm theo payosOrderCode (số nguyên)
+      let order = !isNaN(numericOrderCode) && numericOrderCode > 0
+        ? await orderRepo.findOne({ payosOrderCode: numericOrderCode, channel: 'ONLINE' })
+        : null;
+
+      // 2. Fallback tìm theo mã chuỗi orderCode
+      if (!order && strOrderCode) {
+        order = await orderRepo.findOne({ orderCode: strOrderCode.toUpperCase(), channel: 'ONLINE' });
+      }
+
+      // 3. Fallback tìm theo description chứa mã đơn
+      if (!order && webhookData.description) {
+        const desc = String(webhookData.description).trim();
+        const matchCode = desc.replace(/^11S\s*/i, '').trim();
+        if (matchCode) {
+          order = await orderRepo.findOne({ orderCode: matchCode.toUpperCase(), channel: 'ONLINE' });
+        }
+      }
+
       if (!order) {
+        console.warn('[PayOS Webhook] Order not found for webhook:', { numericOrderCode, strOrderCode });
         res.json({ success: true, message: 'Order not found, ignored' });
         return;
       }

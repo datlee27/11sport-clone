@@ -13,6 +13,7 @@ const nextConfig = {
   },
   generateBuildId: async () => buildId,
   images: {
+    unoptimized: true,
     dangerouslyAllowSVG: true,
     remotePatterns: [
       {

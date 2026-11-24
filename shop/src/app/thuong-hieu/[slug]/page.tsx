@@ -1,8 +1,6 @@
 import { Suspense } from "react";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { ChevronRight } from "lucide-react";
 import { buildBreadcrumbJsonLd, buildMetadata } from "@/lib/seo";
 import { fetchBrandDetail, fetchProducts } from "@/lib/storefront";
 import { JsonLd } from "@/components/seo/JsonLd";
@@ -29,19 +27,21 @@ function formatSlugTitle(slug: string): string {
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: BrandPageProps): Promise<Metadata> {
   const { data: brand } = await fetchBrandDetail(params.slug);
   const brandName = brand?.name || formatSlugTitle(params.slug);
   const title = brand?.seo?.title || `Thương hiệu ${brandName} Chính Hãng`;
   const description =
     brand?.seo?.description ||
-    `Sản phẩm ${brandName} chính hãng tại 11 Sport. Bảo hành uy tín, giao nhanh toàn quốc.`;
+    `Sản phẩm ${brandName} chính hãng. Bảo hành uy tín, lỗi 1 đổi 1, freeship toàn quốc.`;
 
   return buildMetadata({
     title,
     description,
     path: `/thuong-hieu/${params.slug}`,
     image: brand?.seo?.ogImage || brand?.logoUrl,
+    searchParams,
   });
 }
 
@@ -77,36 +77,18 @@ export default async function BrandPage({
   ];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 lg:px-6 py-6 lg:py-8 space-y-6">
+    <div className="max-w-container mx-auto px-3.5 sm:px-4 lg:px-5 py-4 lg:py-6 space-y-5">
       <JsonLd data={buildBreadcrumbJsonLd(breadcrumbs)} />
 
-      {/* Breadcrumb */}
-      <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs sm:text-sm text-ink-muted">
-        <Link href="/" className="hover:text-brand-primary">
-          Trang chủ
-        </Link>
-        <ChevronRight className="w-4 h-4 shrink-0" aria-hidden="true" />
-        <span className="font-semibold text-ink-primary truncate">
-          {brandName}
-        </span>
-      </nav>
-
-      {/* Single H1 */}
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h1 className="text-2xl lg:text-[34px] font-extrabold text-ink-primary leading-tight">
-          {brandName} Chính Hãng
-        </h1>
-        <span className="font-mono text-sm text-ink-muted">
-          ({productsRes.meta.total} sản phẩm)
-        </span>
-      </div>
+      <h1 className="sr-only">{brandName} Chính Hãng — 11Sport</h1>
 
       <Suspense
         fallback={
-          <div className="h-96 rounded-xl bg-surface-muted animate-pulse" />
+          <div className="h-96 rounded-xl bg-store-surface-sage animate-pulse" />
         }
       >
         <CatalogClient
+          breadcrumbs={[{ name: "Trang chủ", href: "/" }, { name: brandName }]}
           products={productsRes.data}
           meta={productsRes.meta}
           facets={productsRes.facets}

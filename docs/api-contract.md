@@ -1022,19 +1022,20 @@
     - Nếu trong ngày đó có ca bị trống (`Ca 1` hoặc `Ca 2` chưa có ai khác đăng ký): Nhân viên đăng ký 2 ca sẽ được xếp **làm cả 2 ca (`shiftCode = "BOTH"`)**, hiển thị ở cả hàng `Ca 1` và `Ca 2` trên bảng phân ca của HR.
   - Lưu bản ghi `ShiftAssignment` với `assignedBy: "AUTO"`, `preferenceShift`, `isOffRequested`, `seenByStaff: true` để hiển thị ngay trên bảng phân ca tuần của HR. Nếu tuần đó đã được HR chốt (`assignedBy: "HR"`), trả lỗi `400 SCHEDULE_ALREADY_CONFIRMED`.
 - `GET /api/v1/shifts/schedule`
-  - Xem bảng lịch ca của tuần: `?weekStart=2026-11-09` (lấy toàn bộ phân ca có `date` từ `weekStart` đến `weekStart + 6 ngày`), kèm thống kê số ngày `OFF` không lương trong tháng của từng nhân viên `SALES` (`monthlyOffByStaff`).
+  - Xem bảng lịch ca của tuần: `?weekStart=2026-11-09` (lấy toàn bộ phân ca có `date` từ `weekStart` đến `weekStart + 6 ngày`), kèm thống kê số ngày `OFF` trong tháng của từng nhân viên `SALES` (`monthlyOffByStaff` với hạn mức tham khảo `4 + số phép đang có`), quỹ phép `paidLeaveByStaff`, và danh sách đơn xin OFF/nghỉ phép trong tuần (`offRequestsByStaff`) để thông báo cho HR biết nhân viên xin off ngày nào.
 - `GET /api/v1/shifts/my-schedule`
   - Query: `?weekStart=2026-11-16` (mặc định Thứ Hai tuần kế tiếp).
-  - Trả về lịch ca của chính nhân viên đang đăng nhập cho tuần `weekStart`, kèm `unseenConfirmedCount` (số ca đã được HR xác nhận `assignedBy === "HR"` mà nhân viên chưa xem `seenByStaff === false`), `confirmedWeeks` (danh sách tuần đã được HR chốt) và `monthlyOffQuota` (`{ limit: 4, byMonth: { "YYYY-MM": { used, usedOtherWeeks, remainingForWeek } } }`).
+  - Trả về lịch ca của chính nhân viên đang đăng nhập cho tuần `weekStart`, kèm `unseenConfirmedCount` (số ca đã được HR xác nhận `assignedBy === "HR"` hoặc bị HR yêu cầu đi làm trong ngày xin OFF mà nhân viên chưa xem `seenByStaff === false`), `offOverrideNotices` (danh sách các ngày nhân viên đã xin OFF/nghỉ phép nhưng HR xếp đi làm: `{ date, shiftCode, leaveType, leaveStatus }`), `confirmedWeeks` và `monthlyOffQuota`.
 - `POST /api/v1/shifts/my-schedule/seen`
   - Đánh dấu toàn bộ lịch ca đã được HR xác nhận (`assignedBy === "HR"`) của nhân viên đang đăng nhập thành `seenByStaff: true` (tắt chấm đỏ thông báo trên Menu & tab Chấm công).
 - `PUT /api/v1/shifts/assign/bulk` (Role `HR` hoặc `ADMIN`) — **Lưu thay đổi & Xác nhận hoàn thành lịch ca tuần** (trên CMS)
   - Body: `{ "weekStart": "2026-11-09", "changes": [{ "staffId": "...", "date": "2026-11-10", "dayOfWeek": 2, "shiftCode": "SHIFT_1 | SHIFT_2 | BOTH | OFF | null" }], "confirmWeek"?: boolean }`
   - `shiftCode = null` → xoá phân ca của nhân viên ngày đó. Mỗi nhân viên chỉ có 1 ca/ngày (ghi đè nếu đã có).
-  - Khi `confirmWeek = false` (HR bấm **Lưu nháp**): chỉ lưu thay đổi `shiftCode`, giữ nguyên trạng thái chờ xác nhận (`assignedBy: "AUTO"`, `seenByStaff: true`) của cả nhân viên được chỉnh lẫn các nhân viên khác trong tuần; không khóa sửa đăng ký và chưa bật thông báo cho nhân viên (`confirmed: 0`).
-  - Chỉ khi `confirmWeek = true` (HR bấm **Xác nhận & Hoàn tất**): toàn bộ các bản ghi phân ca trong tuần của nhân viên mới được chuyển sang `assignedBy: "HR"`, gắn `confirmedAt: new Date()`, và đặt `seenByStaff: false` để bật **chấm đỏ thông báo** bên giao diện Web của nhân viên Bán hàng.
-  - **Ràng buộc 7 ngày/tuần & tối đa 4 ngày nghỉ không lương/tháng**: sau khi áp dụng thay đổi, mỗi nhân viên `SALES` có phân ca trong tuần phải được xếp đủ 7 ngày, trong đó số ngày `OFF` trong tuần từ `0..4` ngày và tổng số ngày nghỉ không lương trong tháng (`YYYY-MM`) không vượt quá **4 ngày/tháng**. Sai → `400 WEEKLY_OFF_REQUIRED`, `fields: { "<tên NV>": "mô tả lỗi" }`, không lưu gì.
-  - Response: `{ "data": { "updated": 3, "created": 2, "deleted": 1, "confirmed": 7 } }`
+  - **Không ràng buộc cứng** ở phía HR xếp lịch (cho phép HR chủ động xếp/lưu/xác nhận mà không chặn bởi điều kiện đủ 7 ngày/tuần, ca trống hay hạn mức OFF/tháng; logic nhân viên tự đăng ký ca & xin OFF vẫn giữ nguyên).
+  - Khi HR xếp nhân viên đi làm (`SHIFT_1`, `SHIFT_2`, `BOTH`) vào ngày nhân viên đã có đơn xin OFF (`OFF` / `PAID_LEAVE` đang `PENDING` hoặc `APPROVED`), hệ thống gắn `overrideOffNotice: true` và `seenByStaff: false` để gửi thông báo cho Sales.
+  - Khi `confirmWeek = false` (HR bấm **Lưu nháp**): chỉ lưu thay đổi `shiftCode`, giữ nguyên trạng thái chờ xác nhận (`assignedBy: "AUTO"`), trừ các ngày yêu cầu đi làm trong ngày xin OFF sẽ bật `seenByStaff: false` để báo Sales.
+  - Khi `confirmWeek = true` (HR bấm **Xác nhận & Hoàn tất**): toàn bộ các bản ghi phân ca trong tuần của nhân viên được chuyển sang `assignedBy: "HR"`, gắn `confirmedAt: new Date()`, và đặt `seenByStaff: false` để bật **chấm đỏ thông báo** bên giao diện Web của nhân viên Bán hàng.
+  - Response: `{ "data": { "updated": 3, "created": 2, "deleted": 1, "confirmed": 7, "offOverrides": [{ "staffId": "...", "staffName": "...", "date": "2026-11-10", "shiftCode": "SHIFT_1" }] } }`
 - `POST /api/v1/shifts/auto-assign`
   - HR kích hoạt tự động xếp ca dựa trên preferences Thứ 6: `{ "weekStart": "2026-11-09" }`.
 - `PUT /api/v1/shifts/assign`
@@ -1628,6 +1629,7 @@
         "fulfillmentStatus": "PENDING",
         "paymentUrl": "https://pay.payos.vn/web/...",
         "qrCode": "000201010212...",
+        "payosOrderCode": 1732456789,
         "reservedUntil": "2026-11-20T04:05:00.000Z"
       }
     }
@@ -1685,7 +1687,8 @@
 | **Dashboard CEO** | `GET /api/v1/cms/web/dashboard` | `ADMIN`, `CEO` | KPI doanh thu Online (tháng/30 ngày), số đơn QR vs COD, tỷ lệ thành công QR, top 10 SP bán chạy Online, review chờ duyệt, 5 audit log mới nhất. Query: `?from=&to=`. |
 | **Audit Log** | `GET /api/v1/cms/web/audit-logs` | `ADMIN`, `CEO` | Nhật ký thao tác trên tab Quản lý Website. Query: `actorId`, `entityType`, `action`, `page`, `limit`. |
 | **Revalidate** | `POST /api/v1/cms/web/revalidate` | `ADMIN`, `CEO` | Kích hoạt On-demand Revalidate sang `shop/api/revalidate`. Body: `{ "paths"?: ["/"], "tags"?: ["home", "menu"] }`. |
-| **Upload** | `POST /api/v1/cms/web/upload` | `ADMIN`, `CEO` | Upload ảnh banner/sản phẩm/bài viết (multipart/form-data), trả về `{ "data": { "url": "...", "width", "height" } }`. |
+| **Upload** | `POST /api/v1/cms/web/upload` | `ADMIN`, `CEO` | Upload ảnh banner/sản phẩm/bài viết (dataUrl/dataBase64). Tự động đẩy lên Cloudinary CDN theo cấu hình `WebSiteSetting` (hoặc `server/.env`), fallback local `/uploads/web/`. Trả về `{ "data": { "url": "https://res.cloudinary.com/...", "publicId", "provider": "cloudinary", "size", "mimeType" } }`. |
+| **Cloudinary Test** | `POST /api/v1/cms/web/cloudinary/test-connection` | **`ADMIN ONLY`** | Kiểm tra kết nối tài khoản Cloudinary (gửi `{ cloudName, apiKey, apiSecret, folder }` hoặc dùng key đã lưu). Trả về `{ "data": { "connected": true, "cloudName", "message" } }`. |
 | **Banners** | `GET /api/v1/cms/web/banners` | `ADMIN`, `CEO` | Danh sách banner/slider. |
 | | `POST /api/v1/cms/web/banners` | `ADMIN`, `CEO` | Tạo banner (bắt buộc `desktopImageUrl` & `mobileImageUrl`, `position`, `startDate`, `endDate`, `status`, `sortOrder`). |
 | | `PATCH /api/v1/cms/web/banners/:id` | `ADMIN`, `CEO` | Cập nhật / bật tắt / duyệt xuất bản banner. |
@@ -1722,6 +1725,6 @@
 | | `PATCH /api/v1/cms/web/redirects/:id` | **`ADMIN ONLY`** | Sửa / bật tắt Redirect (`CEO` -> `403 FORBIDDEN`). |
 | | `DELETE /api/v1/cms/web/redirects/:id` | **`ADMIN ONLY`** | Xóa Redirect (`CEO` -> `403 FORBIDDEN`). |
 | **Site Settings** | `GET /api/v1/cms/web/settings` | `ADMIN`, `CEO` | Lấy cấu hình site (che/mask các key nhạy cảm nếu role là `CEO`). |
-| | `PUT /api/v1/cms/web/settings` | `ADMIN`, `CEO` | Cập nhật thông tin hiển thị (logo, hotline, showroom, USP, footer, phí ship). **Nếu payload chứa trường kỹ thuật (`payosClientId`, `payosApiKey`, `payosChecksumKey`, `webhookSecret`, `onlineStockMode`, `ga4Id`, `gtmId`, `revalidateSecret`) và role là `CEO` -> chặn `403 TECHNICAL_SETTINGS_ADMIN_ONLY`.** |
+| | `PUT /api/v1/cms/web/settings` | `ADMIN`, `CEO` | Cập nhật thông tin hiển thị (logo, hotline, showroom, USP, footer, phí ship). **Nếu payload chứa trường kỹ thuật (`payosClientId`, `payosApiKey`, `payosChecksumKey`, `cloudinaryCloudName`, `cloudinaryApiKey`, `cloudinaryApiSecret`, `cloudinaryFolder`, `webhookSecret`, `onlineStockMode`, `ga4Id`, `gtmId`, `revalidateSecret`) và role là `CEO` -> chặn `403 TECHNICAL_SETTINGS_ADMIN_ONLY`.** |
 | **Online Orders** | `GET /api/v1/cms/web/orders` | `ADMIN`, `CEO` | Danh sách đơn hàng `channel: 'ONLINE'` (lọc `paymentStatus`, `fulfillmentStatus`, `paymentGateway`, `q`, `from`, `to`). |
 | | `PATCH /api/v1/cms/web/orders/:id/fulfillment` | `ADMIN`, `CEO` | Cập nhật trạng thái giao hàng (`CONFIRMED`, `PACKING`, `SHIPPING`, `DELIVERED`, `CANCELLED`), `trackingCode`. Nếu hủy đơn đã trừ kho -> hoàn kho atomic + ghi `StockMovement`. |

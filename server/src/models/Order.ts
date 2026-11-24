@@ -117,6 +117,7 @@ export interface IOrder extends Document {
   paymentStatus?: OrderOnlinePaymentStatus;
   paymentGateway?: OrderPaymentGateway;
   paymentTransactionId?: string;
+  payosOrderCode?: number;
   reservedUntil?: Date | null;
   shippingAddress?: IShippingAddress;
   shippingFee?: number;
@@ -256,6 +257,7 @@ const OrderSchema = new Schema<IOrder>(
       default: undefined,
     },
     paymentTransactionId: { type: String, trim: true },
+    payosOrderCode: { type: Number, index: true, sparse: true },
     reservedUntil: { type: Date, default: null },
     shippingAddress: {
       type: {
