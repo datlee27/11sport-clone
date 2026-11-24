@@ -1,7 +1,18 @@
 "use client";
 
 import React, { useState } from "react";
-import { AlertCircle, CheckCircle2, ImagePlus, Loader2, Lock, Upload, X } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  Cloud,
+  ImagePlus,
+  Loader2,
+  Lock,
+  Star,
+  Trash2,
+  Upload,
+  X,
+} from "lucide-react";
 import { extractWebImageUrl, resolveWebMediaUrl, uploadWebImageFile } from "@/lib/webApi";
 
 export function SeoCharacterBar({
@@ -112,11 +123,20 @@ export function ImageUploadField({
     }
   };
 
+  const isCloudinary = Boolean(value && value.includes("res.cloudinary.com"));
+
   return (
     <div className="space-y-1.5">
-      <label className="block text-xs font-bold text-slate-700 uppercase">
-        {label} {required && <span className="text-red-500">*</span>}
-      </label>
+      <div className="flex items-center justify-between gap-2">
+        <label className="block text-xs font-bold text-slate-700 uppercase">
+          {label} {required && <span className="text-red-500">*</span>}
+        </label>
+        {isCloudinary && (
+          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-50 border border-teal-200 text-teal-700">
+            <Cloud className="w-3 h-3" /> Cloudinary CDN
+          </span>
+        )}
+      </div>
       <div className="flex flex-wrap items-center gap-2">
         <input
           type="text"
@@ -150,11 +170,199 @@ export function ImageUploadField({
             alt={label}
             className="h-14 w-24 object-cover rounded-lg bg-white"
           />
-          <span className="text-[11px] font-mono text-slate-500 max-w-[200px] truncate">
+          <span className="text-[11px] font-mono text-slate-500 max-w-[240px] truncate">
             {extractWebImageUrl(value)}
           </span>
         </div>
       )}
+    </div>
+  );
+}
+
+export function MultiImageUploadField({
+  label = "Danh sách ảnh sản phẩm",
+  values = [],
+  onChange,
+  maxImages = 10,
+  hint,
+}: {
+  label?: string;
+  values: string[];
+  onChange: (urls: string[]) => void;
+  maxImages?: number;
+  hint?: string;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [err, setErr] = useState("");
+  const [customUrl, setCustomUrl] = useState("");
+
+  const handleFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    setErr("");
+
+    const remainingSlots = maxImages - values.length;
+    if (remainingSlots <= 0) {
+      setErr(`Đã đạt giới hạn tối đa ${maxImages} ảnh`);
+      return;
+    }
+
+    const filesToUpload = files.slice(0, remainingSlots);
+    setUploading(true);
+
+    try {
+      const uploadedUrls: string[] = [];
+      for (const file of filesToUpload) {
+        const url = await uploadWebImageFile(file);
+        if (url) uploadedUrls.push(url);
+      }
+      onChange([...values, ...uploadedUrls]);
+    } catch (error: any) {
+      setErr(error?.message || "Tải một số ảnh thất bại");
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  };
+
+  const handleRemove = (index: number) => {
+    const updated = [...values];
+    updated.splice(index, 1);
+    onChange(updated);
+  };
+
+  const handleSetPrimary = (index: number) => {
+    if (index <= 0 || index >= values.length) return;
+    const updated = [...values];
+    const [target] = updated.splice(index, 1);
+    updated.unshift(target);
+    onChange(updated);
+  };
+
+  const handleAddCustomUrl = () => {
+    const trimmed = customUrl.trim();
+    if (!trimmed) return;
+    if (values.length >= maxImages) {
+      setErr(`Đã đạt giới hạn tối đa ${maxImages} ảnh`);
+      return;
+    }
+    onChange([...values, trimmed]);
+    setCustomUrl("");
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <label className="block text-xs font-bold text-slate-700 uppercase">
+          {label} ({values.length}/{maxImages})
+        </label>
+        <span className="text-[11px] text-slate-500 font-medium">
+          Ảnh đầu tiên là ảnh đại diện chính
+        </span>
+      </div>
+
+      {/* Grid danh sách ảnh */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-2.5">
+        {values.map((url, idx) => {
+          const isPrimary = idx === 0;
+          const isCloud = url.includes("res.cloudinary.com");
+          return (
+            <div
+              key={`${url}-${idx}`}
+              className={`group relative rounded-xl border overflow-hidden bg-slate-50 aspect-square flex flex-col justify-between ${
+                isPrimary ? "border-teal-500 ring-2 ring-teal-500/20" : "border-slate-200"
+              }`}
+            >
+              <img
+                src={resolveWebMediaUrl(url)}
+                alt={`Ảnh ${idx + 1}`}
+                className="w-full h-full object-cover"
+              />
+
+              {/* Badges */}
+              <div className="absolute top-1.5 left-1.5 flex flex-col gap-1">
+                {isPrimary && (
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-teal-600 text-white shadow-sm flex items-center gap-1">
+                    <Star className="w-3 h-3 fill-current" /> Chính
+                  </span>
+                )}
+                {isCloud && (
+                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-black/60 text-white backdrop-blur-sm">
+                    CDN
+                  </span>
+                )}
+              </div>
+
+              {/* Action Overlay */}
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 p-2">
+                {!isPrimary && (
+                  <button
+                    type="button"
+                    onClick={() => handleSetPrimary(idx)}
+                    title="Đặt làm ảnh chính"
+                    className="p-1.5 rounded-lg bg-white/90 text-slate-700 hover:bg-teal-600 hover:text-white transition shadow-sm text-xs font-bold"
+                  >
+                    <Star className="w-3.5 h-3.5" />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => handleRemove(idx)}
+                  title="Xóa ảnh này"
+                  className="p-1.5 rounded-lg bg-white/90 text-red-600 hover:bg-red-600 hover:text-white transition shadow-sm"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          );
+        })}
+
+        {/* Nút Upload thêm ảnh */}
+        {values.length < maxImages && (
+          <label className="border-2 border-dashed border-slate-300 hover:border-teal-500 rounded-xl aspect-square flex flex-col items-center justify-center gap-1 text-slate-500 hover:text-teal-600 bg-slate-50/50 hover:bg-teal-50/30 cursor-pointer transition p-2 text-center">
+            {uploading ? (
+              <Loader2 className="w-5 h-5 animate-spin text-teal-600" />
+            ) : (
+              <ImagePlus className="w-5 h-5" />
+            )}
+            <span className="text-[11px] font-bold leading-tight">
+              {uploading ? "Đang tải..." : "Thêm ảnh"}
+            </span>
+            <span className="text-[9px] text-slate-400">Chọn 1 hoặc nhiều</span>
+            <input
+              type="file"
+              multiple
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              onChange={handleFiles}
+              disabled={uploading}
+              className="hidden"
+            />
+          </label>
+        )}
+      </div>
+
+      {/* Dán URL phụ nhanh */}
+      <div className="flex items-center gap-2 pt-1">
+        <input
+          type="text"
+          value={customUrl}
+          onChange={(e) => setCustomUrl(e.target.value)}
+          placeholder="Hoặc dán URL ảnh trực tiếp vào đây..."
+          className="flex-1 px-3 py-1.5 rounded-xl border border-slate-300 text-xs focus:border-teal-600 focus:outline-none"
+        />
+        <button
+          type="button"
+          onClick={handleAddCustomUrl}
+          disabled={!customUrl.trim() || values.length >= maxImages}
+          className="px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-100 hover:bg-slate-200 disabled:opacity-40 text-slate-700 text-xs font-bold transition"
+        >
+          Thêm link
+        </button>
+      </div>
+
+      {hint && <p className="text-[11px] text-slate-500">{hint}</p>}
+      {err && <p className="text-xs font-semibold text-red-600">{err}</p>}
     </div>
   );
 }

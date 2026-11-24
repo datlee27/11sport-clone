@@ -135,19 +135,41 @@ export function ProductDetailClient({
     product.images?.[0]?.url ||
     "/images/mock/paddle-joola-red.svg";
 
-  // Merge colors cleanly from variants[] and product.colors[]
+  const initialVariant = useMemo(() => {
+    const list = product.variants ?? [];
+    return list.find((v) => v.inStock) ?? list[0] ?? null;
+  }, [product.variants]);
+
+  const [selectedColor, setSelectedColor] = useState<string>(
+    initialVariant?.color || product.variants?.[0]?.color || ""
+  );
+  const [selectedSize, setSelectedSize] = useState<string>(
+    initialVariant?.size || product.variants?.[0]?.size || ""
+  );
+  const [selectionCleared, setSelectionCleared] = useState<boolean>(false);
+  const [variantWarning, setVariantWarning] = useState<string>("");
+
+  // Merge colors cleanly from variants[] and product.colors[], ưu tiên ảnh theo phiên bản (size) đang chọn
   const colorOptions = useMemo<ColorSwatchOption[]>(() => {
     const map = new Map<string, ColorSwatchOption>();
 
     for (const v of product.variants ?? []) {
       if (!v.color) continue;
       const key = v.color.trim().toLowerCase();
+      const isSelectedSize =
+        Boolean(selectedSize) &&
+        v.size?.trim().toLowerCase() === selectedSize.trim().toLowerCase();
+
       if (!map.has(key)) {
         map.set(key, {
           color: v.color.trim(),
           colorHex: v.colorHexes?.[0],
           imageUrl: v.imageUrl || primaryFallbackImage,
         });
+      } else if (isSelectedSize && v.imageUrl) {
+        // Cập nhật thumbnail swatch màu theo đúng phiên bản (size/độ dày) đang chọn
+        const existing = map.get(key)!;
+        existing.imageUrl = v.imageUrl;
       }
     }
 
@@ -168,7 +190,7 @@ export function ProductDetailClient({
     }
 
     return Array.from(map.values());
-  }, [product.variants, product.colors, primaryFallbackImage]);
+  }, [product.variants, product.colors, primaryFallbackImage, selectedSize]);
 
   // Unique gallery list combining product images & color/variant images
   const galleryImages = useMemo<string[]>(() => {
@@ -187,6 +209,9 @@ export function ProductDetailClient({
     for (const img of product.images ?? []) {
       pushUrl(img.url);
     }
+    for (const v of product.variants ?? []) {
+      pushUrl(v.imageUrl);
+    }
     for (const opt of colorOptions) {
       pushUrl(opt.imageUrl);
     }
@@ -195,21 +220,7 @@ export function ProductDetailClient({
       list.push("/images/mock/paddle-joola-red.svg");
     }
     return list;
-  }, [product.thumbnailUrl, product.images, colorOptions]);
-
-  const initialVariant = useMemo(() => {
-    const list = product.variants ?? [];
-    return list.find((v) => v.inStock) ?? list[0] ?? null;
-  }, [product.variants]);
-
-  const [selectedColor, setSelectedColor] = useState<string>(
-    initialVariant?.color || colorOptions[0]?.color || ""
-  );
-  const [selectedSize, setSelectedSize] = useState<string>(
-    initialVariant?.size || ""
-  );
-  const [selectionCleared, setSelectionCleared] = useState<boolean>(false);
-  const [variantWarning, setVariantWarning] = useState<string>("");
+  }, [product.thumbnailUrl, product.images, product.variants, colorOptions]);
 
   const availableSizes = useMemo<string[]>(() => {
     const allSizes = Array.from(
@@ -292,10 +303,20 @@ export function ProductDetailClient({
     setVariantWarning("");
     setSelectedColor(opt.color);
 
-    const matchingVariant = (product.variants ?? []).find(
-      (v) => v.color?.trim().toLowerCase() === opt.color.trim().toLowerCase()
+    // Ưu tiên biến thể khớp CẢ phiên bản đang chọn và màu vừa bấm
+    const exact = (product.variants ?? []).find(
+      (v) =>
+        v.color?.trim().toLowerCase() === opt.color.trim().toLowerCase() &&
+        Boolean(selectedSize) &&
+        v.size?.trim().toLowerCase() === selectedSize.trim().toLowerCase()
     );
-    if (matchingVariant?.size) {
+    const matchingVariant =
+      exact ||
+      (product.variants ?? []).find(
+        (v) => v.color?.trim().toLowerCase() === opt.color.trim().toLowerCase()
+      );
+
+    if (matchingVariant?.size && !exact) {
       setSelectedSize(matchingVariant.size);
     }
     syncImageToUrl(matchingVariant?.imageUrl || opt.imageUrl);
@@ -306,12 +327,19 @@ export function ProductDetailClient({
     setVariantWarning("");
     setSelectedSize(size);
 
-    const matchingVariant = (product.variants ?? []).find(
+    // Ưu tiên biến thể khớp CẢ màu đang chọn và phiên bản vừa bấm
+    const exact = (product.variants ?? []).find(
       (v) =>
         v.size?.trim().toLowerCase() === size.trim().toLowerCase() &&
-        (!selectedColor ||
-          v.color?.trim().toLowerCase() === selectedColor.trim().toLowerCase())
+        Boolean(selectedColor) &&
+        v.color?.trim().toLowerCase() === selectedColor.trim().toLowerCase()
     );
+    const matchingVariant =
+      exact ||
+      (product.variants ?? []).find(
+        (v) => v.size?.trim().toLowerCase() === size.trim().toLowerCase()
+      );
+
     if (matchingVariant?.color && !selectedColor) {
       setSelectedColor(matchingVariant.color);
     }

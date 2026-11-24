@@ -121,18 +121,27 @@ export function isValidPhoneVN(input: string | null | undefined): boolean {
   return /^0[0-9]{9,10}$/.test(digits);
 }
 
+import { CloudinaryTransformOptions, getOptimizedCloudinaryUrl } from "./cloudinary";
+
 /**
  * Chuẩn hóa URL ảnh từ Backend (hỗ trợ Cloudinary https://..., /uploads/..., và ảnh mock nội bộ /images/mock/...).
+ * Tùy chọn truyền options để tự động tối ưu hóa kích thước Cloudinary qua CDN.
  */
 export function resolveMediaUrl(
   url: string | null | undefined,
-  fallback = ""
+  fallback = "",
+  options?: CloudinaryTransformOptions
 ): string {
   const raw = String(url || "").trim();
   if (!raw) return fallback;
   if (raw.startsWith("/images/mock/")) return raw;
   if (raw.startsWith("/images/")) return fallback;
-  if (/^https?:\/\//i.test(raw) || raw.startsWith("data:")) return raw;
+  if (/^https?:\/\//i.test(raw) || raw.startsWith("data:")) {
+    if (raw.includes("res.cloudinary.com") && options) {
+      return getOptimizedCloudinaryUrl(raw, options);
+    }
+    return raw;
+  }
   if (raw.startsWith("/uploads/")) {
     const apiBase =
       process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1";

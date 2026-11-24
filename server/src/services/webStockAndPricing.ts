@@ -82,6 +82,10 @@ export async function getOnlineSiteSetting() {
     defaultShippingFee: 30000,
     freeShipThreshold: 500000,
     onlineStockMode: 'FLOOR_1' as OnlineStockMode,
+    cloudinaryCloudName: '',
+    cloudinaryApiKey: '',
+    cloudinaryApiSecret: '',
+    cloudinaryFolder: '11sport-web',
     showrooms: [],
     uspItems: [
       { icon: 'shield-check', title: 'Chính hãng 100%', description: 'Cam kết hàng chính hãng' },
