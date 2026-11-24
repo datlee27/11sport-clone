@@ -83,11 +83,11 @@ export function HeroSlider({ banners }: HeroSliderProps) {
       aria-label="Banner nổi bật 11Sport"
       className="group relative w-full overflow-hidden bg-store-surface-sage"
     >
-      <div className="overflow-hidden" ref={emblaRef}>
+      <div className="overflow-hidden touch-pan-y" ref={emblaRef}>
         <div className="flex">
           {banners.map((banner, idx) => {
             const slideContent = (
-              <div className="relative w-full aspect-[16/9] sm:aspect-[1425/490]">
+              <div className="relative w-full aspect-[16/9] sm:aspect-[1425/490] sm:max-h-[520px] xl:max-h-[540px]">
                 {/* Desktop Image */}
                 <Image
                   src={resolveMediaUrl(banner.desktopImageUrl)}
@@ -146,19 +146,25 @@ export function HeroSlider({ banners }: HeroSliderProps) {
             <ChevronRight className="w-5 h-5" aria-hidden="true" />
           </button>
 
-          <div className="absolute bottom-2 sm:bottom-3.5 inset-x-0 flex items-center justify-center gap-2 z-10">
+          <div className="absolute bottom-1.5 sm:bottom-3 inset-x-0 flex items-center justify-center gap-1 z-10">
             {banners.map((b, idx) => (
               <button
                 key={b._id}
                 type="button"
                 onClick={() => emblaApi?.scrollTo(idx)}
                 aria-label={`Xem banner ${idx + 1}`}
-                className={`w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full border border-white transition-all ${
-                  idx === selectedIndex
-                    ? "bg-white scale-110"
-                    : "bg-transparent opacity-60 hover:opacity-100"
-                }`}
-              />
+                aria-pressed={idx === selectedIndex}
+                className="min-w-[28px] min-h-[28px] flex items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              >
+                <span
+                  aria-hidden="true"
+                  className={`w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full border border-white transition-all ${
+                    idx === selectedIndex
+                      ? "bg-white scale-110"
+                      : "bg-transparent opacity-70 hover:opacity-100"
+                  }`}
+                />
+              </button>
             ))}
           </div>
         </>

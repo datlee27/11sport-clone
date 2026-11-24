@@ -30,7 +30,7 @@ export function SeoDescriptionBox({ html, title }: SeoDescriptionBoxProps) {
         }`}
       >
         <div
-          className="prose prose-slate max-w-none text-sm sm:text-base text-ink-secondary leading-relaxed"
+          className="prose prose-slate max-w-[52ch] mx-auto text-sm sm:text-base text-ink-secondary leading-relaxed text-pretty [&_p]:text-pretty [&_li]:text-pretty"
           dangerouslySetInnerHTML={{ __html: html }}
         />
         {!expanded && (
@@ -44,8 +44,9 @@ export function SeoDescriptionBox({ html, title }: SeoDescriptionBoxProps) {
       <div className="mt-4 flex justify-center">
         <button
           type="button"
+          aria-expanded={expanded}
           onClick={() => setExpanded((prev) => !prev)}
-          className="inline-flex items-center gap-1.5 h-[34px] px-4 rounded-none bg-store-forest hover:bg-[#1a7357] text-white text-sm font-medium transition-colors"
+          className="inline-flex items-center justify-center gap-1.5 min-h-[40px] px-5 rounded-none bg-store-forest hover:bg-store-forest-hover text-white text-sm font-medium transition-colors"
         >
           <span>{expanded ? "Thu gọn" : "Xem thêm"}</span>
           {expanded ? (

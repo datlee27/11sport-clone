@@ -11,7 +11,7 @@ interface QuickConsultFormProps {
 }
 
 const INPUT_CLS =
-  "w-full h-[38px] px-3 rounded-none border border-[#dddddd] bg-white text-[13.5px] text-[#0a0a0a] placeholder:text-[#888888] focus:outline-none focus:border-[#224e40]";
+  "w-full min-h-[44px] px-3 py-2 rounded-none border border-[#dddddd] bg-white text-base sm:text-[14px] text-[#0a0a0a] placeholder:text-[#6b7280] focus:outline-none focus:border-[#224e40]";
 
 /**
  * 1:1 mipik.vn Consultation / Contact Form:
@@ -181,14 +181,14 @@ export function QuickConsultForm({
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Nội dung cần tư vấn (chọn vợt 14mm/16mm, đặt lịch thử vợt...) *"
-              className="w-full p-3 rounded-none border border-[#dddddd] bg-white text-[13.5px] text-[#0a0a0a] placeholder:text-[#888888] focus:outline-none focus:border-[#224e40]"
+              className="w-full p-3 rounded-none border border-[#dddddd] bg-white text-base sm:text-[14px] text-[#0a0a0a] placeholder:text-[#6b7280] focus:outline-none focus:border-[#224e40]"
             />
           </div>
 
           <button
             type="submit"
             disabled={submitting}
-            className="h-[39px] px-6 rounded-none bg-[#224e40] hover:bg-[#193b30] text-white text-[12.5px] font-bold uppercase tracking-wider transition-colors disabled:opacity-60"
+            className="min-h-[44px] px-6 rounded-none bg-[#224e40] hover:bg-[#193b30] text-white text-[12.5px] font-bold uppercase tracking-wider transition-colors disabled:opacity-60"
           >
             {submitting ? "ĐANG GỬI..." : "GỬI LIÊN HỆ"}
           </button>
@@ -275,14 +275,14 @@ export function QuickConsultForm({
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Nội dung *"
-              className="w-full p-3 rounded-none border border-[#dddddd] bg-white text-[13.5px] text-[#0a0a0a] placeholder:text-[#888888] focus:outline-none focus:border-[#224e40]"
+              className="w-full p-3 rounded-none border border-[#dddddd] bg-white text-base sm:text-[14px] text-[#0a0a0a] placeholder:text-[#6b7280] focus:outline-none focus:border-[#224e40]"
             />
           </div>
 
           <button
             type="submit"
             disabled={submitting}
-            className="h-[39px] px-5 rounded-none bg-[#224e40] hover:bg-[#193b30] text-white text-[12.5px] font-bold uppercase tracking-wider transition-colors disabled:opacity-60"
+            className="min-h-[44px] px-5 rounded-none bg-[#224e40] hover:bg-[#193b30] text-white text-[12.5px] font-bold uppercase tracking-wider transition-colors disabled:opacity-60"
           >
             {submitting ? "ĐANG GỬI..." : "GỬI CÂU HỎI"}
           </button>

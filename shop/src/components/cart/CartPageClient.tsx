@@ -125,7 +125,7 @@ export function CartPageClient() {
         </p>
         <Link
           href="/vot-pickleball"
-          className="inline-flex items-center justify-center h-[39px] px-7 rounded-none bg-[linear-gradient(90deg,#224e40_0%,#224e40_52%,#b5c7be_100%)] text-white text-[13px] font-bold uppercase tracking-wider transition-opacity hover:opacity-95 [text-shadow:0_1px_2px_rgba(0,0,0,0.35)]"
+          className="inline-flex items-center justify-center min-h-[44px] px-7 rounded-none bg-store-forest hover:bg-store-forest-hover text-white text-[13px] font-bold uppercase tracking-wider transition-colors"
         >
           QUAY TRỞ LẠI CỬA HÀNG
         </Link>
@@ -210,7 +210,7 @@ export function CartPageClient() {
                   <th className="hidden sm:table-cell py-2.5 text-right whitespace-nowrap pl-3">
                     GIÁ
                   </th>
-                  <th className="py-2.5 text-center whitespace-nowrap pl-3">
+                  <th className="py-2.5 text-center whitespace-nowrap pl-2 sm:pl-3">
                     SỐ LƯỢNG
                   </th>
                   <th className="hidden sm:table-cell py-2.5 text-right whitespace-nowrap pl-3">
@@ -235,15 +235,15 @@ export function CartPageClient() {
                     <tr key={item.variantId}>
                       {/* Product cell */}
                       <td className="py-4 pr-2 align-middle">
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2.5 sm:gap-3">
                           {/* Desktop Remove Circle Button */}
                           <button
                             type="button"
                             onClick={() => removeItem(item.variantId)}
                             aria-label={`Xóa ${item.name}`}
-                            className="hidden sm:inline-flex w-6 h-6 rounded-full border border-[#cccccc] text-[#888888] hover:border-[#0a0a0a] hover:text-[#0a0a0a] items-center justify-center shrink-0 transition-colors"
+                            className="hidden sm:inline-flex min-w-[36px] min-h-[36px] w-9 h-9 rounded-full border border-[#cccccc] text-[#666666] hover:border-[#0a0a0a] hover:text-[#0a0a0a] items-center justify-center shrink-0 transition-colors"
                           >
-                            <X className="w-3 h-3" aria-hidden="true" />
+                            <X className="w-3.5 h-3.5" aria-hidden="true" />
                           </button>
 
                           {/* Square Image + Mobile Remove Overlay */}
@@ -252,13 +252,13 @@ export function CartPageClient() {
                               type="button"
                               onClick={() => removeItem(item.variantId)}
                               aria-label={`Xóa ${item.name}`}
-                              className="sm:hidden absolute -top-2 -left-2 z-10 w-6 h-6 rounded-full border border-[#cccccc] bg-white text-[#666666] inline-flex items-center justify-center shadow-sm"
+                              className="sm:hidden absolute -top-2 -left-2 z-10 min-w-[36px] min-h-[36px] w-9 h-9 rounded-full border border-[#cccccc] bg-white text-[#555555] inline-flex items-center justify-center shadow-sm"
                             >
-                              <X className="w-3 h-3" aria-hidden="true" />
+                              <X className="w-3.5 h-3.5" aria-hidden="true" />
                             </button>
                             <Link
                               href={`/${item.slug}`}
-                              className="relative block w-[64px] h-[64px] sm:w-[74px] sm:h-[74px] bg-white border border-[#eeeeee] overflow-hidden"
+                              className="relative block w-[56px] h-[56px] sm:w-[74px] sm:h-[74px] bg-white border border-[#eeeeee] overflow-hidden"
                             >
                               {resolveMediaUrl(item.imageUrl) ? (
                                 <Image
@@ -313,19 +313,19 @@ export function CartPageClient() {
                       </td>
 
                       {/* Quantity Capsule Stepper */}
-                      <td className="py-4 pl-3 text-center align-middle">
-                        <div className="inline-flex items-center h-[36px] rounded-full border border-[#dddddd] bg-white overflow-hidden">
+                      <td className="py-4 pl-2 sm:pl-3 text-center align-middle">
+                        <div className="inline-flex items-center min-h-[36px] rounded-full border border-[#dddddd] bg-white overflow-hidden">
                           <button
                             type="button"
                             onClick={() =>
                               updateQuantity(item.variantId, item.quantity - 1)
                             }
                             aria-label={`Giảm số lượng ${item.name}`}
-                            className="w-7 sm:w-8 h-full inline-flex items-center justify-center text-[#555555] hover:bg-[#f5f5f5]"
+                            className="min-w-[36px] min-h-[36px] inline-flex items-center justify-center text-[#555555] hover:bg-[#f5f5f5]"
                           >
-                            <Minus className="w-3 h-3" aria-hidden="true" />
+                            <Minus className="w-3.5 h-3.5" aria-hidden="true" />
                           </button>
-                          <span className="w-7 sm:w-8 text-center text-[13px] font-semibold text-[#0a0a0a] tabular-nums">
+                          <span className="w-6 sm:w-8 text-center text-[13px] font-semibold text-[#0a0a0a] tabular-nums">
                             {item.quantity}
                           </span>
                           <button
@@ -334,9 +334,9 @@ export function CartPageClient() {
                               updateQuantity(item.variantId, item.quantity + 1)
                             }
                             aria-label={`Tăng số lượng ${item.name}`}
-                            className="w-7 sm:w-8 h-full inline-flex items-center justify-center text-[#555555] hover:bg-[#f5f5f5]"
+                            className="min-w-[36px] min-h-[36px] inline-flex items-center justify-center text-[#555555] hover:bg-[#f5f5f5]"
                           >
-                            <Plus className="w-3 h-3" aria-hidden="true" />
+                            <Plus className="w-3.5 h-3.5" aria-hidden="true" />
                           </button>
                         </div>
                       </td>
@@ -390,7 +390,7 @@ export function CartPageClient() {
           <div className="pt-5 flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-3">
             <Link
               href="/vot-pickleball"
-              className="inline-flex items-center justify-center h-[39px] px-4 rounded-none border border-[#224e40] bg-[linear-gradient(90deg,#d8e5de_0%,#edf2ee_50%,#f8eee9_100%)] hover:brightness-95 text-[#142e25] text-[12.5px] font-bold uppercase tracking-wider transition-all whitespace-nowrap"
+              className="inline-flex items-center justify-center min-h-[44px] px-4 rounded-none border border-[#224e40] bg-[linear-gradient(90deg,#d8e5de_0%,#edf2ee_50%,#f8eee9_100%)] hover:brightness-95 text-[#142e25] text-[12.5px] font-bold uppercase tracking-wider transition-all whitespace-nowrap"
             >
               ← TIẾP TỤC XEM SẢN PHẨM
             </Link>
@@ -399,7 +399,7 @@ export function CartPageClient() {
               type="button"
               onClick={() => syncCartPrice(appliedCoupon, selectedGiftId)}
               disabled={loadingPrice}
-              className="inline-flex items-center justify-center h-[39px] px-5 rounded-none bg-[#224e40] hover:bg-[#193b30] text-white text-[12.5px] font-bold uppercase tracking-wider transition-colors disabled:opacity-60 whitespace-nowrap"
+              className="inline-flex items-center justify-center min-h-[44px] px-5 rounded-none bg-[#224e40] hover:bg-[#193b30] text-white text-[12.5px] font-bold uppercase tracking-wider transition-colors disabled:opacity-60 whitespace-nowrap"
             >
               {loadingPrice ? "ĐANG CẬP NHẬT..." : "CẬP NHẬT GIỎ HÀNG"}
             </button>
@@ -465,7 +465,7 @@ export function CartPageClient() {
             <div className="pt-4">
               <Link
                 href="/thanh-toan"
-                className="w-full h-[42px] rounded-none inline-flex items-center justify-center bg-[#224e40] hover:bg-[#193b30] text-white text-[13px] font-bold uppercase tracking-wider transition-colors"
+                className="w-full min-h-[44px] rounded-none inline-flex items-center justify-center bg-[#224e40] hover:bg-[#193b30] text-white text-[13px] font-bold uppercase tracking-wider transition-colors"
               >
                 TIẾN HÀNH THANH TOÁN
               </Link>
@@ -491,12 +491,12 @@ export function CartPageClient() {
               value={couponInput}
               onChange={(e) => setCouponInput(e.target.value)}
               placeholder="Nhập mã giảm giá"
-              className="w-full h-[39px] px-3 rounded-none border border-[#dddddd] bg-white text-[13.5px] text-[#0a0a0a] placeholder:text-[#999999] focus:outline-none focus:border-[#224e40]"
+              className="w-full min-h-[44px] px-3 py-2 rounded-none border border-[#dddddd] bg-white text-base sm:text-[13.5px] text-[#0a0a0a] placeholder:text-[#6b7280] focus:outline-none focus:border-[#224e40]"
             />
 
             <button
               type="submit"
-              className="w-full h-[39px] rounded-none bg-[#f7f7f7] hover:bg-[#eeeeee] border border-[#dddddd] text-[13.5px] font-medium text-[#555555] transition-colors"
+              className="w-full min-h-[44px] rounded-none bg-[#f7f7f7] hover:bg-[#eeeeee] border border-[#dddddd] text-[13.5px] font-medium text-[#555555] transition-colors"
             >
               Áp dụng
             </button>

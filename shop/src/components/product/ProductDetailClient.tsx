@@ -372,6 +372,19 @@ export function ProductDetailClient({
     return () => observer.disconnect();
   }, []);
 
+  // Sync Sticky Bottom Bar visibility with FloatingContactWidget
+  useEffect(() => {
+    document.documentElement.dataset.pdpSticky = isStickyVisible ? "1" : "0";
+    window.dispatchEvent(new Event("11sport:pdp-sticky"));
+  }, [isStickyVisible]);
+
+  useEffect(() => {
+    return () => {
+      delete document.documentElement.dataset.pdpSticky;
+      window.dispatchEvent(new Event("11sport:pdp-sticky"));
+    };
+  }, []);
+
   const openLightbox = () => {
     setLightboxZoom(false);
     setLightboxPan({ x: 50, y: 50 });
@@ -482,8 +495,8 @@ export function ProductDetailClient({
     });
     if (product.hasGift) {
       tiles.push({
-        eyebrow: "Mỗi sản phẩm",
-        reward: "1 áo",
+        eyebrow: "Mỗi cây vợt",
+        reward: "Tặng quấn cán, dán viền, bao vợt",
       });
     }
     return tiles;
@@ -557,7 +570,7 @@ export function ProductDetailClient({
     },
     {
       label: "Phí giao hàng",
-      value: "Miễn phí giao hàng toàn quốc cho đơn hàng từ 1.000.000₫.",
+      value: "Miễn phí giao hàng toàn quốc (Freeship 100%).",
     },
     {
       label: "Bảo hành",
@@ -576,8 +589,8 @@ export function ProductDetailClient({
       {/* =================================================================== */}
       {/* TOP 50/50 HERO: GALLERY (LEFT) + BUY BOX SUMMARY (RIGHT)            */}
       {/* =================================================================== */}
-      <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-10 items-start">
-        {/* LEFT COLUMN: MAIN GALLERY + DESKTOP 4-COL THUMBNAIL STRIP */}
+      <section className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-7 lg:gap-10 items-start">
+        {/* LEFT COLUMN: MAIN GALLERY + TABLET/DESKTOP 4-COL THUMBNAIL STRIP */}
         <div className="w-full">
           <div
             role="button"
@@ -616,7 +629,7 @@ export function ProductDetailClient({
               setHoverPausedByControl(false);
               setMainHoverOrigin({ x: 50, y: 50 });
             }}
-            className="group relative aspect-square w-full bg-white rounded-[8px] border border-[#eeeeee] overflow-hidden cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#224E40]"
+            className="group relative aspect-square w-full max-h-[400px] md:max-h-none bg-white rounded-[8px] border border-[#eeeeee] overflow-hidden cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#224E40]"
           >
             {currentMainImage && (
               <Image
@@ -624,7 +637,7 @@ export function ProductDetailClient({
                 alt={product.name}
                 fill
                 priority
-                sizes="(max-width: 1024px) 100vw, 50vw"
+                sizes="(max-width: 767px) 100vw, 50vw"
                 style={
                   mainHoverZoom && !hoverPausedByControl
                     ? {
@@ -670,7 +683,7 @@ export function ProductDetailClient({
                   onMouseEnter={() => setHoverPausedByControl(true)}
                   onMouseLeave={() => setHoverPausedByControl(false)}
                   aria-label="Ảnh trước"
-                  className="absolute left-2.5 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-white/90 border border-[#e2e8f0] text-[#1e2c26] flex items-center justify-center opacity-80 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity hover:border-[#224E40] hover:text-[#224E40]"
+                  className="absolute left-2.5 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white/90 border border-[#e2e8f0] text-[#1e2c26] flex items-center justify-center opacity-80 lg:opacity-0 lg:group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#224E40] transition-opacity hover:border-[#224E40] hover:text-[#224E40]"
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </button>
@@ -683,7 +696,7 @@ export function ProductDetailClient({
                   onMouseEnter={() => setHoverPausedByControl(true)}
                   onMouseLeave={() => setHoverPausedByControl(false)}
                   aria-label="Ảnh tiếp theo"
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-white/90 border border-[#e2e8f0] text-[#1e2c26] flex items-center justify-center opacity-80 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity hover:border-[#224E40] hover:text-[#224E40]"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white/90 border border-[#e2e8f0] text-[#1e2c26] flex items-center justify-center opacity-80 lg:opacity-0 lg:group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#224E40] transition-opacity hover:border-[#224E40] hover:text-[#224E40]"
                 >
                   <ChevronRight className="w-4 h-4" />
                 </button>
@@ -700,15 +713,15 @@ export function ProductDetailClient({
               onMouseEnter={() => setHoverPausedByControl(true)}
               onMouseLeave={() => setHoverPausedByControl(false)}
               aria-label="Phóng to hình ảnh sản phẩm"
-              className="flex absolute bottom-3 left-3 z-10 w-9 h-9 rounded-full bg-white border border-[#e0ebe6] items-center justify-center text-[#555555] hover:text-[#224E40] hover:border-[#224E40] transition-colors shadow-sm"
+              className="flex absolute bottom-3 left-3 z-10 w-9 h-9 rounded-full bg-white border border-[#e0ebe6] items-center justify-center text-[#555555] hover:text-[#224E40] hover:border-[#224E40] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#224E40] transition-colors shadow-sm"
             >
               <Maximize2 className="w-4 h-4" />
             </button>
           </div>
 
-          {/* 4-column thumbnail grid (Desktop only) */}
+          {/* 4-column thumbnail grid (Tablet md+ & Desktop) */}
           {galleryImages.length > 1 && (
-            <div className="hidden lg:grid grid-cols-4 gap-2.5 mt-3">
+            <div className="hidden md:grid grid-cols-4 gap-2.5 mt-3">
               {galleryImages.map((imgUrl, idx) => {
                 const isActive = idx === activeImageIndex;
                 return (
@@ -717,7 +730,7 @@ export function ProductDetailClient({
                     type="button"
                     onClick={() => setActiveImageIndex(idx)}
                     aria-label={`Xem ảnh ${idx + 1} của ${product.name}`}
-                    className={`relative aspect-square rounded-[6px] border overflow-hidden bg-white transition-all ${
+                    className={`relative aspect-square rounded-[6px] border overflow-hidden bg-white transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#224E40] ${
                       isActive
                         ? "border-[#224E40] ring-1 ring-[#224E40]"
                         : "border-[#ebebeb] opacity-75 hover:opacity-100 hover:border-[#224E40]/50"
@@ -747,7 +760,7 @@ export function ProductDetailClient({
           {/* Red <del>/<ins> Price with superscript ₫ (converts dynamically for USD/PHP) */}
           <div className="flex flex-wrap items-baseline gap-2.5">
             {activeComparePrice && activeComparePrice > activePrice && (
-              <del className="text-[18px] sm:text-[20px] font-normal text-[#dd3333]/65 line-through tabular-nums">
+              <del className="text-[18px] sm:text-[20px] font-normal text-[#6b7280] line-through tabular-nums">
                 {renderFormattedPrice(
                   activeComparePrice,
                   activeCurrency,
@@ -764,11 +777,11 @@ export function ProductDetailClient({
             </ins>
           </div>
 
-          {/* ✧ ƯU ĐÃI ĐỘC QUYỀN Mint-Sage Card (#f5f8f2) */}
+          {/* ✧ ƯU ĐÃI ĐỘC QUYỀN Mint-Sage Card (#f5f8f2, flat internal sections) */}
           {hasPromoBox && (
-            <div className="rounded-[12px] bg-[#f5f8f2] border border-[#dce8dc] p-4 sm:p-[18px] space-y-3">
+            <div className="rounded-[12px] bg-[#f5f8f2] border border-[#d6e4dc] p-4 sm:p-[18px] space-y-3">
               {/* Header row */}
-              <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-[#e2ece2]">
+              <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-[#d6e4dc]">
                 <span className="text-[13px] sm:text-[14px] font-bold uppercase tracking-wide text-[#204b3e]">
                   ✧ ƯU ĐÃI ĐỘC QUYỀN
                 </span>
@@ -779,30 +792,30 @@ export function ProductDetailClient({
 
               {/* Bulk Pricing Rows (GIÁ MUA NHIỀU) */}
               {tierPricing.length > 0 && (
-                <div>
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-[#4a6b5d] mb-1.5">
+                <div className="space-y-1.5">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-[#4a6b5d]">
                     GIÁ MUA NHIỀU
                   </p>
-                  <div className="bg-white rounded-[8px] border border-[#e3ece3] divide-y divide-[#eef3ee]">
+                  <div className="divide-y divide-[#d6e4dc] border-t border-[#d6e4dc]">
                     {tierPricing.map((rule, idx) => {
                       const tierUnitPrice = computeTierUnitPrice(activePrice, rule);
                       return (
                         <div
                           key={`${rule.minQty}-${idx}`}
-                          className="flex items-center justify-between gap-3 px-3.5 py-2.5"
+                          className="flex items-center justify-between gap-3 py-2"
                         >
                           <span className="text-[13px] sm:text-[13.5px] font-medium text-[#1e2c26]">
                             Từ {rule.minQty} sản phẩm
                           </span>
                           <div className="text-right leading-none whitespace-nowrap">
-                            <span className="text-[20px] sm:text-[22px] font-bold text-[#204b3e] tabular-nums">
+                            <span className="text-[19px] sm:text-[21px] font-bold text-[#204b3e] tabular-nums">
                               {renderFormattedPrice(
                                 tierUnitPrice,
                                 activeCurrency,
                                 "text-[0.58em] ml-0.5 font-bold"
                               )}
                             </span>
-                            <span className="text-[11.5px] font-normal text-[#5b7268] ml-1">
+                            <span className="text-[11.5px] font-normal text-[#4a6b5d] ml-1">
                               / sản phẩm
                             </span>
                           </div>
@@ -813,28 +826,22 @@ export function ProductDetailClient({
                 </div>
               )}
 
-              {/* Gift Promotions Tiles (QUÀ TẶNG KÈM THEO) */}
+              {/* Gift Promotions List (QUÀ TẶNG KÈM THEO) */}
               {giftTiles.length > 0 && (
-                <div>
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-[#4a6b5d] mb-1.5">
+                <div className="space-y-1.5 pt-0.5">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-[#4a6b5d]">
                     QUÀ TẶNG KÈM THEO
                   </p>
-                  <div
-                    className={`grid gap-2 ${
-                      giftTiles.length >= 3
-                        ? "grid-cols-2 sm:grid-cols-3"
-                        : "grid-cols-2"
-                    }`}
-                  >
+                  <div className="divide-y divide-[#d6e4dc] border-t border-[#d6e4dc]">
                     {giftTiles.map((tile, idx) => (
                       <div
                         key={`${tile.eyebrow}-${idx}`}
-                        className="bg-white rounded-[8px] border border-[#e3ece3] px-3 py-2.5 flex flex-col justify-between gap-1"
+                        className="py-2 flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-0.5 sm:gap-3"
                       >
-                        <span className="text-[11.5px] font-medium text-[#5b7268] leading-snug">
+                        <span className="text-[12px] font-medium text-[#4a6b5d] leading-snug shrink-0">
                           {tile.eyebrow}
                         </span>
-                        <span className="text-[13.5px] sm:text-[14px] font-bold text-[#204b3e] leading-snug">
+                        <span className="text-[13px] sm:text-[13.5px] font-bold text-[#204b3e] leading-snug sm:text-right">
                           {tile.reward}
                         </span>
                       </div>
@@ -844,8 +851,8 @@ export function ProductDetailClient({
               )}
 
               {/* Promo footer link */}
-              <div className="flex items-center justify-between gap-2 pt-0.5 text-xs">
-                <span className="text-[#5b7268]">
+              <div className="flex items-center justify-between gap-2 pt-2 border-t border-[#d6e4dc] text-xs">
+                <span className="text-[#4a6b5d]">
                   Ưu đãi tự động áp dụng trong giỏ hàng
                 </span>
                 <Link
@@ -858,7 +865,7 @@ export function ProductDetailClient({
             </div>
           )}
 
-          {/* Color & Variant Swatches (30x30 square image swatches + active #dd3333 ring + XÓA reset) */}
+          {/* Color & Variant Swatches (36x36 square image swatches + active #dd3333 ring + XÓA reset) */}
           {(colorOptions.length > 0 || availableSizes.length > 0) && (
             <div className="space-y-2.5 pt-1">
               {colorOptions.length > 0 && (
@@ -871,7 +878,7 @@ export function ProductDetailClient({
                           {selectedColor}
                         </strong>
                       ) : (
-                        <span className="text-[#888888] font-normal">
+                        <span className="text-[#6b7280] font-normal">
                           Chưa chọn
                         </span>
                       )}
@@ -880,7 +887,7 @@ export function ProductDetailClient({
                       <button
                         type="button"
                         onClick={handleResetVariant}
-                        className="text-[11.5px] font-semibold uppercase tracking-wide text-[#777777] hover:text-[#dd3333] underline underline-offset-2"
+                        className="inline-flex items-center min-h-[32px] px-2 text-[11.5px] font-semibold uppercase tracking-wide text-[#595959] hover:text-[#dd3333] underline underline-offset-2 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#224E40]"
                       >
                         XÓA
                       </button>
@@ -905,7 +912,7 @@ export function ProductDetailClient({
                           title={opt.color}
                           aria-label={`Chọn màu ${opt.color}`}
                           aria-pressed={isActive}
-                          className={`relative w-[30px] h-[30px] rounded-[3px] overflow-hidden bg-white transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#224E40] ${
+                          className={`relative w-9 h-9 rounded-[4px] overflow-hidden bg-white transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#224E40] ${
                             isActive
                               ? "ring-2 ring-[#dd3333] border border-[#dd3333]"
                               : "border border-[#dcdcdc] hover:border-[#224E40]"
@@ -916,7 +923,7 @@ export function ProductDetailClient({
                               src={thumbUrl}
                               alt={opt.color}
                               fill
-                              sizes="30px"
+                              sizes="36px"
                               className="object-contain p-0.5"
                             />
                           ) : (
@@ -935,31 +942,38 @@ export function ProductDetailClient({
               )}
 
               {availableSizes.length > 0 && (
-                <div className="flex flex-wrap items-center gap-2 pt-0.5">
-                  <span className="text-[13px] font-semibold text-[#1e2c26]">
-                    Phiên bản:
-                  </span>
-                  {availableSizes.map((size) => {
-                    const isActive =
-                      !selectionCleared &&
-                      selectedSize.trim().toLowerCase() ===
-                        size.trim().toLowerCase();
-                    return (
-                      <button
-                        key={size}
-                        type="button"
-                        onClick={() => handleSelectSize(size)}
-                        aria-pressed={isActive}
-                        className={`px-2.5 py-1 rounded-[4px] border text-xs transition-colors ${
-                          isActive
-                            ? "border-[#dd3333] bg-[#dd3333]/5 text-[#1e2c26] font-semibold"
-                            : "border-[#dcdcdc] text-[#555555] hover:border-[#224E40]"
-                        }`}
-                      >
-                        {size}
-                      </button>
-                    );
-                  })}
+                <div className="space-y-1.5 pt-0.5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[13px] font-semibold text-[#1e2c26]">
+                      Phiên bản:
+                    </span>
+                    {availableSizes.map((size) => {
+                      const isActive =
+                        !selectionCleared &&
+                        selectedSize.trim().toLowerCase() ===
+                          size.trim().toLowerCase();
+                      return (
+                        <button
+                          key={size}
+                          type="button"
+                          onClick={() => handleSelectSize(size)}
+                          aria-pressed={isActive}
+                          className={`min-h-[36px] px-3.5 py-1.5 rounded-[4px] border text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#224E40] ${
+                            isActive
+                              ? "border-[#dd3333] bg-[#dd3333]/5 text-[#1e2c26] font-semibold"
+                              : "border-[#dcdcdc] text-[#555555] hover:border-[#224E40]"
+                          }`}
+                        >
+                          {size}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {availableSizes.some((s) => /\d+\s*mm/i.test(s)) && (
+                    <p className="text-xs text-[#525e58]">
+                      14mm: Thiên công, phản xạ nhanh · 16mm: Kiểm soát, êm tay
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -973,7 +987,7 @@ export function ProductDetailClient({
                       "text-[0.65em] ml-0.5"
                     )}
                   </span>
-                  <span className="text-[#cccccc]">·</span>
+                  <span className="text-[#cccccc]" aria-hidden="true">·</span>
                   {isAvailable ? (
                     <span className="text-[#204b3e] font-medium">
                       Còn hàng ({activeStock})
@@ -997,7 +1011,7 @@ export function ProductDetailClient({
           {/* Single Horizontal Row: `- [1] +` Pill Stepper + Single `#224E40` Pill CTA */}
           <div
             ref={buyBoxRef}
-            className="flex items-center gap-3 pt-1"
+            className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-3 pt-1"
           >
             <div className="inline-flex items-center h-[44px] rounded-full border border-[#d6ded6] bg-white overflow-hidden shrink-0">
               <button
@@ -1005,7 +1019,7 @@ export function ProductDetailClient({
                 onClick={() => setQuantity((q) => Math.max(1, q - 1))}
                 disabled={quantity <= 1}
                 aria-label="Giảm số lượng"
-                className="w-10 h-full flex items-center justify-center text-[#1e2c26] hover:bg-[#f5f8f2] disabled:opacity-40 transition-colors"
+                className="w-9 sm:w-10 h-full flex items-center justify-center text-[#1e2c26] hover:bg-[#f5f8f2] disabled:opacity-40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#224E40]"
               >
                 <Minus className="w-3.5 h-3.5" />
               </button>
@@ -1021,7 +1035,7 @@ export function ProductDetailClient({
                   }
                 }}
                 aria-label="Số lượng"
-                className="w-10 text-center text-sm font-bold text-[#1e2c26] tabular-nums bg-transparent focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                className="w-8 sm:w-10 text-center text-base sm:text-sm font-bold text-[#1e2c26] tabular-nums bg-transparent focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
               <button
                 type="button"
@@ -1030,7 +1044,7 @@ export function ProductDetailClient({
                 }
                 disabled={activeStock > 0 && quantity >= activeStock}
                 aria-label="Tăng số lượng"
-                className="w-10 h-full flex items-center justify-center text-[#1e2c26] hover:bg-[#f5f8f2] disabled:opacity-40 transition-colors"
+                className="w-9 sm:w-10 h-full flex items-center justify-center text-[#1e2c26] hover:bg-[#f5f8f2] disabled:opacity-40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#224E40]"
               >
                 <Plus className="w-3.5 h-3.5" />
               </button>
@@ -1040,7 +1054,7 @@ export function ProductDetailClient({
               type="button"
               onClick={handleAddToCart}
               disabled={!isAvailable}
-              className="flex-1 sm:flex-initial sm:min-w-[240px] h-[44px] px-7 rounded-full bg-[#224E40] hover:bg-[#193b30] text-white text-[13.5px] font-bold uppercase tracking-wide transition-colors disabled:bg-[#cbd5e1] disabled:text-[#64748b] whitespace-nowrap"
+              className="flex-1 min-w-0 sm:flex-initial sm:min-w-[240px] md:flex-1 md:min-w-0 lg:flex-initial lg:min-w-[240px] h-[44px] px-3 sm:px-7 md:px-4 lg:px-7 rounded-full bg-[#224E40] hover:bg-[#193b30] text-white text-xs sm:text-[13.5px] font-bold uppercase tracking-normal sm:tracking-wide transition-colors disabled:bg-[#cbd5e1] disabled:text-[#475569] whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#224E40] focus-visible:ring-offset-2"
             >
               {isAvailable ? "THÊM VÀO GIỎ HÀNG" : "TẠM HẾT HÀNG"}
             </button>
@@ -1214,10 +1228,10 @@ export function ProductDetailClient({
             : "translate-y-full opacity-0 pointer-events-none"
         }`}
       >
-        <div className="max-w-container mx-auto h-full px-2.5 sm:px-5 flex items-center justify-between gap-2 sm:gap-3">
-          {/* Desktop product preview / Mobile compact unclipped price */}
-          <div className="hidden sm:flex items-center gap-3 min-w-0">
-            <div className="relative w-10 h-10 rounded-[4px] border border-[#eeeeee] bg-white overflow-hidden shrink-0">
+        <div className="max-w-container mx-auto h-full px-2.5 sm:px-5 flex items-center justify-between gap-1.5 sm:gap-3">
+          {/* Desktop/Tablet product preview / Mobile compact unclipped price */}
+          <div className="hidden sm:flex items-center gap-3 min-w-0 flex-1">
+            <div className="hidden md:block relative w-10 h-10 rounded-[4px] border border-[#eeeeee] bg-white overflow-hidden shrink-0">
               {currentMainImage && (
                 <Image
                   src={currentMainImage}
@@ -1256,8 +1270,9 @@ export function ProductDetailClient({
                 type="button"
                 onClick={() => setQuantity((q) => Math.max(1, q - 1))}
                 disabled={quantity <= 1}
+                tabIndex={isStickyVisible ? 0 : -1}
                 aria-label="Giảm số lượng thanh cố định"
-                className="w-7 sm:w-8 h-full flex items-center justify-center text-[#1e2c26] hover:bg-[#f5f8f2] disabled:opacity-40"
+                className="w-7 sm:w-8 h-full flex items-center justify-center text-[#1e2c26] hover:bg-[#f5f8f2] disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#224E40]"
               >
                 <Minus className="w-3 h-3" />
               </button>
@@ -1270,8 +1285,9 @@ export function ProductDetailClient({
                   setQuantity((q) => Math.min(activeStock || 99, q + 1))
                 }
                 disabled={activeStock > 0 && quantity >= activeStock}
+                tabIndex={isStickyVisible ? 0 : -1}
                 aria-label="Tăng số lượng thanh cố định"
-                className="w-7 sm:w-8 h-full flex items-center justify-center text-[#1e2c26] hover:bg-[#f5f8f2] disabled:opacity-40"
+                className="w-7 sm:w-8 h-full flex items-center justify-center text-[#1e2c26] hover:bg-[#f5f8f2] disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#224E40]"
               >
                 <Plus className="w-3 h-3" />
               </button>
@@ -1282,9 +1298,16 @@ export function ProductDetailClient({
               onClick={handleAddToCart}
               disabled={!isAvailable}
               tabIndex={isStickyVisible ? 0 : -1}
-              className="h-[36px] px-3.5 sm:px-5 rounded-full bg-[#224E40] hover:bg-[#193b30] text-white text-[11.5px] sm:text-[13px] font-bold uppercase tracking-wide transition-colors disabled:bg-[#cbd5e1] disabled:text-[#64748b] whitespace-nowrap"
+              className="h-[36px] px-2.5 sm:px-5 rounded-full bg-[#224E40] hover:bg-[#193b30] text-white text-[11px] sm:text-[13px] font-bold uppercase tracking-wide transition-colors disabled:bg-[#cbd5e1] disabled:text-[#475569] whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#224E40] focus-visible:ring-offset-2"
             >
-              {isAvailable ? "THÊM VÀO GIỎ HÀNG" : "HẾT HÀNG"}
+              {isAvailable ? (
+                <>
+                  <span className="sm:hidden">THÊM GIỎ</span>
+                  <span className="hidden sm:inline">THÊM VÀO GIỎ HÀNG</span>
+                </>
+              ) : (
+                "HẾT HÀNG"
+              )}
             </button>
           </div>
         </div>

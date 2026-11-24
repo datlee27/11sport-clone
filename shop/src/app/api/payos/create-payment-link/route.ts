@@ -1,18 +1,44 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 
-const PAYOS_CLIENT_ID =
-  process.env.PAYOS_CLIENT_ID || "e9f36b27-df3f-4012-82fd-37d5df09692d";
-const PAYOS_API_KEY =
-  process.env.PAYOS_API_KEY || "27764fd4-63d8-48c2-a258-0e590594f5b3";
-const PAYOS_CHECKSUM_KEY =
-  process.env.PAYOS_CHECKSUM_KEY ||
-  "d25fc5776b685117af343800df1d872d46b19f94d0953de6a6cc40bf19b3d94a";
-
 export async function POST(req: Request) {
   try {
+    const clientId = process.env.PAYOS_CLIENT_ID;
+    const apiKey = process.env.PAYOS_API_KEY;
+    const checksumKey = process.env.PAYOS_CHECKSUM_KEY;
+
+    if (!clientId || !apiKey || !checksumKey) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Cổng thanh toán PayOS chưa được cấu hình.",
+        },
+        { status: 503 }
+      );
+    }
+
     const body = await req.json();
-    const amount = Number(body.amount || 10000);
+    const rawAmount = Number(body?.amount);
+    if (!Number.isFinite(rawAmount) || rawAmount <= 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Số tiền thanh toán không hợp lệ.",
+        },
+        { status: 400 }
+      );
+    }
+    const amount = Math.round(rawAmount);
+    if (amount <= 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Số tiền thanh toán không hợp lệ.",
+        },
+        { status: 400 }
+      );
+    }
+
     // PayOS bắt buộc orderCode là số nguyên dương < 9007199254740991
     const rawOrderCode = body.orderCode;
     const numericOrderCode =
@@ -42,7 +68,7 @@ export async function POST(req: Request) {
     // Ký chữ ký HMAC SHA256 theo đúng thứ tự alphabet: amount, cancelUrl, description, orderCode, returnUrl
     const dataStr = `amount=${amount}&cancelUrl=${cancelUrl}&description=${cleanDesc}&orderCode=${numericOrderCode}&returnUrl=${returnUrl}`;
     const signature = crypto
-      .createHmac("sha256", PAYOS_CHECKSUM_KEY)
+      .createHmac("sha256", checksumKey)
       .update(dataStr)
       .digest("hex");
 
@@ -51,8 +77,8 @@ export async function POST(req: Request) {
       {
         method: "POST",
         headers: {
-          "x-client-id": PAYOS_CLIENT_ID,
-          "x-api-key": PAYOS_API_KEY,
+          "x-client-id": clientId,
+          "x-api-key": apiKey,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
@@ -83,11 +109,13 @@ export async function POST(req: Request) {
       },
       { status: 400 }
     );
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message =
+      err instanceof Error ? err.message : "Lỗi máy chủ khi tạo link PayOS";
     return NextResponse.json(
       {
         success: false,
-        message: err.message || "Lỗi máy chủ khi tạo link PayOS",
+        message,
       },
       { status: 500 }
     );

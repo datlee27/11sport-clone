@@ -52,11 +52,11 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
       />
 
       <div className="max-w-container mx-auto px-3.5 sm:px-4 lg:px-5 py-7 lg:py-9 space-y-6">
-        <h1 className="text-[20px] sm:text-[24px] font-bold uppercase tracking-wide text-center text-[#0a0a0a]">
+        <h2 className="text-[20px] sm:text-[24px] font-bold uppercase tracking-wide text-center text-[#0a0a0a]">
           {q
             ? `KẾT QUẢ TÌM KIẾM CHO: ${q.toUpperCase()}`
             : "TÌM KIẾM SẢN PHẨM & BÀI VIẾT TẠI 11SPORT"}
-        </h1>
+        </h2>
 
         <SearchTabsClient
           query={q}
