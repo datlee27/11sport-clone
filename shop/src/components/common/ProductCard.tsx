@@ -3,14 +3,21 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
 import { Package } from "lucide-react";
 import {
   calcDiscountPercent,
   formatPriceByCurrency,
   resolveMediaUrl,
+  type LocaleCode,
 } from "@/lib/format";
-import { getLocaleFromPath, localizeHref, STORE_I18N } from "@/lib/i18n";
+import {
+  localizeColorName,
+  localizeHref,
+  localizeProductName,
+  STORE_I18N,
+} from "@/lib/i18n";
+import { useLocale } from "@/lib/i18n/client";
+import { CHROME_I18N } from "@/lib/i18n/chrome";
 import { buildCartVariantId } from "@/lib/pricingAndSearch";
 import { useCartStore } from "@/store/cartStore";
 import { useCurrencyStore } from "@/store/currencyStore";
@@ -19,6 +26,7 @@ import type { ProductListItem } from "@/types/storefront";
 interface ProductCardProps {
   product: ProductListItem;
   density?: "home" | "category";
+  locale?: LocaleCode;
 }
 
 /**
@@ -30,12 +38,14 @@ interface ProductCardProps {
 export function ProductCard({
   product,
   density = "home",
+  locale,
 }: ProductCardProps) {
   const addItem = useCartStore((s) => s.addItem);
   const currency = useCurrencyStore((s) => s.currency);
-  const pathname = usePathname() || "/";
-  const locale = getLocaleFromPath(pathname);
-  const t = STORE_I18N[locale].product;
+  const routeLocale = useLocale();
+  const activeLocale = locale ?? routeLocale;
+  const t = STORE_I18N[activeLocale].product;
+  const chrome = CHROME_I18N[activeLocale].productCard;
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -43,6 +53,11 @@ export function ProductCard({
   }, []);
 
   const activeCurrency = mounted ? currency : "VND";
+  const displayName = localizeProductName(
+    product.name,
+    activeLocale,
+    product.slug
+  );
 
   const defaultImage =
     product.thumbnailUrl ||
@@ -77,7 +92,7 @@ export function ProductCard({
 
   const visibleColors = colors.slice(0, 5);
   const extraColorCount = Math.max(0, colors.length - 5);
-  const productHref = localizeHref(`/${product.slug}`, locale);
+  const productHref = localizeHref(`/${product.slug}`, activeLocale);
   const isCategory = density === "category";
 
   const handleQuickAdd = (e: React.MouseEvent) => {
@@ -120,7 +135,7 @@ export function ProductCard({
           <>
             <Image
               src={resolvedDisplayImage}
-              alt={product.name}
+              alt={displayName}
               fill
               sizes="(max-width: 768px) 50vw, (max-width: 1024px) 25vw, 20vw"
               className={`object-contain p-1.5 transition-all duration-300 ease-out ${
@@ -132,7 +147,7 @@ export function ProductCard({
             {hoverImage && (
               <Image
                 src={hoverImage}
-                alt={`${product.name} - ảnh tiếp theo`}
+                alt={chrome.hoverImageAlt(displayName)}
                 fill
                 sizes="(max-width: 768px) 50vw, (max-width: 1024px) 25vw, 20vw"
                 className="object-contain p-1.5 opacity-0 transition-all duration-300 ease-out group-hover/img:opacity-100 group-hover/img:scale-[1.03] pointer-events-none motion-reduce:hidden"
@@ -194,13 +209,14 @@ export function ProductCard({
           {visibleColors.map((col, idx) => {
             const thumb = resolveMediaUrl(col.imageUrl || defaultImage);
             const isSelected = idx === selectedColorIdx;
+            const localizedColor = localizeColorName(col.color, activeLocale);
             return (
               <button
                 key={`${col.color}-${idx}`}
                 type="button"
                 onClick={() => setSelectedColorIdx(idx)}
                 onMouseEnter={() => setSelectedColorIdx(idx)}
-                aria-label={`Chọn màu ${col.color} cho ${product.name}`}
+                aria-label={chrome.selectColorAria(localizedColor, displayName)}
                 aria-pressed={isSelected}
                 className={`relative w-9 h-9 rounded-[4px] border overflow-hidden bg-white transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-store-forest ${
                   isSelected
@@ -211,7 +227,7 @@ export function ProductCard({
                 {thumb ? (
                   <Image
                     src={thumb}
-                    alt={col.color}
+                    alt={localizedColor}
                     fill
                     sizes="36px"
                     className="object-contain p-0.5"
@@ -241,7 +257,7 @@ export function ProductCard({
             isCategory ? "font-normal text-left" : "font-medium text-center"
           }`}
         >
-          {product.name}
+          {displayName}
         </Link>
       </div>
 

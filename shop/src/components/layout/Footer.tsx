@@ -1,30 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { getLocaleFromPath, localizeHref, STORE_I18N } from "@/lib/i18n";
-import type { SiteSettingsData, SiteShowroomData } from "@/lib/storefront";
-
-const DEFAULT_SHOWROOMS: SiteShowroomData[] = [
-  {
-    name: "HCM: 95 Trần Thiện Chánh, Quận 10",
-    address: "HCM: 95 Trần Thiện Chánh, Quận 10",
-    phone: "+84.789.404.331",
-    mapUrl: "https://maps.google.com/?q=10.7756,106.6679",
-  },
-  {
-    name: "HCM: 100 Hoa Lan, Phú Nhuận",
-    address: "HCM: 100 Hoa Lan, Phú Nhuận",
-    phone: "+84.789.404.231",
-    mapUrl: "https://maps.google.com/?q=10.7982,106.6897",
-  },
-  {
-    name: "Hà Nội: 466 Đ. Bưởi, Ngọc Hà",
-    address: "Hà Nội: 466 Đ. Bưởi, Ngọc Hà",
-    phone: "+84.913.729.135",
-    mapUrl: "https://maps.google.com/?q=21.0431,105.8092",
-  },
-];
+import { localizeHref, STORE_I18N } from "@/lib/i18n";
+import { useLocale } from "@/lib/i18n/client";
+import { CHROME_I18N, localizeChromeShowroom } from "@/lib/i18n/chrome";
+import type { SiteSettingsData } from "@/lib/storefront";
 
 function GoldHeadingDivider() {
   return (
@@ -44,15 +24,17 @@ function GoldHeadingDivider() {
  * - Charcoal #525252 bottom strip with copyright & COD / MasterCard / Visa SVG badges
  */
 export function Footer({ settings }: { settings?: SiteSettingsData | null }) {
-  const pathname = usePathname() || "/";
-  const locale = getLocaleFromPath(pathname);
+  const locale = useLocale();
   const t = STORE_I18N[locale].footer;
+  const chrome = CHROME_I18N[locale].footer;
 
   const siteName = settings?.siteName || "11Sport";
   const showrooms =
     settings?.showrooms && settings.showrooms.length > 0
-      ? settings.showrooms
-      : DEFAULT_SHOWROOMS;
+      ? settings.showrooms.map((branch) =>
+          localizeChromeShowroom(branch, locale)
+        )
+      : chrome.defaultShowrooms;
   const hotline = settings?.hotline || "+84767.707.128";
   const facebookHref = settings?.facebookUrl || "https://facebook.com/11sport.vn";
   const instagramHref =
@@ -107,7 +89,7 @@ export function Footer({ settings }: { settings?: SiteSettingsData | null }) {
                   href={`tel:${hotline.replace(/\D/g, "")}`}
                   className="text-white/95 hover:text-store-gold-divider transition-colors"
                 >
-                  Hotline/Whatsapp: {hotline}
+                  {chrome.hotlineLabel}: {hotline}
                 </a>
               </li>
             </ul>
@@ -170,7 +152,7 @@ export function Footer({ settings }: { settings?: SiteSettingsData | null }) {
             <div className="mt-3">
               <svg
                 role="img"
-                aria-label="Đã thông báo Bộ Công Thương"
+                aria-label={chrome.moitBadgeAria}
                 viewBox="0 0 162 44"
                 className="w-[162px] h-[44px] block"
               >
@@ -208,7 +190,7 @@ export function Footer({ settings }: { settings?: SiteSettingsData | null }) {
                   letterSpacing="0.8"
                   fontFamily="system-ui, -apple-system, sans-serif"
                 >
-                  ĐÃ THÔNG BÁO
+                  {chrome.moitBadgeLine1}
                 </text>
                 <text
                   x="38"
@@ -219,7 +201,7 @@ export function Footer({ settings }: { settings?: SiteSettingsData | null }) {
                   letterSpacing="-0.2"
                   fontFamily="system-ui, -apple-system, sans-serif"
                 >
-                  BỘ CÔNG THƯƠNG
+                  {chrome.moitBadgeLine2}
                 </text>
               </svg>
             </div>
@@ -301,12 +283,12 @@ export function Footer({ settings }: { settings?: SiteSettingsData | null }) {
           {/* 3 Monochrome Payment Method Badges (COD, MasterCard, Visa) */}
           <div className="flex items-center gap-1.5">
             <div
-              title="Cash on Delivery"
+              title={chrome.codBadgeTitle}
               className="w-[50px] h-[31px] rounded bg-white/10 border border-white/15 flex items-center justify-center"
             >
               <svg
                 role="img"
-                aria-label="Cash on Delivery"
+                aria-label={chrome.codBadgeTitle}
                 viewBox="0 0 50 31"
                 className="w-[50px] h-[31px] block"
               >

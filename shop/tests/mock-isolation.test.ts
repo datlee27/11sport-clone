@@ -442,17 +442,18 @@ describe("PayOS Config-Driven Fallback (feature/website)", () => {
     delete process.env.PAYOS_API_KEY;
     delete process.env.PAYOS_CHECKSUM_KEY;
 
-    const fetchSpy = vi.fn(async () =>
-      new Response(
-        JSON.stringify({
-          code: "00",
-          data: {
-            checkoutUrl: "https://pay.payos.vn/web/demo-qr",
-            qrCode: "000201DEMO",
-          },
-        }),
-        { status: 200, headers: { "Content-Type": "application/json" } }
-      )
+    const fetchSpy = vi.fn(
+      async (_input: RequestInfo | URL, _init?: RequestInit) =>
+        new Response(
+          JSON.stringify({
+            code: "00",
+            data: {
+              checkoutUrl: "https://pay.payos.vn/web/demo-qr",
+              qrCode: "000201DEMO",
+            },
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
     );
     vi.stubGlobal("fetch", fetchSpy);
 
@@ -465,8 +466,10 @@ describe("PayOS Config-Driven Fallback (feature/website)", () => {
       })
     );
     expect(demoRes.status).toBe(200);
-    const demoHeaders = (fetchSpy.mock.calls[0]?.[1] as RequestInit)
-      ?.headers as Record<string, string>;
+    const demoHeaders = fetchSpy.mock.calls[0]?.[1]?.headers as Record<
+      string,
+      string
+    >;
     expect(demoHeaders["x-client-id"]).toBe(
       "e9f36b27-df3f-4012-82fd-37d5df09692d"
     );
@@ -485,8 +488,10 @@ describe("PayOS Config-Driven Fallback (feature/website)", () => {
       })
     );
     expect(liveRes.status).toBe(200);
-    const liveHeaders = (fetchSpy.mock.calls[1]?.[1] as RequestInit)
-      ?.headers as Record<string, string>;
+    const liveHeaders = fetchSpy.mock.calls[1]?.[1]?.headers as Record<
+      string,
+      string
+    >;
     expect(liveHeaders["x-client-id"]).toBe("live-client-id-11sport");
     expect(liveHeaders["x-api-key"]).toBe("live-api-key-11sport");
   });

@@ -21,7 +21,21 @@ import {
   formatPriceByCurrency,
   resolveMediaUrl,
   type CurrencyCode,
+  type LocaleCode,
 } from "@/lib/format";
+import {
+  localizeCategoryName,
+  localizeColorName,
+  localizeGiftProductName,
+  localizeGiftTitle,
+  localizeHref,
+  localizeProductDetail,
+  localizeProductSpec,
+  localizeProductSummary,
+  localizeSizeLabel,
+} from "@/lib/i18n";
+import { useLocale } from "@/lib/i18n/client";
+import { CATALOG_I18N } from "@/lib/i18n/catalog";
 import { buildCartVariantId } from "@/lib/pricingAndSearch";
 import { ProductCard } from "@/components/common/ProductCard";
 import { useCartStore } from "@/store/cartStore";
@@ -37,6 +51,7 @@ export interface ProductDetailClientProps {
   product: ProductDetail;
   relatedProducts: ProductListItem[];
   initialReviews?: ReviewListResponse | null;
+  locale?: LocaleCode;
 }
 
 interface ColorSwatchOption {
@@ -74,7 +89,10 @@ function renderFormattedPrice(
   return formatPriceByCurrency(amount, currency);
 }
 
-function computeTierUnitPrice(basePrice: number, rule: TierPricingRule): number {
+function computeTierUnitPrice(
+  basePrice: number,
+  rule: TierPricingRule
+): number {
   const amountOff =
     typeof rule.discountAmount === "number" && rule.discountAmount > 0
       ? rule.discountAmount
@@ -101,7 +119,11 @@ function computeTierUnitPrice(basePrice: number, rule: TierPricingRule): number 
   return basePrice;
 }
 
-function parseGiftTile(rawTitle: string, fallbackReward?: string): GiftTile {
+function parseGiftTile(
+  rawTitle: string,
+  defaultRewardLabel: string,
+  fallbackReward?: string
+): GiftTile {
   if (rawTitle.includes("→")) {
     const [left, right] = rawTitle.split("→");
     return {
@@ -111,14 +133,30 @@ function parseGiftTile(rawTitle: string, fallbackReward?: string): GiftTile {
   }
   return {
     eyebrow: rawTitle.trim(),
-    reward: fallbackReward?.trim() || "Quà tặng 11Sport",
+    reward: fallbackReward?.trim() || defaultRewardLabel,
   };
 }
 
 export function ProductDetailClient({
-  product,
+  product: rawProduct,
   relatedProducts,
+  locale: localeProp,
 }: ProductDetailClientProps) {
+  const detectedLocale = useLocale();
+  const locale = localeProp ?? detectedLocale;
+  const t = CATALOG_I18N[locale].pdp;
+  const tc = CATALOG_I18N[locale].common;
+
+  const product = useMemo(
+    () => localizeProductDetail(rawProduct, locale),
+    [rawProduct, locale]
+  );
+
+  const localizedRelatedProducts = useMemo(
+    () => relatedProducts.map((item) => localizeProductSummary(item, locale)),
+    [relatedProducts, locale]
+  );
+
   const addItem = useCartStore((s) => s.addItem);
   const currency = useCurrencyStore((s) => s.currency);
   const [mounted, setMounted] = useState(false);
@@ -167,7 +205,6 @@ export function ProductDetailClient({
           imageUrl: v.imageUrl || primaryFallbackImage,
         });
       } else if (isSelectedSize && v.imageUrl) {
-        // Cập nhật thumbnail swatch màu theo đúng phiên bản (size/độ dày) đang chọn
         const existing = map.get(key)!;
         existing.imageUrl = v.imageUrl;
       }
@@ -185,7 +222,9 @@ export function ProductDetailClient({
       } else {
         const existing = map.get(key)!;
         if (!existing.imageUrl && c.imageUrl) existing.imageUrl = c.imageUrl;
-        if (!existing.colorHex && c.colorHexes?.[0]) existing.colorHex = c.colorHexes[0];
+        if (!existing.colorHex && c.colorHexes?.[0]) {
+          existing.colorHex = c.colorHexes[0];
+        }
       }
     }
 
@@ -223,15 +262,53 @@ export function ProductDetailClient({
   }, [product.thumbnailUrl, product.images, product.variants, colorOptions]);
 
   const availableSizes = useMemo<string[]>(() => {
-    const allSizes = Array.from(
+    return Array.from(
       new Set(
         (product.variants ?? [])
           .map((v) => v.size?.trim())
           .filter((s): s is string => Boolean(s))
       )
     );
-    return allSizes;
   }, [product.variants]);
+
+  // Keep selected color/size synced if localized labels change across locale switch
+  useEffect(() => {
+    if (selectionCleared) return;
+    if (
+      selectedColor &&
+      colorOptions.length > 0 &&
+      !colorOptions.some(
+        (c) => c.color.trim().toLowerCase() === selectedColor.trim().toLowerCase()
+      )
+    ) {
+      const mappedColor = localizeColorName(selectedColor, locale);
+      const matched = colorOptions.find(
+        (c) => c.color.trim().toLowerCase() === mappedColor.trim().toLowerCase()
+      );
+      setSelectedColor(matched?.color || initialVariant?.color || "");
+    }
+    if (
+      selectedSize &&
+      availableSizes.length > 0 &&
+      !availableSizes.some(
+        (s) => s.trim().toLowerCase() === selectedSize.trim().toLowerCase()
+      )
+    ) {
+      const mappedSize = localizeSizeLabel(selectedSize, locale);
+      const matched = availableSizes.find(
+        (s) => s.trim().toLowerCase() === mappedSize.trim().toLowerCase()
+      );
+      setSelectedSize(matched || initialVariant?.size || "");
+    }
+  }, [
+    locale,
+    selectionCleared,
+    selectedColor,
+    selectedSize,
+    colorOptions,
+    availableSizes,
+    initialVariant,
+  ]);
 
   const selectedVariant = useMemo(() => {
     if (selectionCleared) return null;
@@ -248,7 +325,8 @@ export function ProductDetailClient({
     }
     if (selectedColor) {
       const byColor = variants.find(
-        (v) => v.color?.trim().toLowerCase() === selectedColor.trim().toLowerCase()
+        (v) =>
+          v.color?.trim().toLowerCase() === selectedColor.trim().toLowerCase()
       );
       if (byColor) return byColor;
     }
@@ -264,7 +342,8 @@ export function ProductDetailClient({
   const activeColorOption = useMemo(
     () =>
       colorOptions.find(
-        (c) => c.color.trim().toLowerCase() === selectedColor.trim().toLowerCase()
+        (c) =>
+          c.color.trim().toLowerCase() === selectedColor.trim().toLowerCase()
       ) ?? null,
     [colorOptions, selectedColor]
   );
@@ -303,7 +382,6 @@ export function ProductDetailClient({
     setVariantWarning("");
     setSelectedColor(opt.color);
 
-    // Ưu tiên biến thể khớp CẢ phiên bản đang chọn và màu vừa bấm
     const exact = (product.variants ?? []).find(
       (v) =>
         v.color?.trim().toLowerCase() === opt.color.trim().toLowerCase() &&
@@ -327,7 +405,6 @@ export function ProductDetailClient({
     setVariantWarning("");
     setSelectedSize(size);
 
-    // Ưu tiên biến thể khớp CẢ màu đang chọn và phiên bản vừa bấm
     const exact = (product.variants ?? []).find(
       (v) =>
         v.size?.trim().toLowerCase() === size.trim().toLowerCase() &&
@@ -363,7 +440,9 @@ export function ProductDetailClient({
 
     const observer = new IntersectionObserver(
       ([entry]) => {
-        setIsStickyVisible(!entry.isIntersecting && entry.boundingClientRect.top < 0);
+        setIsStickyVisible(
+          !entry.isIntersecting && entry.boundingClientRect.top < 0
+        );
       },
       { threshold: 0 }
     );
@@ -475,37 +554,46 @@ export function ProductDetailClient({
   const giftTiles = useMemo<GiftTile[]>(() => {
     const promos = rawGiftPromotions ?? [];
     const tiles: GiftTile[] = promos.map((gift) => {
-      const giftName =
+      const rawGiftName =
         gift.giftProductName ||
         (Array.isArray(gift.gifts) && gift.gifts.length > 0
           ? gift.gifts
-              .map((g) =>
-                g.quantity && g.quantity > 1
-                  ? `${g.quantity} ${g.productName}`
-                  : g.productName
-              )
+              .map((g) => {
+                const localizedProd = localizeGiftProductName(
+                  g.productName,
+                  locale
+                );
+                return g.quantity && g.quantity > 1
+                  ? `${g.quantity} ${localizedProd}`
+                  : localizedProd;
+              })
               .join(" + ")
-          : gift.name || "Quà tặng 11Sport");
+          : gift.name || t.defaultGiftReward);
+      const giftName = localizeGiftProductName(rawGiftName, locale);
       const rawTitle =
         gift.title ||
         (gift.minQuantity
-          ? `Mua ${gift.minQuantity} sản phẩm → ${giftName}`
+          ? t.giftBuyFallback(gift.minQuantity, giftName)
           : gift.name || giftName);
-      return parseGiftTile(rawTitle, giftName);
+      const localizedTitle = localizeGiftTitle(rawTitle, locale);
+      return parseGiftTile(localizedTitle, t.defaultGiftReward, giftName);
     });
     if (product.hasGift) {
       tiles.push({
-        eyebrow: "Mỗi cây vợt",
-        reward: "Tặng quấn cán, dán viền, bao vợt",
+        eyebrow: t.everyPaddleEyebrow,
+        reward: t.everyPaddleReward,
       });
     }
     return tiles;
-  }, [rawGiftPromotions, product.hasGift]);
+  }, [rawGiftPromotions, product.hasGift, locale, t]);
 
   const handleAddToCart = () => {
     if (!isAvailable) return;
-    if (selectionCleared && (colorOptions.length > 0 || availableSizes.length > 0)) {
-      setVariantWarning("Vui lòng chọn màu sắc / phân loại sản phẩm trước khi thêm vào giỏ.");
+    if (
+      selectionCleared &&
+      (colorOptions.length > 0 || availableSizes.length > 0)
+    ) {
+      setVariantWarning(t.selectVariantWarning);
       return;
     }
 
@@ -526,8 +614,9 @@ export function ProductDetailClient({
       brandName: product.brand?.name || "11Sport",
       sku: selectedVariant?.variantCode || product.code,
       imageUrl:
-        resolveMediaUrl(selectedVariant?.imageUrl || activeColorOption?.imageUrl) ||
-        currentMainImage,
+        resolveMediaUrl(
+          selectedVariant?.imageUrl || activeColorOption?.imageUrl
+        ) || currentMainImage,
       colorName: colorToUse,
       sizeName: sizeToUse,
       price: activePrice,
@@ -540,49 +629,53 @@ export function ProductDetailClient({
   const additionalInfoRows = useMemo(() => {
     const rows: Array<{ label: string; value: string }> = [];
     if (product.brand?.name) {
-      rows.push({ label: "Thương hiệu", value: product.brand.name });
+      rows.push({ label: t.additionalInfo.brand, value: product.brand.name });
     }
     if (product.category?.name) {
-      rows.push({ label: "Danh mục", value: product.category.name });
+      rows.push({
+        label: t.additionalInfo.category,
+        value: localizeCategoryName(
+          product.category.name,
+          locale,
+          product.category.slug
+        ),
+      });
     }
     if (colorOptions.length > 0) {
       rows.push({
-        label: "Màu sắc",
-        value: colorOptions.map((c) => c.color).join(", "),
+        label: t.additionalInfo.color,
+        value: colorOptions
+          .map((c) => localizeColorName(c.color, locale))
+          .join(", "),
       });
     }
     if (availableSizes.length > 0) {
       rows.push({
-        label: "Độ dày / Phiên bản",
-        value: availableSizes.join(", "),
+        label: t.additionalInfo.versionSize,
+        value: availableSizes.map((s) => localizeSizeLabel(s, locale)).join(", "),
       });
     }
     if (product.code) {
-      rows.push({ label: "Mã sản phẩm", value: product.code });
+      rows.push({ label: t.additionalInfo.sku, value: product.code });
     }
     return rows;
-  }, [product.brand?.name, product.category?.name, product.code, colorOptions, availableSizes]);
+  }, [
+    product.brand?.name,
+    product.category?.name,
+    product.category?.slug,
+    product.code,
+    colorOptions,
+    availableSizes,
+    locale,
+    t.additionalInfo,
+  ]);
 
-  const policyRows = [
-    {
-      label: "Quà tặng của 11Sport",
-      value: "Tặng kèm phụ kiện chính hãng & ưu đãi quà tặng trực tiếp tại giỏ hàng.",
-    },
-    {
-      label: "Phí giao hàng",
-      value: "Miễn phí giao hàng toàn quốc (Freeship 100%).",
-    },
-    {
-      label: "Bảo hành",
-      value: "Bảo hành chính hãng theo tiêu chuẩn nhà sản xuất. Lỗi kỹ thuật đổi mới.",
-    },
-    {
-      label: "Hình thức thanh toán",
-      value: "Thanh toán khi nhận hàng (COD), Chuyển khoản ngân hàng / VietQR.",
-    },
-  ];
+  const policyRows = t.policyRows;
 
-  const specs = product.specs ?? [];
+  const specs = useMemo(
+    () => (product.specs ?? []).map((spec) => localizeProductSpec(spec, locale)),
+    [product.specs, locale]
+  );
 
   return (
     <div className="space-y-10 sm:space-y-12 pb-16 lg:pb-12">
@@ -595,7 +688,7 @@ export function ProductDetailClient({
           <div
             role="button"
             tabIndex={0}
-            aria-label={`Phóng to ảnh ${product.name}`}
+            aria-label={t.zoomProductAriaLabel(product.name)}
             onClick={openLightbox}
             onKeyDown={(e) => {
               if (e.key === "Enter" || e.key === " ") {
@@ -650,7 +743,7 @@ export function ProductDetailClient({
               />
             )}
 
-            {/* Top-left stacked badges (-N% / TẶNG ÁO or Mới) */}
+            {/* Top-left stacked badges (-N% / FREE SHIRT or New) */}
             {(discountPercent > 0 || product.hasGift || product.isNew) && (
               <div className="absolute top-3 left-3 z-10 flex flex-col items-start gap-1.5 pointer-events-none">
                 {discountPercent > 0 && (
@@ -660,12 +753,12 @@ export function ProductDetailClient({
                 )}
                 {product.hasGift && (
                   <span className="px-2.5 py-1 rounded-full bg-[#224E40] text-white text-[11px] font-bold uppercase tracking-wide leading-none">
-                    TẶNG ÁO
+                    {t.freeGiftBadge}
                   </span>
                 )}
                 {product.isNew && !product.hasGift && (
                   <span className="px-2.5 py-1 rounded-full bg-[#224E40] text-white text-xs font-bold leading-none">
-                    Mới
+                    {t.newBadge}
                   </span>
                 )}
               </div>
@@ -682,7 +775,7 @@ export function ProductDetailClient({
                   }}
                   onMouseEnter={() => setHoverPausedByControl(true)}
                   onMouseLeave={() => setHoverPausedByControl(false)}
-                  aria-label="Ảnh trước"
+                  aria-label={t.prevImageAriaLabel}
                   className="absolute left-2.5 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white/90 border border-[#e2e8f0] text-[#1e2c26] flex items-center justify-center opacity-80 lg:opacity-0 lg:group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#224E40] transition-opacity hover:border-[#224E40] hover:text-[#224E40]"
                 >
                   <ChevronLeft className="w-4 h-4" />
@@ -695,7 +788,7 @@ export function ProductDetailClient({
                   }}
                   onMouseEnter={() => setHoverPausedByControl(true)}
                   onMouseLeave={() => setHoverPausedByControl(false)}
-                  aria-label="Ảnh tiếp theo"
+                  aria-label={t.nextImageAriaLabel}
                   className="absolute right-2.5 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white/90 border border-[#e2e8f0] text-[#1e2c26] flex items-center justify-center opacity-80 lg:opacity-0 lg:group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#224E40] transition-opacity hover:border-[#224E40] hover:text-[#224E40]"
                 >
                   <ChevronRight className="w-4 h-4" />
@@ -712,7 +805,7 @@ export function ProductDetailClient({
               }}
               onMouseEnter={() => setHoverPausedByControl(true)}
               onMouseLeave={() => setHoverPausedByControl(false)}
-              aria-label="Phóng to hình ảnh sản phẩm"
+              aria-label={t.zoomButtonAriaLabel}
               className="flex absolute bottom-3 left-3 z-10 w-9 h-9 rounded-full bg-white border border-[#e0ebe6] items-center justify-center text-[#555555] hover:text-[#224E40] hover:border-[#224E40] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#224E40] transition-colors shadow-sm"
             >
               <Maximize2 className="w-4 h-4" />
@@ -729,7 +822,7 @@ export function ProductDetailClient({
                     key={`${imgUrl}-${idx}`}
                     type="button"
                     onClick={() => setActiveImageIndex(idx)}
-                    aria-label={`Xem ảnh ${idx + 1} của ${product.name}`}
+                    aria-label={t.viewPhotoAriaLabel(idx + 1, product.name)}
                     className={`relative aspect-square rounded-[6px] border overflow-hidden bg-white transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#224E40] ${
                       isActive
                         ? "border-[#224E40] ring-1 ring-[#224E40]"
@@ -738,7 +831,7 @@ export function ProductDetailClient({
                   >
                     <Image
                       src={imgUrl}
-                      alt={`${product.name} - ảnh ${idx + 1}`}
+                      alt={t.photoAlt(product.name, idx + 1)}
                       fill
                       sizes="140px"
                       className="object-contain p-1.5"
@@ -777,35 +870,38 @@ export function ProductDetailClient({
             </ins>
           </div>
 
-          {/* ✧ ƯU ĐÃI ĐỘC QUYỀN Mint-Sage Card (#f5f8f2, flat internal sections) */}
+          {/* ✧ Exclusive Offers Mint-Sage Card (#f5f8f2, flat internal sections) */}
           {hasPromoBox && (
             <div className="rounded-[12px] bg-[#f5f8f2] border border-[#d6e4dc] p-4 sm:p-[18px] space-y-3">
               {/* Header row */}
               <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-[#d6e4dc]">
                 <span className="text-[13px] sm:text-[14px] font-bold uppercase tracking-wide text-[#204b3e]">
-                  ✧ ƯU ĐÃI ĐỘC QUYỀN
+                  {t.exclusiveOffersTitle}
                 </span>
                 <span className="px-2.5 py-0.5 rounded-full bg-[#204b3e] text-white text-[11px] font-bold uppercase tracking-wide shrink-0">
                   11SPORT
                 </span>
               </div>
 
-              {/* Bulk Pricing Rows (GIÁ MUA NHIỀU) */}
+              {/* Bulk Pricing Rows */}
               {tierPricing.length > 0 && (
                 <div className="space-y-1.5">
                   <p className="text-[11px] font-bold uppercase tracking-wider text-[#4a6b5d]">
-                    GIÁ MUA NHIỀU
+                    {t.bulkPricingHeading}
                   </p>
                   <div className="divide-y divide-[#d6e4dc] border-t border-[#d6e4dc]">
                     {tierPricing.map((rule, idx) => {
-                      const tierUnitPrice = computeTierUnitPrice(activePrice, rule);
+                      const tierUnitPrice = computeTierUnitPrice(
+                        activePrice,
+                        rule
+                      );
                       return (
                         <div
                           key={`${rule.minQty}-${idx}`}
                           className="flex items-center justify-between gap-3 py-2"
                         >
                           <span className="text-[13px] sm:text-[13.5px] font-medium text-[#1e2c26]">
-                            Từ {rule.minQty} sản phẩm
+                            {t.bulkFromQty(rule.minQty)}
                           </span>
                           <div className="text-right leading-none whitespace-nowrap">
                             <span className="text-[19px] sm:text-[21px] font-bold text-[#204b3e] tabular-nums">
@@ -816,7 +912,7 @@ export function ProductDetailClient({
                               )}
                             </span>
                             <span className="text-[11.5px] font-normal text-[#4a6b5d] ml-1">
-                              / sản phẩm
+                              {t.perUnit}
                             </span>
                           </div>
                         </div>
@@ -826,11 +922,11 @@ export function ProductDetailClient({
                 </div>
               )}
 
-              {/* Gift Promotions List (QUÀ TẶNG KÈM THEO) */}
+              {/* Gift Promotions List */}
               {giftTiles.length > 0 && (
                 <div className="space-y-1.5 pt-0.5">
                   <p className="text-[11px] font-bold uppercase tracking-wider text-[#4a6b5d]">
-                    QUÀ TẶNG KÈM THEO
+                    {t.freeGiftsHeading}
                   </p>
                   <div className="divide-y divide-[#d6e4dc] border-t border-[#d6e4dc]">
                     {giftTiles.map((tile, idx) => (
@@ -852,34 +948,32 @@ export function ProductDetailClient({
 
               {/* Promo footer link */}
               <div className="flex items-center justify-between gap-2 pt-2 border-t border-[#d6e4dc] text-xs">
-                <span className="text-[#4a6b5d]">
-                  Ưu đãi tự động áp dụng trong giỏ hàng
-                </span>
+                <span className="text-[#4a6b5d]">{t.offersAutoApplied}</span>
                 <Link
-                  href="/gio-hang"
+                  href={localizeHref("/gio-hang", locale)}
                   className="font-semibold text-[#204b3e] hover:underline whitespace-nowrap shrink-0"
                 >
-                  Xem quà tặng ↗
+                  {t.viewFreeGifts}
                 </Link>
               </div>
             </div>
           )}
 
-          {/* Color & Variant Swatches (36x36 square image swatches + active #dd3333 ring + XÓA reset) */}
+          {/* Color & Variant Swatches (36x36 square image swatches + active #dd3333 ring + reset) */}
           {(colorOptions.length > 0 || availableSizes.length > 0) && (
             <div className="space-y-2.5 pt-1">
               {colorOptions.length > 0 && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between gap-2 text-[13px]">
                     <span className="font-semibold text-[#1e2c26]">
-                      Màu sắc:{" "}
+                      {t.colorLabel}{" "}
                       {!selectionCleared && selectedColor ? (
                         <strong className="text-[#204b3e] font-bold">
-                          {selectedColor}
+                          {localizeColorName(selectedColor, locale)}
                         </strong>
                       ) : (
                         <span className="text-[#6b7280] font-normal">
-                          Chưa chọn
+                          {t.notSelected}
                         </span>
                       )}
                     </span>
@@ -889,7 +983,7 @@ export function ProductDetailClient({
                         onClick={handleResetVariant}
                         className="inline-flex items-center min-h-[32px] px-2 text-[11.5px] font-semibold uppercase tracking-wide text-[#595959] hover:text-[#dd3333] underline underline-offset-2 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#224E40]"
                       >
-                        XÓA
+                        {t.clearSelection}
                       </button>
                     )}
                   </div>
@@ -903,14 +997,15 @@ export function ProductDetailClient({
                       const thumbUrl = resolveMediaUrl(
                         opt.imageUrl || primaryFallbackImage
                       );
+                      const displayColor = localizeColorName(opt.color, locale);
 
                       return (
                         <button
                           key={opt.color}
                           type="button"
                           onClick={() => handleSelectColor(opt)}
-                          title={opt.color}
-                          aria-label={`Chọn màu ${opt.color}`}
+                          title={displayColor}
+                          aria-label={t.selectColorAriaLabel(displayColor)}
                           aria-pressed={isActive}
                           className={`relative w-9 h-9 rounded-[4px] overflow-hidden bg-white transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#224E40] ${
                             isActive
@@ -921,7 +1016,7 @@ export function ProductDetailClient({
                           {thumbUrl ? (
                             <Image
                               src={thumbUrl}
-                              alt={opt.color}
+                              alt={displayColor}
                               fill
                               sizes="36px"
                               className="object-contain p-0.5"
@@ -945,13 +1040,14 @@ export function ProductDetailClient({
                 <div className="space-y-1.5 pt-0.5">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-[13px] font-semibold text-[#1e2c26]">
-                      Phiên bản:
+                      {t.versionLabel}
                     </span>
                     {availableSizes.map((size) => {
                       const isActive =
                         !selectionCleared &&
                         selectedSize.trim().toLowerCase() ===
                           size.trim().toLowerCase();
+                      const displaySize = localizeSizeLabel(size, locale);
                       return (
                         <button
                           key={size}
@@ -964,14 +1060,14 @@ export function ProductDetailClient({
                               : "border-[#dcdcdc] text-[#555555] hover:border-[#224E40]"
                           }`}
                         >
-                          {size}
+                          {displaySize}
                         </button>
                       );
                     })}
                   </div>
                   {availableSizes.some((s) => /\d+\s*mm/i.test(s)) && (
                     <p className="text-xs text-[#525e58]">
-                      14mm: Thiên công, phản xạ nhanh · 16mm: Kiểm soát, êm tay
+                      {t.coreThicknessHint}
                     </p>
                   )}
                 </div>
@@ -987,14 +1083,16 @@ export function ProductDetailClient({
                       "text-[0.65em] ml-0.5"
                     )}
                   </span>
-                  <span className="text-[#cccccc]" aria-hidden="true">·</span>
+                  <span className="text-[#cccccc]" aria-hidden="true">
+                    ·
+                  </span>
                   {isAvailable ? (
                     <span className="text-[#204b3e] font-medium">
-                      Còn hàng ({activeStock})
+                      {t.inStockWithCount(activeStock)}
                     </span>
                   ) : (
                     <span className="text-[#dd3333] font-medium">
-                      Tạm hết hàng
+                      {t.outOfStock}
                     </span>
                   )}
                 </div>
@@ -1018,7 +1116,7 @@ export function ProductDetailClient({
                 type="button"
                 onClick={() => setQuantity((q) => Math.max(1, q - 1))}
                 disabled={quantity <= 1}
-                aria-label="Giảm số lượng"
+                aria-label={t.decreaseQtyAriaLabel}
                 className="w-9 sm:w-10 h-full flex items-center justify-center text-[#1e2c26] hover:bg-[#f5f8f2] disabled:opacity-40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#224E40]"
               >
                 <Minus className="w-3.5 h-3.5" />
@@ -1034,7 +1132,7 @@ export function ProductDetailClient({
                     setQuantity(Math.max(1, Math.min(val, activeStock || 99)));
                   }
                 }}
-                aria-label="Số lượng"
+                aria-label={t.qtyAriaLabel}
                 className="w-8 sm:w-10 text-center text-base sm:text-sm font-bold text-[#1e2c26] tabular-nums bg-transparent focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
               <button
@@ -1043,7 +1141,7 @@ export function ProductDetailClient({
                   setQuantity((q) => Math.min(activeStock || 99, q + 1))
                 }
                 disabled={activeStock > 0 && quantity >= activeStock}
-                aria-label="Tăng số lượng"
+                aria-label={t.increaseQtyAriaLabel}
                 className="w-9 sm:w-10 h-full flex items-center justify-center text-[#1e2c26] hover:bg-[#f5f8f2] disabled:opacity-40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#224E40]"
               >
                 <Plus className="w-3.5 h-3.5" />
@@ -1056,7 +1154,7 @@ export function ProductDetailClient({
               disabled={!isAvailable}
               className="flex-1 min-w-0 sm:flex-initial sm:min-w-[240px] md:flex-1 md:min-w-0 lg:flex-initial lg:min-w-[240px] h-[44px] px-3 sm:px-7 md:px-4 lg:px-7 rounded-full bg-[#224E40] hover:bg-[#193b30] text-white text-xs sm:text-[13.5px] font-bold uppercase tracking-normal sm:tracking-wide transition-colors disabled:bg-[#cbd5e1] disabled:text-[#475569] whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#224E40] focus-visible:ring-offset-2"
             >
-              {isAvailable ? "THÊM VÀO GIỎ HÀNG" : "TẠM HẾT HÀNG"}
+              {isAvailable ? t.addToCartUpper : t.outOfStockUpper}
             </button>
           </div>
 
@@ -1083,11 +1181,11 @@ export function ProductDetailClient({
       {/* LOWER STACKED 2-COLUMN SECTIONS (NO TABS, NO REVIEWS)               */}
       {/* =================================================================== */}
 
-      {/* 1. MÔ TẢ (Collapsible + Embedded Specs Table + Sharp #224E40 "Xem thêm") */}
+      {/* 1. DESCRIPTION (Collapsible + Embedded Specs Table + Sharp #224E40 Show More) */}
       <section className="border-t border-[#e8ece8] pt-7 sm:pt-9 grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-8">
         <div className="lg:col-span-3">
           <h2 className="text-base sm:text-[18px] font-bold uppercase tracking-wide text-[#1e2c26]">
-            MÔ TẢ
+            {t.descriptionHeading}
           </h2>
         </div>
 
@@ -1111,14 +1209,14 @@ export function ProductDetailClient({
                 />
               ) : (
                 <p className="text-[14.5px] text-[#4a5568] leading-relaxed">
-                  {product.name} chính hãng phân phối tại 11Sport với đầy đủ chế độ bảo hành từ nhà sản xuất.
+                  {t.fallbackDescription(product.name)}
                 </p>
               )}
 
               {specs.length > 0 && (
                 <div className="pt-2 space-y-2.5">
                   <h3 className="text-[14px] font-bold uppercase tracking-wide text-[#1e2c26]">
-                    Thông số kỹ thuật
+                    {t.specsHeading}
                   </h3>
                   <div className="overflow-hidden border-y border-[#ececec]">
                     <table className="w-full text-[13.5px] border-collapse">
@@ -1154,21 +1252,22 @@ export function ProductDetailClient({
           <div className="mt-4 flex justify-center">
             <button
               type="button"
+              aria-expanded={isDescExpanded}
               onClick={() => setIsDescExpanded((prev) => !prev)}
               className="inline-flex items-center justify-center px-6 py-2.5 bg-[#224E40] hover:bg-[#193b30] text-white text-xs sm:text-[13px] font-semibold rounded-[4px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#224E40] focus-visible:ring-offset-2"
             >
-              {isDescExpanded ? "Thu gọn" : "Xem thêm"}
+              {isDescExpanded ? tc.showLess : tc.showMore}
             </button>
           </div>
         </div>
       </section>
 
-      {/* 2. THÔNG TIN BỔ SUNG */}
+      {/* 2. ADDITIONAL INFORMATION */}
       {additionalInfoRows.length > 0 && (
         <section className="border-t border-[#e8ece8] pt-7 sm:pt-9 grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-8">
           <div className="lg:col-span-3">
             <h2 className="text-base sm:text-[18px] font-bold uppercase tracking-wide text-[#1e2c26]">
-              THÔNG TIN BỔ SUNG
+              {t.additionalInfoHeading}
             </h2>
           </div>
 
@@ -1196,16 +1295,16 @@ export function ProductDetailClient({
         </section>
       )}
 
-      {/* 3. SẢN PHẨM TƯƠNG TỰ */}
-      {relatedProducts.length > 0 && (
+      {/* 3. RELATED PRODUCTS */}
+      {localizedRelatedProducts.length > 0 && (
         <section className="border-t border-[#e8ece8] pt-7 sm:pt-9 space-y-5">
           <h2 className="text-[18px] sm:text-[20px] font-bold uppercase tracking-wide text-[#1e2c26]">
-            SẢN PHẨM TƯƠNG TỰ
+            {t.relatedProductsHeading}
           </h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-            {(relatedProducts.length >= 8
-              ? relatedProducts.slice(0, 8)
-              : relatedProducts.slice(0, 4)
+            {(localizedRelatedProducts.length >= 8
+              ? localizedRelatedProducts.slice(0, 8)
+              : localizedRelatedProducts.slice(0, 4)
             ).map((item) => (
               <ProductCard
                 key={item._id}
@@ -1218,7 +1317,7 @@ export function ProductDetailClient({
       )}
 
       {/* =================================================================== */}
-      {/* FIXED 58PX STICKY BOTTOM ADD-TO-CART BAR (DESKTOP & MOBILE)         */}
+      {/* FIXED 58PX STICKY BOTTOM ADD-TO-CART BAR (DESKTOP & MOBILE 320px+)  */}
       {/* =================================================================== */}
       <div
         aria-hidden={!isStickyVisible}
@@ -1271,7 +1370,7 @@ export function ProductDetailClient({
                 onClick={() => setQuantity((q) => Math.max(1, q - 1))}
                 disabled={quantity <= 1}
                 tabIndex={isStickyVisible ? 0 : -1}
-                aria-label="Giảm số lượng thanh cố định"
+                aria-label={t.stickyDecreaseQtyAriaLabel}
                 className="w-7 sm:w-8 h-full flex items-center justify-center text-[#1e2c26] hover:bg-[#f5f8f2] disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#224E40]"
               >
                 <Minus className="w-3 h-3" />
@@ -1286,7 +1385,7 @@ export function ProductDetailClient({
                 }
                 disabled={activeStock > 0 && quantity >= activeStock}
                 tabIndex={isStickyVisible ? 0 : -1}
-                aria-label="Tăng số lượng thanh cố định"
+                aria-label={t.stickyIncreaseQtyAriaLabel}
                 className="w-7 sm:w-8 h-full flex items-center justify-center text-[#1e2c26] hover:bg-[#f5f8f2] disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#224E40]"
               >
                 <Plus className="w-3 h-3" />
@@ -1298,15 +1397,18 @@ export function ProductDetailClient({
               onClick={handleAddToCart}
               disabled={!isAvailable}
               tabIndex={isStickyVisible ? 0 : -1}
-              className="h-[36px] px-2.5 sm:px-5 rounded-full bg-[#224E40] hover:bg-[#193b30] text-white text-[11px] sm:text-[13px] font-bold uppercase tracking-wide transition-colors disabled:bg-[#cbd5e1] disabled:text-[#475569] whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#224E40] focus-visible:ring-offset-2"
+              className="h-[36px] px-3 sm:px-5 rounded-full bg-[#224E40] hover:bg-[#193b30] text-white text-[11px] sm:text-[13px] font-bold uppercase tracking-wide transition-colors disabled:bg-[#cbd5e1] disabled:text-[#475569] whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#224E40] focus-visible:ring-offset-2"
             >
               {isAvailable ? (
                 <>
-                  <span className="sm:hidden">THÊM GIỎ</span>
-                  <span className="hidden sm:inline">THÊM VÀO GIỎ HÀNG</span>
+                  <span className="sm:hidden">{t.stickyAddShort}</span>
+                  <span className="hidden sm:inline">{t.addToCartUpper}</span>
                 </>
               ) : (
-                "HẾT HÀNG"
+                <>
+                  <span className="sm:hidden">{t.stickyOutOfStockShort}</span>
+                  <span className="hidden sm:inline">{t.outOfStockUpper}</span>
+                </>
               )}
             </button>
           </div>
@@ -1322,129 +1424,143 @@ export function ProductDetailClient({
           <div
             role="dialog"
             aria-modal="true"
-            aria-label={`Phóng to ảnh ${product.name}`}
+            aria-label={t.zoomProductAriaLabel(product.name)}
             onClick={closeLightbox}
             className="fixed inset-0 z-[70] m-0 bg-black/90 flex items-center justify-center p-3 sm:p-8"
           >
-          {/* Top toolbar: counter (left) + Zoom / Fullscreen / Close (right) */}
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="absolute top-0 inset-x-0 h-12 px-4 sm:px-6 flex items-center justify-between text-white/95 z-20"
-          >
-            <span className="text-xs sm:text-sm font-medium tabular-nums tracking-wide">
-              {activeImageIndex + 1} / {galleryImages.length}
-            </span>
+            {/* Top toolbar: counter (left) + Zoom / Fullscreen / Close (right) */}
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="absolute top-0 inset-x-0 h-12 px-4 sm:px-6 flex items-center justify-between text-white/95 z-20"
+            >
+              <span className="text-xs sm:text-sm font-medium tabular-nums tracking-wide">
+                {activeImageIndex + 1} / {galleryImages.length}
+              </span>
 
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => setLightboxZoom((z) => !z)}
-                aria-label={lightboxZoom ? "Thu nhỏ ảnh" : "Phóng to ảnh"}
-                title={lightboxZoom ? "Thu nhỏ (2x → 1x)" : "Phóng to (2x)"}
-                className="w-10 h-10 rounded-full hover:bg-white/15 flex items-center justify-center transition-colors"
-              >
-                {lightboxZoom ? (
-                  <ZoomOut className="w-5 h-5" />
-                ) : (
-                  <ZoomIn className="w-5 h-5" />
-                )}
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setLightboxZoom((z) => !z)}
+                  aria-label={
+                    lightboxZoom ? t.lightbox.zoomOutAria : t.lightbox.zoomInAria
+                  }
+                  title={
+                    lightboxZoom
+                      ? t.lightbox.zoomOutTitle
+                      : t.lightbox.zoomInTitle
+                  }
+                  className="w-10 h-10 rounded-full hover:bg-white/15 flex items-center justify-center transition-colors"
+                >
+                  {lightboxZoom ? (
+                    <ZoomOut className="w-5 h-5" />
+                  ) : (
+                    <ZoomIn className="w-5 h-5" />
+                  )}
+                </button>
 
-              <button
-                type="button"
-                onClick={toggleFullscreen}
-                aria-label={isFullscreen ? "Thoát toàn màn hình" : "Toàn màn hình"}
-                title={isFullscreen ? "Thoát toàn màn hình" : "Toàn màn hình"}
-                className="w-10 h-10 rounded-full hover:bg-white/15 flex items-center justify-center transition-colors"
-              >
-                {isFullscreen ? (
-                  <Minimize className="w-5 h-5" />
-                ) : (
-                  <Maximize className="w-5 h-5" />
-                )}
-              </button>
+                <button
+                  type="button"
+                  onClick={toggleFullscreen}
+                  aria-label={
+                    isFullscreen
+                      ? t.lightbox.exitFullscreen
+                      : t.lightbox.fullscreen
+                  }
+                  title={
+                    isFullscreen
+                      ? t.lightbox.exitFullscreen
+                      : t.lightbox.fullscreen
+                  }
+                  className="w-10 h-10 rounded-full hover:bg-white/15 flex items-center justify-center transition-colors"
+                >
+                  {isFullscreen ? (
+                    <Minimize className="w-5 h-5" />
+                  ) : (
+                    <Maximize className="w-5 h-5" />
+                  )}
+                </button>
 
-              <button
-                type="button"
-                onClick={closeLightbox}
-                aria-label="Đóng xem ảnh"
-                title="Đóng (Esc)"
-                className="w-10 h-10 rounded-full hover:bg-white/15 flex items-center justify-center transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
+                <button
+                  type="button"
+                  onClick={closeLightbox}
+                  aria-label={t.lightbox.closeAria}
+                  title={t.lightbox.closeTitle}
+                  className="w-10 h-10 rounded-full hover:bg-white/15 flex items-center justify-center transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
-          </div>
 
-          {galleryImages.length > 1 && (
-            <>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  stepImage(-1);
-                }}
-                aria-label="Ảnh trước trong trình xem"
-                className="absolute left-2 sm:left-6 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-black/45 hover:bg-black/70 text-white flex items-center justify-center transition-colors"
-              >
-                <ChevronLeft className="w-6 h-6" />
-              </button>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  stepImage(1);
-                }}
-                aria-label="Ảnh tiếp theo trong trình xem"
-                className="absolute right-2 sm:right-6 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-black/45 hover:bg-black/70 text-white flex items-center justify-center transition-colors"
-              >
-                <ChevronRight className="w-6 h-6" />
-              </button>
-            </>
-          )}
-
-          {/* White square stage with 1x <-> 2x cursor-tracking zoom */}
-          <div
-            onClick={(e) => {
-              e.stopPropagation();
-              setLightboxZoom((z) => !z);
-            }}
-            onMouseMove={(e) => {
-              if (!lightboxZoom) return;
-              const rect = e.currentTarget.getBoundingClientRect();
-              const x = Math.max(
-                0,
-                Math.min(100, ((e.clientX - rect.left) / rect.width) * 100)
-              );
-              const y = Math.max(
-                0,
-                Math.min(100, ((e.clientY - rect.top) / rect.height) * 100)
-              );
-              setLightboxPan({ x, y });
-            }}
-            className={`relative w-[min(92vw,80vh)] h-[min(92vw,80vh)] bg-white overflow-hidden select-none p-4 sm:p-6 ${
-              lightboxZoom ? "cursor-zoom-out" : "cursor-zoom-in"
-            }`}
-          >
-            {currentMainImage && (
-              <Image
-                src={currentMainImage}
-                alt={product.name}
-                fill
-                sizes="(max-width: 768px) 92vw, 80vh"
-                style={
-                  lightboxZoom
-                    ? {
-                        transform: "scale(2)",
-                        transformOrigin: `${lightboxPan.x}% ${lightboxPan.y}%`,
-                      }
-                    : undefined
-                }
-                className="object-contain p-4 transition-transform duration-200 ease-out"
-              />
+            {galleryImages.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    stepImage(-1);
+                  }}
+                  aria-label={t.lightbox.prevAria}
+                  className="absolute left-2 sm:left-6 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-black/45 hover:bg-black/70 text-white flex items-center justify-center transition-colors"
+                >
+                  <ChevronLeft className="w-6 h-6" />
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    stepImage(1);
+                  }}
+                  aria-label={t.lightbox.nextAria}
+                  className="absolute right-2 sm:right-6 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-black/45 hover:bg-black/70 text-white flex items-center justify-center transition-colors"
+                >
+                  <ChevronRight className="w-6 h-6" />
+                </button>
+              </>
             )}
-          </div>
-        </div>,
+
+            {/* White square stage with 1x <-> 2x cursor-tracking zoom */}
+            <div
+              onClick={(e) => {
+                e.stopPropagation();
+                setLightboxZoom((z) => !z);
+              }}
+              onMouseMove={(e) => {
+                if (!lightboxZoom) return;
+                const rect = e.currentTarget.getBoundingClientRect();
+                const x = Math.max(
+                  0,
+                  Math.min(100, ((e.clientX - rect.left) / rect.width) * 100)
+                );
+                const y = Math.max(
+                  0,
+                  Math.min(100, ((e.clientY - rect.top) / rect.height) * 100)
+                );
+                setLightboxPan({ x, y });
+              }}
+              className={`relative w-[min(92vw,80vh)] h-[min(92vw,80vh)] bg-white overflow-hidden select-none p-4 sm:p-6 ${
+                lightboxZoom ? "cursor-zoom-out" : "cursor-zoom-in"
+              }`}
+            >
+              {currentMainImage && (
+                <Image
+                  src={currentMainImage}
+                  alt={product.name}
+                  fill
+                  sizes="(max-width: 768px) 92vw, 80vh"
+                  style={
+                    lightboxZoom
+                      ? {
+                          transform: "scale(2)",
+                          transformOrigin: `${lightboxPan.x}% ${lightboxPan.y}%`,
+                        }
+                      : undefined
+                  }
+                  className="object-contain p-4 transition-transform duration-200 ease-out"
+                />
+              )}
+            </div>
+          </div>,
           document.body
         )}
     </div>

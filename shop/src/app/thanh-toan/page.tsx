@@ -1,4 +1,4 @@
-import CheckoutPage, { metadata } from "@/app/checkout/page";
+import CheckoutPage, { generateMetadata } from "@/app/checkout/page";
 
-export { metadata };
+export { generateMetadata };
 export default CheckoutPage;

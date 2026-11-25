@@ -4,12 +4,16 @@ import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
-import { resolveMediaUrl } from "@/lib/format";
+import { resolveMediaUrl, type LocaleCode } from "@/lib/format";
+import { localizeHref } from "@/lib/i18n";
+import { useLocale } from "@/lib/i18n/client";
+import { CHROME_I18N } from "@/lib/i18n/chrome";
 import type { BrandSummary } from "@/types/storefront";
 
 interface BrandCarouselProps {
   brands: BrandSummary[];
   title?: string;
+  locale?: LocaleCode;
 }
 
 const ORDERED_HOME_SLUGS = [
@@ -29,16 +33,17 @@ const ORDERED_HOME_SLUGS = [
  * - 7 columns on Desktop, 4 columns on Mobile
  * - 1:1 square dark green #224E40 tiles separated by crisp 2px white borders
  */
-export function BrandCarousel({
-  brands,
-  title = "Thương hiệu phân phối chính hãng",
-}: BrandCarouselProps) {
+export function BrandCarousel({ brands, title, locale }: BrandCarouselProps) {
+  const routeLocale = useLocale();
+  const activeLocale = locale ?? routeLocale;
+  const t = CHROME_I18N[activeLocale].brandCarousel;
+  const resolvedTitle = title ?? t.defaultTitle;
   const [startOffset, setStartOffset] = useState(0);
 
   if (!brands.length) {
     return (
       <section
-        aria-label={title}
+        aria-label={resolvedTitle}
         className="group relative w-full bg-white py-[2px]"
       >
         <div className="grid grid-cols-4 lg:grid-cols-7 gap-[2px] bg-white">
@@ -78,16 +83,17 @@ export function BrandCarousel({
 
   return (
     <section
-      aria-label={title}
+      aria-label={resolvedTitle}
       className="group relative w-full bg-white py-[2px]"
     >
       <div className="grid grid-cols-4 lg:grid-cols-7 gap-[2px] bg-white">
         {visibleBrands.map((brand, idx) => {
-          const href =
+          const rawHref =
             "rootCategorySlug" in brand &&
             typeof brand.rootCategorySlug === "string"
               ? `/${brand.rootCategorySlug}`
               : `/thuong-hieu/${brand.slug}`;
+          const href = localizeHref(rawHref, activeLocale);
           const logo = resolveMediaUrl(brand.logoUrl);
 
           return (
@@ -130,7 +136,7 @@ export function BrandCarousel({
                 (prev) => (prev - 1 + sortedList.length) % sortedList.length
               )
             }
-            aria-label="Thương hiệu trước"
+            aria-label={t.prevBrandAria}
             className="hidden lg:inline-flex items-center justify-center w-10 h-10 rounded-full bg-white/95 text-ink-primary shadow-md hover:bg-white opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity absolute left-3 top-1/2 -translate-y-1/2 z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-store-forest"
           >
             <ChevronLeft className="w-5 h-5" aria-hidden="true" />
@@ -140,7 +146,7 @@ export function BrandCarousel({
             onClick={() =>
               setStartOffset((prev) => (prev + 1) % sortedList.length)
             }
-            aria-label="Thương hiệu tiếp theo"
+            aria-label={t.nextBrandAria}
             className="hidden lg:inline-flex items-center justify-center w-10 h-10 rounded-full bg-white/95 text-ink-primary shadow-md hover:bg-white opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity absolute right-3 top-1/2 -translate-y-1/2 z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-store-forest"
           >
             <ChevronRight className="w-5 h-5" aria-hidden="true" />

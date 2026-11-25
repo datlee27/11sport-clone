@@ -6,15 +6,22 @@ import {
   extractHeadingsFromHtml,
   type TocHeading,
 } from "@/lib/articleHtml";
+import type { LocaleCode } from "@/lib/format";
+import { useLocale } from "@/lib/i18n/client";
+import { EDITORIAL_I18N } from "@/lib/i18n/editorial";
 
 export type { TocHeading };
 
 interface ArticleTocProps {
   headings?: TocHeading[];
   contentHtml?: string;
+  locale?: LocaleCode;
 }
 
-export function ArticleToc({ headings, contentHtml }: ArticleTocProps) {
+export function ArticleToc({ headings, contentHtml, locale }: ArticleTocProps) {
+  const clientLocale = useLocale();
+  const activeLocale = locale ?? clientLocale;
+  const t = EDITORIAL_I18N[activeLocale].toc;
   const [open, setOpen] = useState(true);
 
   const numberedItems = useMemo(() => {
@@ -42,7 +49,7 @@ export function ArticleToc({ headings, contentHtml }: ArticleTocProps) {
 
   return (
     <nav
-      aria-label="Mục lục bài viết"
+      aria-label={t.navAria}
       className="border border-[#333333] rounded-none overflow-hidden bg-[#e8f5e9]"
     >
       <button
@@ -53,7 +60,7 @@ export function ArticleToc({ headings, contentHtml }: ArticleTocProps) {
       >
         <span className="inline-flex items-center gap-2">
           <List className="w-4 h-4 text-[#0a0a0a]" aria-hidden="true" />
-          <span>Mục lục bài viết</span>
+          <span>{t.title}</span>
         </span>
         <ChevronDown
           className={`w-4 h-4 text-[#333333] transition-transform ${

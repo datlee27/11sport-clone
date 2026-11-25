@@ -14,8 +14,21 @@ import {
 } from "lucide-react";
 import { ProductCard } from "@/components/common/ProductCard";
 import { BreadcrumbBar } from "@/components/store/StorefrontDesignSystem";
-import { formatPriceByCurrency } from "@/lib/format";
-import { getLocaleFromPath, localizeHref } from "@/lib/i18n";
+import type { LocaleCode } from "@/lib/format";
+import {
+  localizeCategoryName,
+  localizeColorName,
+  localizeHref,
+  localizeProductSummary,
+  localizeSizeLabel,
+} from "@/lib/i18n";
+import { useLocale } from "@/lib/i18n/client";
+import {
+  CATALOG_I18N,
+  CATALOG_PRICE_RANGES,
+  formatActivePriceLabel,
+  formatPriceRangeLabel,
+} from "@/lib/i18n/catalog";
 import { useCurrencyStore } from "@/store/currencyStore";
 import type {
   BrandSummary,
@@ -38,21 +51,8 @@ interface CatalogClientProps {
   hideBrandFilter?: boolean;
   breadcrumbs?: Array<{ name: string; href?: string }>;
   showSortToolbar?: boolean;
+  locale?: LocaleCode;
 }
-
-const SORT_OPTIONS = [
-  { value: "featured", label: "Sắp xếp theo mức độ phổ biến" },
-  { value: "bestseller", label: "Sắp xếp theo xếp hạng trung bình" },
-  { value: "newest", label: "Sắp xếp theo mới nhất" },
-  { value: "price_asc", label: "Sắp xếp theo giá: thấp đến cao" },
-  { value: "price_desc", label: "Sắp xếp theo giá: cao đến thấp" },
-];
-
-const PRICE_RANGES = [
-  { id: "under-2m", label: "Dưới 2 triệu", min: "", max: "2000000" },
-  { id: "2m-4m", label: "2 – 4 triệu", min: "2000000", max: "4000000" },
-  { id: "over-4m", label: "Trên 4 triệu", min: "4000000", max: "" },
-] as const;
 
 const COLOR_DOT_HEX: Record<string, string> = {
   "blaze red": "#B80411",
@@ -80,12 +80,18 @@ export function CatalogClient({
   hideBrandFilter = false,
   breadcrumbs,
   showSortToolbar = true,
+  locale: localeProp,
 }: CatalogClientProps) {
   const router = useRouter();
   const pathname = usePathname() || "/";
-  const locale = getLocaleFromPath(pathname);
+  const detectedLocale = useLocale();
+  const locale = localeProp ?? detectedLocale;
   const searchParams = useSearchParams();
   const currency = useCurrencyStore((s) => s.currency);
+
+  const t = CATALOG_I18N[locale].catalog;
+  const tc = CATALOG_I18N[locale].common;
+  const sortOptions = t.sortOptions;
 
   const [mounted, setMounted] = useState(false);
   const [sortOpen, setSortOpen] = useState(false);
@@ -149,6 +155,20 @@ export function CatalogClient({
 
   const activeCurrency = mounted ? currency : "VND";
 
+  const localizedProducts = useMemo(
+    () => products.map((product) => localizeProductSummary(product, locale)),
+    [products, locale]
+  );
+
+  const localizedBreadcrumbs = useMemo(
+    () =>
+      breadcrumbs?.map((item) => ({
+        ...item,
+        href: item.href ? localizeHref(item.href, locale) : undefined,
+      })),
+    [breadcrumbs, locale]
+  );
+
   const brandOptions = useMemo(() => {
     if (hideBrandFilter) return [];
     const facetBrands = facets?.brands ?? [];
@@ -171,31 +191,39 @@ export function CatalogClient({
 
   const sizeOptions = useMemo(() => {
     const seen = new Set<string>();
-    const list: Array<{ value: string; label: string }> = [];
+    const list: Array<{ value: string; label: string; displayLabel: string }> =
+      [];
     for (const raw of facets?.sizes ?? []) {
       const mmMatch = raw.match(/^(\d+mm)\b/i);
       const value = mmMatch ? mmMatch[1]! : raw;
       const key = value.toLowerCase();
       if (seen.has(key)) continue;
       seen.add(key);
-      list.push({ value, label: raw });
+      list.push({
+        value,
+        label: raw,
+        displayLabel: localizeSizeLabel(raw, locale),
+      });
     }
     return list;
-  }, [facets?.sizes]);
+  }, [facets?.sizes, locale]);
 
   const colorOptions = useMemo(() => {
     const seen = new Set<string>();
-    const list: string[] = [];
+    const list: Array<{ raw: string; displayLabel: string }> = [];
     for (const raw of facets?.colors ?? []) {
       const trimmed = raw.trim();
       if (!trimmed) continue;
       const key = trimmed.toLowerCase();
       if (seen.has(key)) continue;
       seen.add(key);
-      list.push(trimmed);
+      list.push({
+        raw: trimmed,
+        displayLabel: localizeColorName(trimmed, locale),
+      });
     }
     return list;
-  }, [facets?.colors]);
+  }, [facets?.colors, locale]);
 
   const updateQuery = (
     updates: Record<string, string | null>,
@@ -213,7 +241,8 @@ export function CatalogClient({
       next.delete("page");
     }
     const qs = next.toString();
-    router.push(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    const targetPath = localizeHref(pathname, locale);
+    router.push(qs ? `${targetPath}?${qs}` : targetPath, { scroll: false });
   };
 
   const clearAllFilters = () => {
@@ -226,7 +255,8 @@ export function CatalogClient({
     next.delete("inStock");
     next.delete("page");
     const qs = next.toString();
-    router.push(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    const targetPath = localizeHref(pathname, locale);
+    router.push(qs ? `${targetPath}?${qs}` : targetPath, { scroll: false });
   };
 
   const openMobileDrawer = () => {
@@ -260,7 +290,7 @@ export function CatalogClient({
   const activeBrandOption = brandOptions.find(
     (b) => b.slug.toLowerCase() === currentBrand.toLowerCase()
   );
-  const matchedPriceRange = PRICE_RANGES.find(
+  const matchedPriceRange = CATALOG_PRICE_RANGES.find(
     (r) => r.min === currentPriceMin && r.max === currentPriceMax
   );
   const isSizeSelected = (val: string, label: string, target: string) => {
@@ -269,64 +299,66 @@ export function CatalogClient({
     return norm === val.toLowerCase() || norm === label.toLowerCase();
   };
 
-  const activeChips: { key: string; label: string; onRemove: () => void }[] = [];
+  const localizedCurrentSize = currentSize
+    ? localizeSizeLabel(currentSize, locale)
+    : "";
+  const localizedCurrentColor = currentColor
+    ? localizeColorName(currentColor, locale)
+    : "";
+
+  const activeChips: { key: string; label: string; onRemove: () => void }[] =
+    [];
   if (currentBrand) {
     activeChips.push({
       key: "brand",
-      label: `Thương hiệu: ${activeBrandOption?.name || currentBrand}`,
+      label: `${t.brandPrefix}: ${activeBrandOption?.name || currentBrand}`,
       onRemove: () => updateQuery({ brand: null }),
     });
   }
   if (currentPriceMin || currentPriceMax) {
-    const priceLabel =
-      matchedPriceRange && activeCurrency === "VND"
-        ? `Giá: ${matchedPriceRange.label}`
-        : `Giá: ${
-            currentPriceMin
-              ? formatPriceByCurrency(Number(currentPriceMin), activeCurrency)
-              : formatPriceByCurrency(0, activeCurrency)
-          } – ${
-            currentPriceMax
-              ? formatPriceByCurrency(Number(currentPriceMax), activeCurrency)
-              : "Trở lên"
-          }`;
     activeChips.push({
       key: "price",
-      label: priceLabel,
+      label: formatActivePriceLabel(
+        currentPriceMin,
+        currentPriceMax,
+        matchedPriceRange,
+        locale,
+        activeCurrency
+      ),
       onRemove: () => updateQuery({ priceMin: null, priceMax: null }),
     });
   }
   if (currentSize) {
     activeChips.push({
       key: "size",
-      label: `Phiên bản: ${currentSize}`,
+      label: `${t.sizePrefix}: ${localizedCurrentSize}`,
       onRemove: () => updateQuery({ size: null }),
     });
   }
   if (currentColor) {
     activeChips.push({
       key: "color",
-      label: `Màu: ${currentColor}`,
+      label: `${t.colorPrefix}: ${localizedCurrentColor}`,
       onRemove: () => updateQuery({ color: null }),
     });
   }
   if (currentInStock) {
     activeChips.push({
       key: "inStock",
-      label: "Chỉ hiện còn hàng",
+      label: t.inStockOnlyChip,
       onRemove: () => updateQuery({ inStock: null }),
     });
   }
 
   const activeFilterCount = activeChips.length;
-
-  const countLabel =
-    meta.totalPages <= 1
-      ? `Hiển thị tất cả ${meta.total} kết quả`
-      : `Hiển thị ${products.length} / ${meta.total} kết quả`;
+  const countLabel = t.countLabel(
+    localizedProducts.length,
+    meta.total,
+    meta.totalPages
+  );
 
   const currentSortOption =
-    SORT_OPTIONS.find((opt) => opt.value === currentSort) || SORT_OPTIONS[0];
+    sortOptions.find((opt) => opt.value === currentSort) || sortOptions[0];
 
   const sortControls = showSortToolbar ? (
     <div className="w-full sm:w-auto flex flex-wrap items-center justify-between sm:justify-end gap-2 sm:gap-3">
@@ -345,7 +377,7 @@ export function CatalogClient({
           }}
           aria-haspopup="listbox"
           aria-expanded={sortOpen}
-          aria-label="Sắp xếp sản phẩm"
+          aria-label={t.sortAriaLabel}
           className="min-h-[40px] w-full sm:w-auto sm:min-w-[240px] max-w-full px-3.5 bg-white border border-[#d9d9d9] hover:border-store-forest text-[13.5px] font-medium text-ink-primary flex items-center justify-between gap-2 transition-colors focus:outline-none focus:border-store-forest cursor-pointer shadow-sm rounded-none"
         >
           <span className="truncate">{currentSortOption.label}</span>
@@ -360,10 +392,10 @@ export function CatalogClient({
         {sortOpen && (
           <ul
             role="listbox"
-            aria-label="Tùy chọn sắp xếp"
+            aria-label={t.sortListboxAriaLabel}
             className="absolute right-0 top-full mt-1 w-full sm:min-w-[250px] max-w-full bg-white border border-store-border-sage shadow-drawer py-1 z-30 animate-in fade-in-50 zoom-in-95 duration-150"
           >
-            {SORT_OPTIONS.map((opt) => {
+            {sortOptions.map((opt) => {
               const isSelected = opt.value === currentSort;
               return (
                 <li key={opt.value}>
@@ -401,8 +433,12 @@ export function CatalogClient({
   return (
     <div className="space-y-4 sm:space-y-5">
       {/* Unified Single-Row Top Toolbar */}
-      {breadcrumbs && breadcrumbs.length > 0 ? (
-        <BreadcrumbBar items={breadcrumbs} rightSlot={sortControls} />
+      {localizedBreadcrumbs && localizedBreadcrumbs.length > 0 ? (
+        <BreadcrumbBar
+          items={localizedBreadcrumbs}
+          rightSlot={sortControls}
+          locale={locale}
+        />
       ) : sortControls ? (
         <div className="flex justify-end">{sortControls}</div>
       ) : null}
@@ -410,12 +446,13 @@ export function CatalogClient({
       {/* Subcategories Strip (when provided by Category Hub) */}
       {subCategories && subCategories.length > 0 && (
         <nav
-          aria-label="Danh mục con"
+          aria-label={t.subcategoriesAriaLabel}
           className="flex items-center gap-2 overflow-x-auto pb-1 sm:flex-wrap"
         >
           {subCategories.map((sub) => {
             const href = localizeHref(`/danh-muc/${sub.slug}`, locale);
             const isActive = pathname.endsWith(`/${sub.slug}`);
+            const subLabel = localizeCategoryName(sub.name, locale, sub.slug);
             return (
               <Link
                 key={sub._id}
@@ -426,7 +463,7 @@ export function CatalogClient({
                     : "bg-white border-store-border-sage text-ink-secondary hover:border-store-forest hover:text-store-forest"
                 }`}
               >
-                {sub.name}
+                {subLabel}
               </Link>
             );
           })}
@@ -443,7 +480,7 @@ export function CatalogClient({
           className="inline-flex items-center gap-2 min-h-[44px] px-4 rounded-[6px] border border-store-forest bg-white text-store-forest text-[13px] font-semibold hover:bg-store-surface-sage transition-colors"
         >
           <SlidersHorizontal className="w-4 h-4 shrink-0" aria-hidden="true" />
-          <span>Bộ lọc</span>
+          <span>{tc.filters}</span>
           {activeFilterCount > 0 && (
             <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-store-forest text-white text-[11px] font-bold">
               {activeFilterCount}
@@ -457,7 +494,7 @@ export function CatalogClient({
             onClick={clearAllFilters}
             className="min-h-[44px] px-2.5 text-xs font-semibold text-store-price-sale hover:underline"
           >
-            Xóa bộ lọc
+            {tc.clearFilters}
           </button>
         )}
       </div>
@@ -470,7 +507,7 @@ export function CatalogClient({
         <div className="flex flex-wrap items-center gap-2">
           <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-store-forest mr-1">
             <SlidersHorizontal className="w-3.5 h-3.5" aria-hidden="true" />
-            Bộ lọc
+            {tc.filters}
           </span>
 
           {/* 1. Brand Filter */}
@@ -491,8 +528,8 @@ export function CatalogClient({
               >
                 <span>
                   {currentBrand
-                    ? `Thương hiệu: ${activeBrandOption?.name || currentBrand}`
-                    : "Thương hiệu"}
+                    ? `${t.brandPrefix}: ${activeBrandOption?.name || currentBrand}`
+                    : t.brandFilter}
                 </span>
                 <ChevronDown
                   className={`w-3.5 h-3.5 transition-transform ${
@@ -505,7 +542,7 @@ export function CatalogClient({
               {openFilter === "brand" && (
                 <div
                   role="listbox"
-                  aria-label="Lọc theo thương hiệu"
+                  aria-label={t.brandListboxAriaLabel}
                   className="absolute left-0 top-full mt-1.5 w-[320px] max-w-[calc(100vw-2rem)] max-h-[300px] overflow-y-auto bg-white border border-store-border-sage rounded-[8px] shadow-drawer p-2 z-30"
                 >
                   <div className="grid grid-cols-2 gap-1">
@@ -523,7 +560,7 @@ export function CatalogClient({
                           : "text-ink-primary hover:bg-store-surface-sage hover:text-store-forest"
                       }`}
                     >
-                      <span>Tất cả thương hiệu</span>
+                      <span>{t.allBrands}</span>
                       {!currentBrand && (
                         <Check className="w-3.5 h-3.5" aria-hidden="true" />
                       )}
@@ -585,10 +622,14 @@ export function CatalogClient({
             >
               <span>
                 {matchedPriceRange
-                  ? `Giá: ${matchedPriceRange.label}`
+                  ? `${t.pricePrefix}: ${formatPriceRangeLabel(
+                      matchedPriceRange,
+                      locale,
+                      activeCurrency
+                    )}`
                   : currentPriceMin || currentPriceMax
-                  ? "Đã lọc theo giá"
-                  : "Khoảng giá"}
+                  ? t.priceFiltered
+                  : t.priceFilter}
               </span>
               <ChevronDown
                 className={`w-3.5 h-3.5 transition-transform ${
@@ -601,8 +642,8 @@ export function CatalogClient({
             {openFilter === "price" && (
               <div
                 role="listbox"
-                aria-label="Lọc theo khoảng giá"
-                className="absolute left-0 top-full mt-1.5 w-[220px] bg-white border border-store-border-sage rounded-[8px] shadow-drawer p-1.5 z-30 space-y-1"
+                aria-label={t.priceListboxAriaLabel}
+                className="absolute left-0 top-full mt-1.5 min-w-[235px] bg-white border border-store-border-sage rounded-[8px] shadow-drawer p-1.5 z-30 space-y-1"
               >
                 <button
                   type="button"
@@ -612,21 +653,26 @@ export function CatalogClient({
                     updateQuery({ priceMin: null, priceMax: null });
                     setOpenFilter(null);
                   }}
-                  className={`w-full px-3 py-2 rounded-[6px] text-left text-xs flex items-center justify-between transition-colors ${
+                  className={`w-full px-3 py-2 rounded-[6px] text-left text-xs flex items-center justify-between gap-2 transition-colors ${
                     !currentPriceMin && !currentPriceMax
                       ? "bg-store-forest text-white font-bold"
                       : "text-ink-primary hover:bg-store-surface-sage hover:text-store-forest"
                   }`}
                 >
-                  <span>Tất cả mức giá</span>
+                  <span>{t.allPrices}</span>
                   {!currentPriceMin && !currentPriceMax && (
-                    <Check className="w-3.5 h-3.5" aria-hidden="true" />
+                    <Check className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                   )}
                 </button>
-                {PRICE_RANGES.map((range) => {
+                {CATALOG_PRICE_RANGES.map((range) => {
                   const isSelected =
                     currentPriceMin === range.min &&
                     currentPriceMax === range.max;
+                  const rangeLabel = formatPriceRangeLabel(
+                    range,
+                    locale,
+                    activeCurrency
+                  );
                   return (
                     <button
                       key={range.id}
@@ -644,15 +690,18 @@ export function CatalogClient({
                         );
                         setOpenFilter(null);
                       }}
-                      className={`w-full px-3 py-2 rounded-[6px] text-left text-xs flex items-center justify-between transition-colors ${
+                      className={`w-full px-3 py-2 rounded-[6px] text-left text-xs flex items-center justify-between gap-2 transition-colors whitespace-nowrap ${
                         isSelected
                           ? "bg-store-forest text-white font-bold"
                           : "text-ink-primary hover:bg-store-surface-sage hover:text-store-forest"
                       }`}
                     >
-                      <span>{range.label}</span>
+                      <span>{rangeLabel}</span>
                       {isSelected && (
-                        <Check className="w-3.5 h-3.5" aria-hidden="true" />
+                        <Check
+                          className="w-3.5 h-3.5 shrink-0"
+                          aria-hidden="true"
+                        />
                       )}
                     </button>
                   );
@@ -679,8 +728,8 @@ export function CatalogClient({
               >
                 <span>
                   {currentSize
-                    ? `Phiên bản: ${currentSize}`
-                    : "Độ dày / Phiên bản"}
+                    ? `${t.sizePrefix}: ${localizedCurrentSize}`
+                    : t.sizeFilter}
                 </span>
                 <ChevronDown
                   className={`w-3.5 h-3.5 transition-transform ${
@@ -693,7 +742,7 @@ export function CatalogClient({
               {openFilter === "size" && (
                 <div
                   role="listbox"
-                  aria-label="Lọc theo độ dày và phiên bản"
+                  aria-label={t.sizeListboxAriaLabel}
                   className="absolute left-0 top-full mt-1.5 w-[240px] max-h-[280px] overflow-y-auto bg-white border border-store-border-sage rounded-[8px] shadow-drawer p-1.5 z-30 space-y-1"
                 >
                   <button
@@ -710,7 +759,7 @@ export function CatalogClient({
                         : "text-ink-primary hover:bg-store-surface-sage hover:text-store-forest"
                     }`}
                   >
-                    <span>Tất cả phiên bản</span>
+                    <span>{t.allSizes}</span>
                     {!currentSize && (
                       <Check className="w-3.5 h-3.5" aria-hidden="true" />
                     )}
@@ -737,7 +786,7 @@ export function CatalogClient({
                             : "text-ink-primary hover:bg-store-surface-sage hover:text-store-forest"
                         }`}
                       >
-                        <span>{opt.label}</span>
+                        <span>{opt.displayLabel}</span>
                         {isSelected && (
                           <Check className="w-3.5 h-3.5" aria-hidden="true" />
                         )}
@@ -765,7 +814,11 @@ export function CatalogClient({
                     : "bg-white border-store-border-sage text-ink-primary font-medium hover:border-store-forest"
                 }`}
               >
-                <span>{currentColor ? `Màu: ${currentColor}` : "Màu sắc"}</span>
+                <span>
+                  {currentColor
+                    ? `${t.colorPrefix}: ${localizedCurrentColor}`
+                    : t.colorFilter}
+                </span>
                 <ChevronDown
                   className={`w-3.5 h-3.5 transition-transform ${
                     openFilter === "color" ? "rotate-180" : ""
@@ -777,7 +830,7 @@ export function CatalogClient({
               {openFilter === "color" && (
                 <div
                   role="listbox"
-                  aria-label="Lọc theo màu sắc"
+                  aria-label={t.colorListboxAriaLabel}
                   className="absolute right-0 lg:left-0 lg:right-auto top-full mt-1.5 w-[220px] max-h-[280px] overflow-y-auto bg-white border border-store-border-sage rounded-[8px] shadow-drawer p-1.5 z-30 space-y-1"
                 >
                   <button
@@ -794,23 +847,23 @@ export function CatalogClient({
                         : "text-ink-primary hover:bg-store-surface-sage hover:text-store-forest"
                     }`}
                   >
-                    <span>Tất cả màu sắc</span>
+                    <span>{t.allColors}</span>
                     {!currentColor && (
                       <Check className="w-3.5 h-3.5" aria-hidden="true" />
                     )}
                   </button>
                   {colorOptions.map((col) => {
                     const isSelected =
-                      col.toLowerCase() === currentColor.toLowerCase();
-                    const dotHex = COLOR_DOT_HEX[col.toLowerCase()];
+                      col.raw.toLowerCase() === currentColor.toLowerCase();
+                    const dotHex = COLOR_DOT_HEX[col.raw.toLowerCase()];
                     return (
                       <button
-                        key={col}
+                        key={col.raw}
                         type="button"
                         role="option"
                         aria-selected={isSelected}
                         onClick={() => {
-                          updateQuery({ color: isSelected ? null : col });
+                          updateQuery({ color: isSelected ? null : col.raw });
                           setOpenFilter(null);
                         }}
                         className={`w-full px-3 py-2 rounded-[6px] text-left text-xs flex items-center justify-between gap-2 transition-colors ${
@@ -827,10 +880,13 @@ export function CatalogClient({
                               aria-hidden="true"
                             />
                           )}
-                          <span className="truncate">{col}</span>
+                          <span className="truncate">{col.displayLabel}</span>
                         </span>
                         {isSelected && (
-                          <Check className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                          <Check
+                            className="w-3.5 h-3.5 shrink-0"
+                            aria-hidden="true"
+                          />
                         )}
                       </button>
                     );
@@ -847,7 +903,7 @@ export function CatalogClient({
             onClick={clearAllFilters}
             className="min-h-[36px] px-2.5 text-xs font-semibold text-store-price-sale hover:underline"
           >
-            Xóa bộ lọc
+            {tc.clearFilters}
           </button>
         )}
       </div>
@@ -860,6 +916,7 @@ export function CatalogClient({
               key={chip.key}
               type="button"
               onClick={chip.onRemove}
+              aria-label={t.removeFilterAriaLabel(chip.label)}
               className="inline-flex items-center gap-1.5 min-h-[36px] px-3 rounded-full bg-store-surface-sage border border-store-mint-border text-xs font-semibold text-store-forest hover:bg-store-mint-bg transition-colors"
             >
               <span>{chip.label}</span>
@@ -871,24 +928,19 @@ export function CatalogClient({
             onClick={clearAllFilters}
             className="text-xs font-semibold text-store-price-sale hover:underline px-2.5 min-h-[36px]"
           >
-            Xóa bộ lọc
+            {tc.clearFilters}
           </button>
         </div>
       )}
 
       {/* Full-Width 4-Col Desktop / 2-Col Mobile Product Grid */}
-      {products.length === 0 ? (
+      {localizedProducts.length === 0 ? (
         <div className="rounded-[8px] border border-[#eeeeee] bg-store-surface-sage py-16 px-4 text-center space-y-3">
           <div className="w-12 h-12 mx-auto rounded-full bg-white border border-store-border-sage flex items-center justify-center">
             <Search className="w-5 h-5 text-ink-muted" aria-hidden="true" />
           </div>
-          <p className="text-base font-bold text-ink-primary">
-            Không tìm thấy sản phẩm phù hợp
-          </p>
-          <p className="text-sm text-ink-muted">
-            Vui lòng thử điều chỉnh bộ lọc hoặc quay về danh mục Vợt Pickleball
-            11Sport.
-          </p>
+          <p className="text-base font-bold text-ink-primary">{t.emptyTitle}</p>
+          <p className="text-sm text-ink-muted">{t.emptyDescription}</p>
           <div className="pt-2 flex flex-wrap items-center justify-center gap-2.5">
             {activeFilterCount > 0 && (
               <button
@@ -896,20 +948,20 @@ export function CatalogClient({
                 onClick={clearAllFilters}
                 className="inline-flex items-center justify-center min-h-[40px] px-5 rounded-[4px] border border-store-forest bg-white text-store-forest text-xs font-bold uppercase tracking-wider hover:bg-store-mint-bg transition-colors"
               >
-                Xóa bộ lọc
+                {tc.clearFilters}
               </button>
             )}
             <Link
-              href="/vot-pickleball"
+              href={localizeHref("/vot-pickleball", locale)}
               className="inline-flex items-center justify-center min-h-[40px] px-5 rounded-[4px] bg-store-forest text-white text-xs font-bold uppercase tracking-wider hover:bg-store-forest-hover transition-colors"
             >
-              Xem tất cả sản phẩm
+              {t.viewAllProducts}
             </Link>
           </div>
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-          {products.map((product) => (
+          {localizedProducts.map((product) => (
             <ProductCard
               key={product._id}
               product={product}
@@ -922,14 +974,14 @@ export function CatalogClient({
       {/* Flatsome Circular Pagination (only when > 1 page) */}
       {meta.totalPages > 1 && (
         <nav
-          aria-label="Phân trang sản phẩm"
+          aria-label={t.paginationAriaLabel}
           className="pt-4 flex items-center justify-center gap-2"
         >
           <button
             type="button"
             disabled={meta.page <= 1}
             onClick={() => updateQuery({ page: String(meta.page - 1) }, false)}
-            aria-label="Trang trước"
+            aria-label={t.prevPageAriaLabel}
             className="inline-flex items-center justify-center w-10 h-10 rounded-full border-2 border-[#d9d9d9] bg-white text-ink-primary disabled:opacity-40 disabled:cursor-not-allowed hover:border-store-forest hover:bg-store-forest hover:text-white transition-colors"
           >
             <ChevronLeft className="w-4 h-4" aria-hidden="true" />
@@ -945,6 +997,7 @@ export function CatalogClient({
                 key={pageNum}
                 type="button"
                 onClick={() => updateQuery({ page: String(pageNum) }, false)}
+                aria-label={t.pageAriaLabel(pageNum)}
                 aria-current={pageNum === meta.page ? "page" : undefined}
                 className={`inline-flex items-center justify-center min-w-[40px] h-10 px-2 rounded-full text-sm font-bold border-2 transition-colors ${
                   pageNum === meta.page
@@ -960,7 +1013,7 @@ export function CatalogClient({
             type="button"
             disabled={meta.page >= meta.totalPages}
             onClick={() => updateQuery({ page: String(meta.page + 1) }, false)}
-            aria-label="Trang tiếp theo"
+            aria-label={t.nextPageAriaLabel}
             className="inline-flex items-center justify-center w-10 h-10 rounded-full border-2 border-[#d9d9d9] bg-white text-ink-primary disabled:opacity-40 disabled:cursor-not-allowed hover:border-store-forest hover:bg-store-forest hover:text-white transition-colors"
           >
             <ChevronRight className="w-4 h-4" aria-hidden="true" />
@@ -974,7 +1027,7 @@ export function CatalogClient({
           id="mobile-catalog-filter-drawer"
           role="dialog"
           aria-modal="true"
-          aria-label="Bộ lọc sản phẩm"
+          aria-label={t.mobileDrawerTitle}
           className="fixed inset-0 z-50 md:hidden flex justify-end"
         >
           <div
@@ -986,12 +1039,12 @@ export function CatalogClient({
           <div className="relative z-10 w-full max-w-[360px] h-full bg-white flex flex-col shadow-drawer">
             <div className="px-4 py-3 border-b border-store-border-sage flex items-center justify-between gap-3">
               <h2 className="text-base font-bold text-ink-primary">
-                Bộ lọc sản phẩm
+                {t.mobileDrawerTitle}
               </h2>
               <button
                 type="button"
                 onClick={() => setMobileDrawerOpen(false)}
-                aria-label="Đóng bộ lọc"
+                aria-label={t.mobileDrawerCloseAriaLabel}
                 className="inline-flex items-center justify-center w-11 h-11 rounded-[6px] text-ink-primary hover:bg-store-surface-sage transition-colors"
               >
                 <X className="w-5 h-5" aria-hidden="true" />
@@ -1003,7 +1056,7 @@ export function CatalogClient({
               {brandOptions.length > 0 && (
                 <section className="space-y-2.5">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-store-forest">
-                    Thương hiệu
+                    {t.brandFilter}
                   </h3>
                   <div className="flex flex-wrap gap-2">
                     {brandOptions.map((brand) => {
@@ -1034,10 +1087,10 @@ export function CatalogClient({
               {/* Price Section */}
               <section className="space-y-2.5">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-store-forest">
-                  Khoảng giá
+                  {t.priceFilter}
                 </h3>
                 <div className="flex flex-wrap gap-2">
-                  {PRICE_RANGES.map((range) => {
+                  {CATALOG_PRICE_RANGES.map((range) => {
                     const isSelected =
                       draftPriceMin === range.min && draftPriceMax === range.max;
                     return (
@@ -1060,7 +1113,7 @@ export function CatalogClient({
                             : "bg-white border-store-border-sage text-ink-primary hover:border-store-forest"
                         }`}
                       >
-                        {range.label}
+                        {formatPriceRangeLabel(range, locale, activeCurrency)}
                       </button>
                     );
                   })}
@@ -1071,7 +1124,7 @@ export function CatalogClient({
               {sizeOptions.length > 0 && (
                 <section className="space-y-2.5">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-store-forest">
-                    Độ dày / Phiên bản
+                    {t.sizeFilter}
                   </h3>
                   <div className="flex flex-wrap gap-2">
                     {sizeOptions.map((opt) => {
@@ -1094,7 +1147,7 @@ export function CatalogClient({
                               : "bg-white border-store-border-sage text-ink-primary hover:border-store-forest"
                           }`}
                         >
-                          {opt.label}
+                          {opt.displayLabel}
                         </button>
                       );
                     })}
@@ -1106,19 +1159,21 @@ export function CatalogClient({
               {colorOptions.length > 0 && (
                 <section className="space-y-2.5">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-store-forest">
-                    Màu sắc
+                    {t.colorFilter}
                   </h3>
                   <div className="flex flex-wrap gap-2">
                     {colorOptions.map((col) => {
                       const isSelected =
-                        col.toLowerCase() === draftColor.toLowerCase();
-                      const dotHex = COLOR_DOT_HEX[col.toLowerCase()];
+                        col.raw.toLowerCase() === draftColor.toLowerCase();
+                      const dotHex = COLOR_DOT_HEX[col.raw.toLowerCase()];
                       return (
                         <button
-                          key={col}
+                          key={col.raw}
                           type="button"
                           aria-pressed={isSelected}
-                          onClick={() => setDraftColor(isSelected ? "" : col)}
+                          onClick={() =>
+                            setDraftColor(isSelected ? "" : col.raw)
+                          }
                           className={`inline-flex items-center gap-1.5 min-h-[40px] px-3 py-1.5 rounded-[6px] border text-xs font-medium transition-colors ${
                             isSelected
                               ? "bg-store-forest border-store-forest text-white font-semibold"
@@ -1132,7 +1187,7 @@ export function CatalogClient({
                               aria-hidden="true"
                             />
                           )}
-                          <span>{col}</span>
+                          <span>{col.displayLabel}</span>
                         </button>
                       );
                     })}
@@ -1147,14 +1202,14 @@ export function CatalogClient({
                 onClick={clearMobileDraft}
                 className="min-h-[44px] flex-1 rounded-[6px] border border-store-border-sage bg-white text-ink-primary text-sm font-semibold hover:bg-store-surface-sage transition-colors"
               >
-                Xóa
+                {tc.clear}
               </button>
               <button
                 type="button"
                 onClick={applyMobileDraft}
                 className="min-h-[44px] flex-1 rounded-[6px] bg-store-forest hover:bg-store-forest-hover text-white text-sm font-bold transition-colors"
               >
-                Áp dụng
+                {tc.apply}
               </button>
             </div>
           </div>

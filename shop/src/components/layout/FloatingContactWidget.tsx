@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Check, ChevronUp, Copy, MessageCircle, X } from "lucide-react";
+import { useLocale } from "@/lib/i18n/client";
+import { CHROME_I18N, localizeChromeShowroom } from "@/lib/i18n/chrome";
 import type { SiteSettingsData } from "@/lib/storefront";
 
 const HIDDEN_WIDGET_PATHS = [
@@ -28,6 +30,9 @@ export function FloatingContactWidget({
   settings?: SiteSettingsData | null;
 }) {
   const pathname = (usePathname() || "/").replace(/\/+$/, "") || "/";
+  const locale = useLocale();
+  const t = CHROME_I18N[locale].floatingContact;
+
   const [showTop, setShowTop] = useState(false);
   const [zaloModalOpen, setZaloModalOpen] = useState(false);
   const [mobileExpanded, setMobileExpanded] = useState(false);
@@ -45,24 +50,8 @@ export function FloatingContactWidget({
 
   const branches =
     settings?.showrooms && settings.showrooms.length > 0
-      ? settings.showrooms
-      : [
-          {
-            name: "Chi nhánh Quận 10 (TP.HCM)",
-            address: "95 Trần Thiện Chánh, Phường 12, Quận 10",
-            phone: "0789 404 331",
-          },
-          {
-            name: "Chi nhánh Phú Nhuận (TP.HCM)",
-            address: "100 Hoa Lan, Phường 2, Quận Phú Nhuận",
-            phone: "0789 404 231",
-          },
-          {
-            name: "Chi nhánh Ngọc Hà (Hà Nội)",
-            address: "466 Đường Bưởi, Ngọc Hà, Quận Ba Đình",
-            phone: "0913 729 135",
-          },
-        ];
+      ? settings.showrooms.map((b) => localizeChromeShowroom(b, locale))
+      : t.defaultBranches;
 
   useEffect(() => {
     const onScroll = () => setShowTop(window.scrollY > 320);
@@ -104,9 +93,7 @@ export function FloatingContactWidget({
 
   const handleCopyConsult = () => {
     if (typeof navigator !== "undefined" && navigator.clipboard) {
-      navigator.clipboard.writeText(
-        "Xin chào 11Sport, tôi cần tư vấn chọn vợt Pickleball phù hợp!"
-      );
+      navigator.clipboard.writeText(t.consultClipboardMessage);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
@@ -128,7 +115,7 @@ export function FloatingContactWidget({
           {/* 1. Pulsing Red Hotline Phone */}
           <a
             href={`tel:${hotlineDigits}`}
-            aria-label={`Gọi Hotline ${hotline}`}
+            aria-label={t.callHotlineAria(hotline)}
             className="relative mipik-pulse-red w-11 h-11 rounded-full bg-[#e60808] text-white shadow-drawer flex items-center justify-center hover:scale-105 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#e60808]"
           >
             <svg
@@ -145,7 +132,7 @@ export function FloatingContactWidget({
             href={messengerUrl}
             target="_blank"
             rel="noreferrer"
-            aria-label="Chat Facebook Messenger"
+            aria-label={t.messengerAria}
             className="relative mipik-pulse-blue w-11 h-11 rounded-full bg-[#1877f2] text-white shadow-drawer flex items-center justify-center hover:scale-105 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#1877f2]"
           >
             <svg
@@ -164,7 +151,7 @@ export function FloatingContactWidget({
               setMobileExpanded(false);
               setZaloModalOpen(true);
             }}
-            aria-label="Chọn cửa hàng tư vấn Zalo"
+            aria-label={t.zaloButtonAria}
             className="relative mipik-pulse-blue w-11 h-11 rounded-full bg-[#0068ff] text-white shadow-drawer flex items-center justify-center hover:scale-105 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#0068ff]"
           >
             <svg
@@ -197,9 +184,7 @@ export function FloatingContactWidget({
           aria-expanded={mobileExpanded}
           aria-controls="floating-contact-actions"
           aria-label={
-            mobileExpanded
-              ? "Đóng kênh liên hệ nhanh"
-              : "Mở kênh liên hệ nhanh"
+            mobileExpanded ? t.closeQuickContactAria : t.openQuickContactAria
           }
           className="xl:hidden w-11 h-11 rounded-full bg-store-forest hover:bg-store-forest-hover text-white shadow-drawer flex items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-store-forest focus-visible:ring-offset-2"
         >
@@ -215,7 +200,7 @@ export function FloatingContactWidget({
           <button
             type="button"
             onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-            aria-label="Lên đầu trang"
+            aria-label={t.backToTopAria}
             className="w-11 h-11 rounded-full border border-[#9ca3af] bg-white/95 text-[#374151] shadow-sm flex items-center justify-center hover:border-store-forest hover:text-store-forest transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-store-forest"
           >
             <ChevronUp className="w-5 h-5" aria-hidden="true" />
@@ -228,7 +213,7 @@ export function FloatingContactWidget({
         <div
           role="dialog"
           aria-modal="true"
-          aria-label="Chọn cửa hàng tư vấn"
+          aria-label={t.zaloDialogAria}
           className="fixed inset-0 z-50 bg-black/55 backdrop-blur-sm flex items-center justify-center p-4"
           onClick={() => setZaloModalOpen(false)}
         >
@@ -239,16 +224,16 @@ export function FloatingContactWidget({
             <div className="flex items-start justify-between gap-3 border-b border-store-border-sage pb-3">
               <div>
                 <h2 className="text-lg font-extrabold text-store-forest">
-                  Chọn cửa hàng tư vấn Zalo
+                  {t.zaloDialogTitle}
                 </h2>
                 <p className="text-xs text-ink-muted mt-0.5">
-                  Kỹ thuật viên trực tuyến 08:30 – 21:30 tại 3 chi nhánh 11Sport
+                  {t.zaloDialogSubtitle}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setZaloModalOpen(false)}
-                aria-label="Đóng hộp thoại Zalo"
+                aria-label={t.closeZaloAria}
                 className="w-10 h-10 rounded-full border border-store-border-sage flex items-center justify-center text-ink-secondary hover:bg-store-surface-sage transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-store-forest"
               >
                 <X className="w-4 h-4" aria-hidden="true" />
@@ -275,7 +260,7 @@ export function FloatingContactWidget({
                       </p>
                     </div>
                     <span className="px-3 py-1.5 rounded-full bg-store-social-blue text-white text-xs font-bold shrink-0">
-                      Chat Zalo
+                      {t.chatZaloPill}
                     </span>
                   </a>
                 );
@@ -289,13 +274,16 @@ export function FloatingContactWidget({
             >
               {copied ? (
                 <>
-                  <Check className="w-4 h-4 text-store-forest" aria-hidden="true" />
-                  <span>Đã sao chép lời nhắn tư vấn!</span>
+                  <Check
+                    className="w-4 h-4 text-store-forest"
+                    aria-hidden="true"
+                  />
+                  <span>{t.copiedConsultLabel}</span>
                 </>
               ) : (
                 <>
                   <Copy className="w-4 h-4" aria-hidden="true" />
-                  <span>Sao chép yêu cầu tư vấn nhanh</span>
+                  <span>{t.copyConsultLabel}</span>
                 </>
               )}
             </button>

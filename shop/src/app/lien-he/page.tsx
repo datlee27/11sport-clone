@@ -4,52 +4,73 @@ import {
   buildLocalBusinessJsonLd,
   buildMetadata,
 } from "@/lib/seo";
+import { localizeHref, localizeShowroom } from "@/lib/i18n";
+import { getServerLocale } from "@/lib/i18n/server";
+import { EDITORIAL_I18N } from "@/lib/i18n/editorial";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { QuickConsultForm } from "@/components/blog/QuickConsultForm";
 import { ContactBranchesClient } from "@/components/contact/ContactBranchesClient";
 import { fetchSiteSettings } from "@/lib/storefront";
 
-export const metadata: Metadata = buildMetadata({
-  title: "Hệ Thống 3 Chi Nhánh Showroom & Liên Hệ",
-  description:
-    "Địa chỉ hệ thống 3 showroom Quận 10, Phú Nhuận (TP.HCM) và Ngọc Hà (Hà Nội). Trải nghiệm cầm thử vợt Joola, Selkirk, Kamito chính hãng.",
-  path: "/lien-he",
-});
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = getServerLocale();
+  const t = EDITORIAL_I18N[locale].contact;
+  return buildMetadata({
+    title: t.metaTitle,
+    description: t.metaDescription,
+    path: "/lien-he",
+    locale,
+  });
+}
 
 export default async function ContactPage() {
+  const locale = getServerLocale();
+  const t = EDITORIAL_I18N[locale].contact;
+  const tc = EDITORIAL_I18N[locale].common;
+
   const settings = await fetchSiteSettings();
   const siteName = settings?.siteName || "11Sport";
   const defaultHotline = settings?.hotline || "0909 888 128";
   const showrooms = settings?.showrooms ?? [];
+  const localizedShowrooms = showrooms.map((branch) =>
+    localizeShowroom(branch, locale)
+  );
 
   const breadcrumbs = [
-    { name: "Trang chủ", path: "/" },
-    { name: "Liên hệ", path: "/lien-he" },
+    { name: tc.home, path: "/" },
+    { name: tc.contact, path: "/lien-he" },
   ];
 
-  const localBusinessJsonLds = showrooms.map((branch) => ({
+  const localBusinessJsonLds = localizedShowrooms.map((branch) => ({
     ...buildLocalBusinessJsonLd({
       name: branch.name || siteName,
       streetAddress: branch.address || "",
       addressLocality: "",
-      addressRegion: "Việt Nam",
+      addressRegion: t.addressRegion,
       telephone: branch.phone || defaultHotline,
     }),
   }));
 
   return (
     <div className="max-w-container mx-auto px-3.5 sm:px-4 lg:px-5 py-8 lg:py-10 space-y-10">
-      <JsonLd data={[buildBreadcrumbJsonLd(breadcrumbs), ...localBusinessJsonLds]} />
+      <JsonLd
+        data={[
+          buildBreadcrumbJsonLd(breadcrumbs, locale),
+          ...localBusinessJsonLds,
+        ]}
+      />
 
       <ContactBranchesClient
         siteName={siteName}
         showrooms={showrooms}
+        locale={locale}
       />
 
       <QuickConsultForm
         variant="horizontal"
-        title="ĐĂNG KÝ TƯ VẤN"
-        sourceUrl="/lien-he"
+        title={t.consultFormTitle}
+        sourceUrl={localizeHref("/lien-he", locale)}
+        locale={locale}
       />
     </div>
   );

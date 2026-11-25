@@ -1,4 +1,4 @@
-import AccountPage, { metadata } from "@/app/tai-khoan/page";
+import AccountPage, { generateMetadata } from "@/app/tai-khoan/page";
 
-export { metadata };
+export { generateMetadata };
 export default AccountPage;

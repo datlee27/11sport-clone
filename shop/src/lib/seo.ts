@@ -1,12 +1,18 @@
 import type { Metadata } from "next";
+import type { LocaleCode } from "@/lib/format";
+import { delocalizePath, localizeHref } from "@/lib/i18n";
 
 export const SITE_URL = (
   process.env.NEXT_PUBLIC_SITE_URL || "https://11sport.vn"
 ).replace(/\/+$/, "");
 
 export const SITE_NAME = "11Sport";
+export const DEFAULT_TITLE_VI = `${SITE_NAME} — Hệ Thống Vợt & Phụ Kiện Pickleball Chính Hãng`;
+export const DEFAULT_TITLE_EN = `${SITE_NAME} — Authentic Pickleball Paddles, Shoes & Accessories`;
 export const DEFAULT_DESCRIPTION =
   "Đại lý phân phối Vợt Pickleball Joola, Selkirk, Kamito, Facolos, CRBN, Giày Asics, Skechers & Phụ kiện chính hãng 100%. Lỗi là đổi mới, freeship toàn quốc.";
+export const DEFAULT_DESCRIPTION_EN =
+  "Authorized distributor of 100% authentic Joola, Selkirk, Kamito, Facolos & CRBN pickleball paddles, Asics & Skechers court shoes, and accessories. 1-to-1 replacement & free nationwide shipping.";
 
 export const FILTER_PARAM_KEYS = [
   "category",
@@ -100,7 +106,7 @@ export function evaluateCrawlPolicy(
  */
 export function resolveNestedCategoryRedirect(
   segments: string[],
-  locale: "vi" | "en" = "vi"
+  locale: LocaleCode = "vi"
 ): string | null {
   const clean = segments.filter(Boolean);
   if (clean.length === 1) {
@@ -117,13 +123,13 @@ export interface BuildMetadataInput {
   image?: string;
   type?: "website" | "article";
   noIndex?: boolean;
-  locale?: "vi" | "en";
+  locale?: LocaleCode;
   searchParams?: Record<string, string | string[] | undefined>;
 }
 
 export function buildMetadata({
   title,
-  description = DEFAULT_DESCRIPTION,
+  description,
   path = "/",
   image = "/images/mock/hero-desktop-1.svg",
   type = "website",
@@ -134,18 +140,17 @@ export function buildMetadata({
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
   const isExplicitEnPath =
     normalizedPath === "/en" || normalizedPath.startsWith("/en/");
-  const effectiveLocale: "vi" | "en" =
+  const effectiveLocale: LocaleCode =
     locale || (isExplicitEnPath ? "en" : "vi");
 
-  const strippedLocalePath =
-    normalizedPath.replace(/^\/en(?=\/|$)/, "") || "/";
+  const resolvedDescription =
+    description ||
+    (effectiveLocale === "en" ? DEFAULT_DESCRIPTION_EN : DEFAULT_DESCRIPTION);
 
-  const localizedBasePath =
-    effectiveLocale === "en"
-      ? strippedLocalePath === "/"
-        ? "/en"
-        : `/en${strippedLocalePath}`
-      : strippedLocalePath;
+  const viPath = delocalizePath(normalizedPath).split(/[?#]/)[0] || "/";
+  const enPath = localizeHref(viPath, "en");
+
+  const localizedBasePath = effectiveLocale === "en" ? enPath : viPath;
 
   const crawlPolicy = searchParams
     ? evaluateCrawlPolicy(localizedBasePath, searchParams)
@@ -155,15 +160,15 @@ export function buildMetadata({
     ? crawlPolicy.canonicalUrl
     : `${SITE_URL}${localizedBasePath === "/" ? "" : localizedBasePath}`;
 
-  const viAlt = `${SITE_URL}${strippedLocalePath === "/" ? "" : strippedLocalePath}`;
-  const enAlt = `${SITE_URL}${strippedLocalePath === "/" ? "/en" : `/en${strippedLocalePath}`}`;
+  const viAlt = `${SITE_URL}${viPath === "/" ? "" : viPath}`;
+  const enAlt = `${SITE_URL}${enPath}`;
   const ogImage = image.startsWith("http") ? image : `${SITE_URL}${image}`;
 
   const shouldNoIndex = noIndex || (crawlPolicy ? !crawlPolicy.index : false);
 
   return {
     title,
-    description,
+    description: resolvedDescription,
     alternates: {
       canonical: canonicalUrl,
       languages: {
@@ -174,7 +179,7 @@ export function buildMetadata({
     },
     openGraph: {
       title,
-      description,
+      description: resolvedDescription,
       url: canonicalUrl,
       siteName: SITE_NAME,
       locale: effectiveLocale === "en" ? "en_US" : "vi_VN",
@@ -192,7 +197,7 @@ export function buildMetadata({
     twitter: {
       card: "summary_large_image",
       title,
-      description,
+      description: resolvedDescription,
       images: [ogImage],
     },
     robots: {
@@ -202,11 +207,13 @@ export function buildMetadata({
   };
 }
 
-export function buildOrganizationJsonLd() {
+export function buildOrganizationJsonLd(locale: LocaleCode = "vi") {
   return {
     "@context": "https://schema.org",
     "@type": "Organization",
     name: SITE_NAME,
+    description:
+      locale === "en" ? DEFAULT_DESCRIPTION_EN : DEFAULT_DESCRIPTION,
     url: SITE_URL,
     logo: `${SITE_URL}/images/mock/brand-tile.svg`,
     sameAs: [
@@ -225,17 +232,22 @@ export function buildOrganizationJsonLd() {
   };
 }
 
-export function buildWebSiteJsonLd() {
+export function buildWebSiteJsonLd(locale: LocaleCode = "vi") {
+  const isEn = locale === "en";
   return {
     "@context": "https://schema.org",
     "@type": "WebSite",
     name: SITE_NAME,
-    url: SITE_URL,
+    description: isEn ? DEFAULT_DESCRIPTION_EN : DEFAULT_DESCRIPTION,
+    inLanguage: isEn ? "en-US" : "vi-VN",
+    url: isEn ? `${SITE_URL}/en` : SITE_URL,
     potentialAction: {
       "@type": "SearchAction",
       target: {
         "@type": "EntryPoint",
-        urlTemplate: `${SITE_URL}/tim-kiem?q={search_term_string}`,
+        urlTemplate: isEn
+          ? `${SITE_URL}/en/search?q={search_term_string}`
+          : `${SITE_URL}/tim-kiem?q={search_term_string}`,
       },
       "query-input": "required name=search_term_string",
     },
@@ -247,18 +259,32 @@ export interface BreadcrumbItem {
   path: string;
 }
 
-export function buildBreadcrumbJsonLd(items: BreadcrumbItem[]) {
+export function buildBreadcrumbJsonLd(
+  items: BreadcrumbItem[],
+  locale: LocaleCode = "vi"
+) {
   return {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
-    itemListElement: items.map((item, index) => ({
-      "@type": "ListItem",
-      position: index + 1,
-      name: item.name,
-      item: item.path.startsWith("http")
-        ? item.path
-        : `${SITE_URL}${item.path.startsWith("/") ? item.path : `/${item.path}`}`,
-    })),
+    itemListElement: items.map((item, index) => {
+      let resolvedItemUrl: string;
+      if (item.path.startsWith("http")) {
+        resolvedItemUrl = item.path;
+      } else {
+        const normalized = item.path.startsWith("/")
+          ? item.path
+          : `/${item.path}`;
+        const localized =
+          locale === "en" ? localizeHref(normalized, "en") : normalized;
+        resolvedItemUrl = `${SITE_URL}${localized === "/" ? "" : localized}`;
+      }
+      return {
+        "@type": "ListItem",
+        position: index + 1,
+        name: item.name,
+        item: resolvedItemUrl,
+      };
+    }),
   };
 }
 
@@ -275,10 +301,15 @@ export interface ProductJsonLdInput {
   ratingValue?: number;
   reviewCount?: number;
   bulkTiers?: Array<{ minQty: number; unitPrice: number; label?: string }>;
+  locale?: LocaleCode;
 }
 
 export function buildProductJsonLd(input: ProductJsonLdInput) {
-  const url = `${SITE_URL}/${input.slug}`;
+  const locale = input.locale || "vi";
+  const url =
+    locale === "en"
+      ? `${SITE_URL}/en/${input.slug}`
+      : `${SITE_URL}/${input.slug}`;
   const currency = input.priceCurrency || "VND";
   const validTiers = (input.bulkTiers ?? []).filter(
     (tier) => Number.isFinite(tier.unitPrice) && tier.unitPrice > 0
@@ -287,7 +318,11 @@ export function buildProductJsonLd(input: ProductJsonLdInput) {
     "@type": "UnitPriceSpecification",
     price: tier.unitPrice,
     priceCurrency: currency,
-    name: tier.label || `Mua từ ${tier.minQty} sản phẩm cùng biến thể`,
+    name:
+      tier.label ||
+      (locale === "en"
+        ? `Buy ${tier.minQty}+ of the same variant`
+        : `Mua từ ${tier.minQty} sản phẩm cùng biến thể`),
     eligibleQuantity: {
       "@type": "QuantitativeValue",
       minValue: tier.minQty,
@@ -339,13 +374,19 @@ export interface ArticleJsonLdInput {
   publishedAt: string;
   updatedAt?: string;
   authorName?: string;
+  locale?: LocaleCode;
 }
 
 export function buildArticleJsonLd(input: ArticleJsonLdInput) {
-  const url = `${SITE_URL}/${input.slug}`;
+  const locale = input.locale || "vi";
+  const url =
+    locale === "en"
+      ? `${SITE_URL}/en/${input.slug}`
+      : `${SITE_URL}/${input.slug}`;
   return {
     "@context": "https://schema.org",
     "@type": "Article",
+    inLanguage: locale === "en" ? "en-US" : "vi-VN",
     headline: input.title,
     description: input.description,
     image: input.image.startsWith("http")
@@ -355,7 +396,9 @@ export function buildArticleJsonLd(input: ArticleJsonLdInput) {
     dateModified: input.updatedAt || input.publishedAt,
     author: {
       "@type": "Person",
-      name: input.authorName || "Ban Chuyên Môn 11Sport",
+      name:
+        input.authorName ||
+        (locale === "en" ? "11Sport Editorial Team" : "Ban Chuyên Môn 11Sport"),
     },
     publisher: {
       "@type": "Organization",

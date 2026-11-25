@@ -7,6 +7,17 @@ import {
   buildMetadata,
 } from "@/lib/seo";
 import { fetchArticleDetail, fetchArticles } from "@/lib/storefront";
+import {
+  localizeArticleDetail,
+  localizeArticleSummary,
+  localizeHref,
+} from "@/lib/i18n";
+import { getServerLocale } from "@/lib/i18n/server";
+import {
+  EDITORIAL_I18N,
+  getBlogCategories,
+  getBlogCategoryMeta,
+} from "@/lib/i18n/editorial";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { QuickConsultForm } from "@/components/blog/QuickConsultForm";
 import {
@@ -20,54 +31,34 @@ interface ArticleOrCategorySlugProps {
   searchParams?: Record<string, string | string[] | undefined>;
 }
 
-const BLOG_CATEGORY_MAP: Record<
-  string,
-  { name: string; description: string }
-> = {
-  "kien-thuc-pickleball": {
-    name: "Kiến thức Pickleball",
-    description:
-      "Luật chơi, cách tính điểm, kỹ thuật Dink, Third-Shot Drop và kích thước sân Pickleball chuẩn USAPA.",
-  },
-  "review-danh-gia": {
-    name: "Review & Đánh giá",
-    description:
-      "Đánh giá thực chiến các dòng vợt Pickleball Joola, Selkirk, Kamito, Facolos, CRBN mới nhất.",
-  },
-  "tu-van-dung-cu-pickleball": {
-    name: "Tư vấn dụng cụ Pickleball",
-    description:
-      "Hướng dẫn chọn độ dày lõi 14mm vs 16mm, trọng lượng vợt, giày và phụ kiện theo trình độ.",
-  },
-  "tin-tuc-cong-dong": {
-    name: "Tin tức & Cộng đồng",
-    description:
-      "Tin tức giải đấu PPA Tour, cộng đồng CLB và sự kiện tại hệ thống 3 showroom.",
-  },
-};
-
 export async function generateMetadata({
   params,
   searchParams,
 }: ArticleOrCategorySlugProps): Promise<Metadata> {
-  const catMeta = BLOG_CATEGORY_MAP[params.slug];
+  const locale = getServerLocale();
+  const tCat = EDITORIAL_I18N[locale].blogCategory;
+
+  const catMeta = getBlogCategoryMeta(params.slug, locale);
   if (catMeta) {
     return buildMetadata({
-      title: `${catMeta.name} — Tin Tức & Cẩm Nang Pickleball`,
+      title: tCat.metaTitle(catMeta.name),
       description: catMeta.description,
       path: `/tin-tuc/${params.slug}`,
+      locale,
       searchParams,
     });
   }
 
-  const { data: article } = await fetchArticleDetail(params.slug);
-  if (!article) {
+  const { data: rawArticle } = await fetchArticleDetail(params.slug);
+  if (!rawArticle) {
     return buildMetadata({
-      title: "Bài viết Pickleball",
+      title: tCat.articleFallbackTitle,
       path: `/tin-tuc/${params.slug}`,
+      locale,
     });
   }
 
+  const article = localizeArticleDetail(rawArticle, locale);
   return buildMetadata({
     title: article.seo?.title || article.title,
     description:
@@ -75,13 +66,17 @@ export async function generateMetadata({
     path: `/${article.slug}`,
     image: article.seo?.ogImage || article.thumbnailUrl,
     type: "article",
+    locale,
   });
 }
 
 export default async function NewsCategoryOrArticlePage({
   params,
 }: ArticleOrCategorySlugProps) {
-  const catMeta = BLOG_CATEGORY_MAP[params.slug];
+  const locale = getServerLocale();
+  const tc = EDITORIAL_I18N[locale].common;
+  const tList = EDITORIAL_I18N[locale].blogList;
+  const catMeta = getBlogCategoryMeta(params.slug, locale);
 
   // 1. BLOG CATEGORY HUB
   if (catMeta) {
@@ -89,21 +84,28 @@ export default async function NewsCategoryOrArticlePage({
       category: params.slug,
       limit: 12,
     });
+    const localizedArticles = articlesRes.data.map((post) =>
+      localizeArticleSummary(post, locale)
+    );
+    const allCategories = getBlogCategories(locale);
 
     const breadcrumbs = [
-      { name: "Trang chủ", href: "/" },
-      { name: "Tin tức", href: "/tin-tuc" },
+      { name: tc.home, href: localizeHref("/", locale) },
+      { name: tc.blog, href: localizeHref("/tin-tuc", locale) },
       { name: catMeta.name },
     ];
 
     return (
       <div>
         <JsonLd
-          data={buildBreadcrumbJsonLd([
-            { name: "Trang chủ", path: "/" },
-            { name: "Tin tức", path: "/tin-tuc" },
-            { name: catMeta.name, path: `/tin-tuc/${params.slug}` },
-          ])}
+          data={buildBreadcrumbJsonLd(
+            [
+              { name: tc.home, path: "/" },
+              { name: tc.blog, path: "/tin-tuc" },
+              { name: catMeta.name, path: `/tin-tuc/${params.slug}` },
+            ],
+            locale
+          )}
         />
 
         <PageHeroBanner
@@ -116,17 +118,17 @@ export default async function NewsCategoryOrArticlePage({
           <div className="lg:col-span-9 space-y-6">
             <div className="flex flex-wrap items-center gap-2 border-b border-[#ececec] pb-3.5">
               <Link
-                href="/tin-tuc"
-                className="h-8 px-3.5 rounded-none border border-[#dddddd] bg-white text-xs font-bold uppercase tracking-wider text-[#555555] hover:border-[#224e40] hover:text-[#224e40] inline-flex items-center"
+                href={localizeHref("/tin-tuc", locale)}
+                className="min-h-[32px] px-3.5 py-1 rounded-none border border-[#dddddd] bg-white text-xs font-bold uppercase tracking-wider text-[#555555] hover:border-[#224e40] hover:text-[#224e40] inline-flex items-center"
               >
-                Tất cả bài viết
+                {tList.allArticles}
               </Link>
-              {Object.entries(BLOG_CATEGORY_MAP).map(([slugKey, info]) => (
+              {allCategories.map((info) => (
                 <Link
-                  key={slugKey}
-                  href={`/tin-tuc/${slugKey}`}
-                  className={`h-8 px-3.5 rounded-none border text-xs font-bold uppercase tracking-wider inline-flex items-center transition-colors ${
-                    slugKey === params.slug
+                  key={info.slug}
+                  href={localizeHref(`/tin-tuc/${info.slug}`, locale)}
+                  className={`min-h-[32px] px-3.5 py-1 rounded-none border text-xs font-bold uppercase tracking-wider inline-flex items-center transition-colors ${
+                    info.slug === params.slug
                       ? "border-[#224e40] bg-[#224e40] text-white"
                       : "border-[#dddddd] bg-white text-[#555555] hover:border-[#224e40] hover:text-[#224e40]"
                   }`}
@@ -136,17 +138,34 @@ export default async function NewsCategoryOrArticlePage({
               ))}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-8">
-              {articlesRes.data.map((post) => (
-                <ArticleGridCard key={post._id} article={post} />
-              ))}
-            </div>
+            {localizedArticles.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-8">
+                {localizedArticles.map((post) => (
+                  <ArticleGridCard
+                    key={post._id}
+                    article={post}
+                    locale={locale}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="border border-[#e5e5e5] bg-[#f8f9f5] p-8 text-center space-y-3">
+                <p className="text-sm text-[#555555]">{tList.emptyTitle}</p>
+                <Link
+                  href={localizeHref("/tin-tuc", locale)}
+                  className="inline-flex items-center justify-center min-h-[40px] px-5 bg-[#224e40] hover:bg-[#193b30] text-white text-xs font-bold uppercase tracking-wider transition-colors"
+                >
+                  {tList.emptyAction}
+                </Link>
+              </div>
+            )}
           </div>
 
           <aside className="lg:col-span-3 lg:sticky lg:top-24">
             <QuickConsultForm
               variant="sidebar"
-              sourceUrl={`/tin-tuc/${params.slug}`}
+              sourceUrl={localizeHref(`/tin-tuc/${params.slug}`, locale)}
+              locale={locale}
             />
           </aside>
         </div>
@@ -155,16 +174,18 @@ export default async function NewsCategoryOrArticlePage({
   }
 
   // 2. BLOG ARTICLE DETAIL (/tin-tuc/[post-slug])
-  const { data: article, notFound: isNotFound } = await fetchArticleDetail(
+  const { data: rawArticle, notFound: isNotFound } = await fetchArticleDetail(
     params.slug
   );
-  if (isNotFound || !article) {
+  if (isNotFound || !rawArticle) {
     notFound();
   }
 
+  const article = localizeArticleDetail(rawArticle, locale);
+
   const breadcrumbs = [
-    { name: "Trang chủ", path: "/" },
-    { name: "Tin tức", path: "/tin-tuc" },
+    { name: tc.home, path: "/" },
+    { name: tc.blog, path: "/tin-tuc" },
     ...(article.category
       ? [
           {
@@ -180,7 +201,7 @@ export default async function NewsCategoryOrArticlePage({
     <div>
       <JsonLd
         data={[
-          buildBreadcrumbJsonLd(breadcrumbs),
+          buildBreadcrumbJsonLd(breadcrumbs, locale),
           buildArticleJsonLd({
             title: article.title,
             description: article.excerpt || article.title,
@@ -189,6 +210,7 @@ export default async function NewsCategoryOrArticlePage({
             publishedAt: article.publishedAt || new Date().toISOString(),
             updatedAt: article.updatedAt,
             authorName: article.authorName,
+            locale,
           }),
         ]}
       />
@@ -196,6 +218,7 @@ export default async function NewsCategoryOrArticlePage({
       <ArticleDetailBody
         article={article}
         sourceUrl={`/tin-tuc/${article.slug}`}
+        locale={locale}
       />
     </div>
   );

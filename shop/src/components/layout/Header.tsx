@@ -20,7 +20,15 @@ import {
   resolveMediaUrl,
   type CurrencyCode,
 } from "@/lib/format";
-import { getLocaleFromPath, localizeHref, STORE_I18N } from "@/lib/i18n";
+import {
+  getLocaleFromPath,
+  localizeArticleSummary,
+  localizeHref,
+  localizeProductName,
+  STORE_I18N,
+  switchLocalePath,
+} from "@/lib/i18n";
+import { CHROME_I18N } from "@/lib/i18n/chrome";
 import type { SiteSettingsData } from "@/lib/storefront";
 import type {
   ArticleSummary,
@@ -189,6 +197,7 @@ export function Header({
   const locale = getLocaleFromPath(pathname);
   const isEn = locale === "en";
   const t = STORE_I18N[locale].nav;
+  const chrome = CHROME_I18N[locale].header;
 
   const rawBrand = settings?.siteName || "11Sport";
   const wordmark = rawBrand.toLowerCase();
@@ -221,9 +230,11 @@ export function Header({
 
   const activeCurrency: CurrencyCode = mounted ? currency : "VND";
 
-  const cleanBasePath = pathname.replace(/^\/en(?=\/|$)/, "") || "/";
-  const viTarget = cleanBasePath;
-  const enTarget = cleanBasePath === "/" ? "/en" : `/en${cleanBasePath}`;
+  const searchSuffix =
+    mounted && typeof window !== "undefined" ? window.location.search : "";
+  const currentPathWithQuery = `${pathname}${searchSuffix}`;
+  const viTarget = switchLocalePath(currentPathWithQuery, "vi");
+  const enTarget = switchLocalePath(currentPathWithQuery, "en");
 
   const navItems = useMemo<NavItem[]>(() => {
     if (!isEn && menuItems && menuItems.length > 0) {
@@ -486,7 +497,7 @@ export function Header({
             <button
               type="button"
               onClick={() => setMobileMenuOpen(true)}
-              aria-label={isEn ? "Open category menu" : "Mở menu danh mục"}
+              aria-label={chrome.openMenuAria}
               className="w-10 h-10 min-[375px]:w-11 min-[375px]:h-11 rounded-md border border-white/30 bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
             >
               <Menu className="w-[18px] h-[18px]" aria-hidden="true" />
@@ -494,7 +505,7 @@ export function Header({
             <button
               type="button"
               onClick={() => setSearchOpen(true)}
-              aria-label={isEn ? "Open search" : "Mở tìm kiếm"}
+              aria-label={chrome.openSearchAria}
               className="w-10 h-10 min-[375px]:w-11 min-[375px]:h-11 rounded-md border border-white/30 bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
             >
               <Search className="w-[17px] h-[17px]" aria-hidden="true" />
@@ -503,16 +514,16 @@ export function Header({
 
           {/* Brand Wordmark (left on desktop, centered on mobile) */}
           <Link
-            href={isEn ? "/en" : "/"}
-            className="text-[22px] sm:text-[26px] lg:text-[23px] xl:text-[28px] font-extrabold tracking-tight text-white shrink-0 leading-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white rounded"
+            href={localizeHref("/", locale)}
+            className="text-[22px] sm:text-[26px] lg:text-[22px] xl:text-[28px] font-extrabold tracking-tight text-white shrink-0 leading-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white rounded"
           >
             {wordmark}
           </Link>
 
           {/* Desktop 7-Item Navigation */}
           <nav
-            aria-label={isEn ? "Main navigation" : "Danh mục chính"}
-            className="hidden lg:flex items-center lg:gap-2 xl:gap-5 shrink-0"
+            aria-label={chrome.mainNavAria}
+            className="hidden lg:flex items-center lg:gap-1.5 xl:gap-5 shrink-0"
           >
             {navItems.map((item) => {
               const hasDropdown = Boolean(
@@ -557,7 +568,7 @@ export function Header({
                   }}
                 >
                   {item.isHighlightedMint ? (
-                    <div className="mipik-mint-pill inline-flex items-center gap-0.5 h-8 lg:px-2.5 xl:px-[13px] rounded-full bg-store-mint-bg border border-store-mint-border text-store-mint-ink lg:text-[12px] xl:text-xs font-bold uppercase tracking-wide whitespace-nowrap shrink-0">
+                    <div className="mipik-mint-pill inline-flex items-center gap-0.5 h-8 lg:px-2 xl:px-[13px] rounded-full bg-store-mint-bg border border-store-mint-border text-store-mint-ink lg:text-[11.5px] xl:text-xs font-bold uppercase tracking-wide whitespace-nowrap shrink-0">
                       <Link
                         href={item.href}
                         onClick={() => setActiveMenu(null)}
@@ -570,11 +581,7 @@ export function Header({
                           type="button"
                           aria-expanded={isOpen}
                           aria-haspopup="true"
-                          aria-label={
-                            isEn
-                              ? `Toggle ${item.label} submenu`
-                              : `Mở danh mục con ${item.label}`
-                          }
+                          aria-label={chrome.toggleSubmenuAria(item.label)}
                           onClick={() =>
                             setActiveMenu(isOpen ? null : item.label)
                           }
@@ -594,7 +601,7 @@ export function Header({
                       <Link
                         href={item.href}
                         onClick={() => setActiveMenu(null)}
-                        className="inline-flex items-center py-2 lg:text-[12px] xl:text-[13px] font-medium uppercase tracking-wide text-white/95 hover:text-store-cream transition-colors whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:underline"
+                        className="inline-flex items-center py-2 lg:text-[11.5px] xl:text-[13px] font-medium uppercase tracking-wide text-white/95 hover:text-store-cream transition-colors whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:underline"
                       >
                         {item.label}
                       </Link>
@@ -603,11 +610,7 @@ export function Header({
                           type="button"
                           aria-expanded={isOpen}
                           aria-haspopup="true"
-                          aria-label={
-                            isEn
-                              ? `Toggle ${item.label} submenu`
-                              : `Mở danh mục con ${item.label}`
-                          }
+                          aria-label={chrome.toggleSubmenuAria(item.label)}
                           onClick={() =>
                             setActiveMenu(isOpen ? null : item.label)
                           }
@@ -660,9 +663,7 @@ export function Header({
                               onClick={() => setActiveMenu(null)}
                               className="inline-flex items-center text-xs font-bold uppercase tracking-wide text-store-forest hover:underline"
                             >
-                              {isEn
-                                ? "View all Paddles →"
-                                : "Xem tất cả Vợt Pickleball →"}
+                              {chrome.viewAllPaddlesFull}
                             </Link>
                           </div>
                         </div>
@@ -670,7 +671,7 @@ export function Header({
                         <div className="w-[490px] rounded-md bg-white border border-store-border-sage shadow-drawer p-5 space-y-4 text-ink-primary">
                           <div>
                             <p className="text-xs font-extrabold uppercase tracking-wider text-store-forest border-b border-store-border-sage pb-1.5 mb-2.5">
-                              {isEn ? "Featured Brands" : "Hãng nổi bật"}
+                              {chrome.featuredBrandsHeading}
                             </p>
                             <div className="grid grid-cols-3 gap-2">
                               {FEATURED_PADDLE_BRANDS.map((b) => (
@@ -725,20 +726,16 @@ export function Header({
                             </div>
                           </div>
 
-                          <div className="pt-2 border-t border-store-border-sage flex items-center justify-between">
+                          <div className="pt-2 border-t border-store-border-sage flex items-center justify-between gap-2">
                             <span className="text-xs text-ink-muted">
-                              {isEn
-                                ? "22 official pickleball paddle brands"
-                                : "22 thương hiệu vợt chính hãng"}
+                              {chrome.officialBrandsCount}
                             </span>
                             <Link
                               href={localizeHref("/vot-pickleball", locale)}
                               onClick={() => setActiveMenu(null)}
-                              className="inline-flex items-center text-xs font-bold uppercase tracking-wide text-store-forest hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-store-forest rounded"
+                              className="inline-flex items-center text-xs font-bold uppercase tracking-wide text-store-forest hover:underline whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-store-forest rounded"
                             >
-                              {isEn
-                                ? "View all Paddles →"
-                                : "Xem tất cả Vợt →"}
+                              {chrome.viewAllPaddlesShort}
                             </Link>
                           </div>
                         </div>
@@ -770,11 +767,11 @@ export function Header({
           </nav>
 
           {/* Right Utility Actions (Search box -> Cart -> VI flag -> EN flag -> 3-Currency dropdown) */}
-          <div className="flex items-center gap-1.5 sm:gap-2.5 lg:gap-2 xl:gap-3.5 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2.5 lg:gap-1.5 xl:gap-3.5 shrink-0">
             <button
               type="button"
               onClick={() => setSearchOpen(true)}
-              aria-label={isEn ? "Search products" : "Tìm kiếm sản phẩm"}
+              aria-label={chrome.searchProductsAria}
               className="hidden lg:inline-flex lg:w-9 lg:h-9 xl:w-[46px] xl:h-[46px] rounded-[10px] border border-white/25 bg-transparent hover:bg-white/10 items-center justify-center text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
             >
               <Search
@@ -786,9 +783,7 @@ export function Header({
             <button
               type="button"
               onClick={openDrawer}
-              aria-label={
-                isEn ? `Cart (${totalItems})` : `Giỏ hàng (${totalItems} sản phẩm)`
-              }
+              aria-label={chrome.cartAria(totalItems)}
               className="relative inline-flex items-center justify-center w-10 h-10 min-[375px]:w-11 min-[375px]:h-11 lg:w-10 lg:h-10 rounded-md text-white hover:opacity-85 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
             >
               <ShoppingCart className="w-[22px] h-[22px]" aria-hidden="true" />
@@ -836,7 +831,7 @@ export function Header({
                 onClick={() => setCurrencyOpen((o) => !o)}
                 aria-haspopup="listbox"
                 aria-expanded={currencyOpen}
-                aria-label={isEn ? "Switch currency" : "Chuyển đổi tiền tệ"}
+                aria-label={chrome.switchCurrencyAria}
                 className="inline-flex items-center lg:gap-1 xl:gap-1.5 h-7 lg:px-1.5 xl:px-2 rounded-full bg-white text-ink-primary text-[11px] font-bold shadow-sm whitespace-nowrap shrink-0 hover:bg-[#f4f7f5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
               >
                 <span className="w-4 h-4 rounded-full overflow-hidden flex items-center justify-center shrink-0">
@@ -852,7 +847,7 @@ export function Header({
               {currencyOpen && (
                 <ul
                   role="listbox"
-                  aria-label="Chọn đơn vị tiền tệ"
+                  aria-label={chrome.currencyListboxAria}
                   className="absolute right-0 top-full mt-1.5 w-28 rounded-md bg-white border border-store-border-sage shadow-drawer py-1 z-50"
                 >
                   {CURRENCY_OPTIONS.map((opt) => {
@@ -893,7 +888,7 @@ export function Header({
         <div
           role="dialog"
           aria-modal="true"
-          aria-label={isEn ? "Search products" : "Tìm kiếm sản phẩm"}
+          aria-label={chrome.searchProductsAria}
           className="fixed inset-0 z-50 bg-black/65 backdrop-blur-xs flex items-start justify-center pt-14 sm:pt-20 px-3 sm:px-4"
           onClick={() => setSearchOpen(false)}
         >
@@ -911,11 +906,12 @@ export function Header({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={t.searchPlaceholder}
+                aria-label={chrome.searchInputAria}
                 className="flex-1 min-w-0 h-11 sm:h-12 px-3.5 sm:px-4 rounded-md border border-store-border-sage text-base text-ink-primary focus:outline-none focus:border-store-forest focus:ring-2 focus:ring-store-forest/20"
               />
               <button
                 type="submit"
-                aria-label={isEn ? "Submit search" : "Tìm kiếm"}
+                aria-label={chrome.submitSearchAria}
                 className="w-11 h-11 sm:w-12 sm:h-12 rounded-md bg-store-forest text-white flex items-center justify-center hover:bg-store-forest-hover transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-store-forest focus-visible:ring-offset-2"
               >
                 <Search className="w-5 h-5" aria-hidden="true" />
@@ -923,7 +919,7 @@ export function Header({
               <button
                 type="button"
                 onClick={() => setSearchOpen(false)}
-                aria-label={isEn ? "Close search" : "Đóng tìm kiếm"}
+                aria-label={chrome.closeSearchAria}
                 className="w-11 h-11 sm:w-12 sm:h-12 rounded-md border border-store-border-sage flex items-center justify-center text-ink-secondary hover:bg-store-surface-sage shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-store-forest"
               >
                 <X className="w-5 h-5" aria-hidden="true" />
@@ -937,18 +933,14 @@ export function Header({
                     role="status"
                     className="py-6 text-center text-sm font-medium text-ink-secondary"
                   >
-                    {isEn
-                      ? `Searching for “${trimmedSearchQuery}”...`
-                      : `Đang tìm kiếm “${trimmedSearchQuery}”...`}
+                    {chrome.searchingFor(trimmedSearchQuery)}
                   </div>
                 ) : searchFailed ? (
                   <div
                     role="status"
                     className="py-5 px-3 rounded-md bg-store-surface-sage text-center text-sm text-ink-secondary"
                   >
-                    {isEn
-                      ? "Could not load quick suggestions. Press Enter to view full search results."
-                      : "Không thể tải gợi ý nhanh. Nhấn Enter để tìm kiếm toàn trang."}
+                    {chrome.searchPreviewError}
                   </div>
                 ) : searchResults.products.length === 0 &&
                   searchResults.articles.length === 0 ? (
@@ -957,69 +949,78 @@ export function Header({
                     className="py-5 px-3 rounded-md bg-store-surface-sage text-center space-y-1"
                   >
                     <p className="text-sm font-semibold text-ink-primary">
-                      {isEn
-                        ? `No matching results for “${trimmedSearchQuery}”.`
-                        : `Không tìm thấy sản phẩm phù hợp cho “${trimmedSearchQuery}”.`}
+                      {chrome.searchNoMatch(trimmedSearchQuery)}
                     </p>
                     <p className="text-xs text-ink-secondary">
-                      {isEn
-                        ? "Try keywords like Joola, Selkirk, Kamito, 16mm or browse all products."
-                        : "Thử từ khóa khác như Joola, Selkirk, Kamito, 16mm hoặc xem tất cả kết quả."}
+                      {chrome.searchNoMatchHint}
                     </p>
                   </div>
                 ) : (
                   <>
                     {searchResults.products.length > 0 && (
                       <div className="divide-y divide-store-border-sage">
-                        {searchResults.products.map((p) => (
-                          <Link
-                            key={p._id}
-                            href={localizeHref(`/${p.slug}`, locale)}
-                            onClick={() => setSearchOpen(false)}
-                            className="flex items-center justify-between gap-3 py-2.5 px-2 hover:bg-store-surface-sage rounded"
-                          >
-                            <div className="flex items-center gap-3 min-w-0">
-                              <div className="relative w-10 h-10 rounded border border-store-border-card bg-white shrink-0 overflow-hidden">
-                                {resolveMediaUrl(p.thumbnailUrl) && (
-                                  <Image
-                                    src={resolveMediaUrl(p.thumbnailUrl)}
-                                    alt={p.name}
-                                    fill
-                                    sizes="40px"
-                                    className="object-contain p-0.5"
-                                  />
-                                )}
+                        {searchResults.products.map((p) => {
+                          const displayName = localizeProductName(
+                            p.name,
+                            locale,
+                            p.slug
+                          );
+                          return (
+                            <Link
+                              key={p._id}
+                              href={localizeHref(`/${p.slug}`, locale)}
+                              onClick={() => setSearchOpen(false)}
+                              className="flex items-center justify-between gap-3 py-2.5 px-2 hover:bg-store-surface-sage rounded"
+                            >
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className="relative w-10 h-10 rounded border border-store-border-card bg-white shrink-0 overflow-hidden">
+                                  {resolveMediaUrl(p.thumbnailUrl) && (
+                                    <Image
+                                      src={resolveMediaUrl(p.thumbnailUrl)}
+                                      alt={displayName}
+                                      fill
+                                      sizes="40px"
+                                      className="object-contain p-0.5"
+                                    />
+                                  )}
+                                </div>
+                                <span className="text-sm font-medium text-ink-primary truncate">
+                                  {displayName}
+                                </span>
                               </div>
-                              <span className="text-sm font-medium text-ink-primary truncate">
-                                {p.name}
+                              <span className="text-sm font-bold text-store-forest shrink-0 tabular-nums">
+                                {formatPriceByCurrency(
+                                  p.sellingPrice,
+                                  activeCurrency
+                                )}
                               </span>
-                            </div>
-                            <span className="text-sm font-bold text-store-forest shrink-0 tabular-nums">
-                              {formatPriceByCurrency(
-                                p.sellingPrice,
-                                activeCurrency
-                              )}
-                            </span>
-                          </Link>
-                        ))}
+                            </Link>
+                          );
+                        })}
                       </div>
                     )}
 
                     {searchResults.articles.length > 0 && (
                       <div className="pt-2 border-t border-store-border-sage space-y-1">
                         <p className="px-2 text-xs font-bold uppercase tracking-wider text-ink-muted">
-                          {isEn ? "Related Articles" : "Bài viết liên quan"}
+                          {chrome.relatedArticlesHeading}
                         </p>
-                        {searchResults.articles.slice(0, 3).map((a) => (
-                          <Link
-                            key={a._id}
-                            href={localizeHref(`/${a.slug}`, locale)}
-                            onClick={() => setSearchOpen(false)}
-                            className="block py-2 px-2 text-sm font-medium text-ink-secondary hover:bg-store-surface-sage hover:text-store-forest rounded truncate"
-                          >
-                            {a.title}
-                          </Link>
-                        ))}
+                        {searchResults.articles.slice(0, 3).map((rawArticle) => {
+                          const article = localizeArticleSummary(
+                            rawArticle,
+                            locale
+                          );
+                          return (
+                            <Link
+                              key={article._id}
+                              href={localizeHref(`/${article.slug}`, locale)}
+                              onClick={() => setSearchOpen(false)}
+                              className="block py-2 px-2 text-sm font-medium text-ink-secondary hover:bg-store-surface-sage hover:text-store-forest rounded truncate"
+                            >
+                              {article.title}
+                            </Link>
+                          );
+                        })}
                       </div>
                     )}
                   </>
@@ -1046,7 +1047,7 @@ export function Header({
         <div
           role="dialog"
           aria-modal="true"
-          aria-label={isEn ? "Category menu" : "Menu danh mục"}
+          aria-label={chrome.mobileMenuAria}
           className="fixed inset-0 z-50 bg-black/50 lg:hidden flex"
           onClick={() => setMobileMenuOpen(false)}
         >
@@ -1062,7 +1063,7 @@ export function Header({
                 <button
                   type="button"
                   onClick={() => setMobileMenuOpen(false)}
-                  aria-label={isEn ? "Close menu" : "Đóng menu"}
+                  aria-label={chrome.closeMenuAria}
                   className="w-11 h-11 rounded-full border border-store-border-sage flex items-center justify-center text-ink-secondary hover:bg-store-surface-sage transition-colors"
                 >
                   <X className="w-4 h-4" aria-hidden="true" />
@@ -1079,6 +1080,7 @@ export function Header({
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder={t.searchPlaceholder}
+                  aria-label={chrome.searchInputAria}
                   className="w-full h-11 pl-9 pr-3 rounded-full bg-store-form-bg border border-store-border-sage text-base sm:text-sm text-ink-primary focus:outline-none focus:border-store-forest"
                 />
               </form>
@@ -1116,11 +1118,7 @@ export function Header({
                               )
                             }
                             aria-expanded={isExpanded}
-                            aria-label={
-                              isEn
-                                ? `Toggle ${item.label} submenu`
-                                : `Mở danh mục con ${item.label}`
-                            }
+                            aria-label={chrome.toggleSubmenuAria(item.label)}
                             className="w-10 h-10 flex items-center justify-center rounded-md text-ink-muted hover:bg-store-surface-sage hover:text-store-forest shrink-0"
                           >
                             <ChevronRight
@@ -1156,11 +1154,16 @@ export function Header({
             </div>
 
             <div className="pt-4 border-t border-store-border-sage space-y-2.5">
-              <div className="flex items-center gap-1.5 pb-1">
+              <div
+                role="group"
+                aria-label={chrome.currencyListboxAria}
+                className="flex items-center gap-1.5 pb-1"
+              >
                 {CURRENCY_OPTIONS.map((opt) => (
                   <button
                     key={opt.code}
                     type="button"
+                    aria-pressed={activeCurrency === opt.code}
                     onClick={() => setCurrency(opt.code)}
                     className={`flex-1 min-h-[40px] py-1.5 rounded text-xs font-bold border ${
                       activeCurrency === opt.code

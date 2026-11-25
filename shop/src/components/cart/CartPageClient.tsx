@@ -7,6 +7,17 @@ import { Gift, Minus, Plus, Tag, X } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { formatPriceByCurrency, resolveMediaUrl } from "@/lib/format";
 import {
+  localizeApiMessage,
+  localizeColorName,
+  localizeCouponName,
+  localizeGiftTitle,
+  localizeHref,
+  localizeProductName,
+  localizeSizeLabel,
+} from "@/lib/i18n";
+import { useLocale } from "@/lib/i18n/client";
+import { getCommerceI18n } from "@/lib/i18n/commerce";
+import {
   calculatePerVariantCartPricing,
   DEFAULT_GIFT_TIERS,
 } from "@/lib/pricingAndSearch";
@@ -17,6 +28,8 @@ import type { CartPriceResponse } from "@/types/storefront";
 const DEFAULT_FREESHIP_THRESHOLD = 0;
 
 export function CartPageClient() {
+  const locale = useLocale();
+  const t = getCommerceI18n(locale).cart;
   const items = useCartStore((s) => s.items);
   const updateQuantity = useCartStore((s) => s.updateQuantity);
   const removeItem = useCartStore((s) => s.removeItem);
@@ -116,18 +129,20 @@ export function CartPageClient() {
     return <div className="h-64 bg-[#f8f9f5] animate-pulse" />;
   }
 
+  const paddlesHref = localizeHref("/vot-pickleball", locale);
+  const checkoutHref = localizeHref("/thanh-toan", locale);
+  const zeroPrice = formatPriceByCurrency(0, currency);
+
   // Empty Cart 1:1 mipik.vn
   if (items.length === 0) {
     return (
       <div className="py-14 sm:py-20 px-4 text-center space-y-5 bg-white">
-        <p className="text-[15px] text-[#333333]">
-          Chưa có sản phẩm nào trong giỏ hàng.
-        </p>
+        <p className="text-[15px] text-[#333333]">{t.emptyText}</p>
         <Link
-          href="/vot-pickleball"
+          href={paddlesHref}
           className="inline-flex items-center justify-center min-h-[44px] px-7 rounded-none bg-store-forest hover:bg-store-forest-hover text-white text-[13px] font-bold uppercase tracking-wider transition-colors"
         >
-          QUAY TRỞ LẠI CỬA HÀNG
+          {t.backToShop}
         </Link>
       </div>
     );
@@ -149,12 +164,12 @@ export function CartPageClient() {
               {
                 minQty: 3,
                 unitPrice: Math.max(0, item.price - 100_000),
-                label: "Mua từ 3 sản phẩm cùng biến thể",
+                label: t.bulkTierLabel(3),
               },
               {
                 minQty: 5,
                 unitPrice: Math.max(0, item.price - 200_000),
-                label: "Mua từ 5 sản phẩm cùng biến thể",
+                label: t.bulkTierLabel(5),
               },
             ]
           : [],
@@ -206,15 +221,15 @@ export function CartPageClient() {
             <table className="w-full border-collapse text-[13.5px]">
               <thead>
                 <tr className="border-b-[3px] border-[#ececec] text-[#777777] text-[12px] font-bold uppercase tracking-wider">
-                  <th className="py-2.5 text-left">SẢN PHẨM</th>
+                  <th className="py-2.5 text-left">{t.colProduct}</th>
                   <th className="hidden sm:table-cell py-2.5 text-right whitespace-nowrap pl-3">
-                    GIÁ
+                    {t.colPrice}
                   </th>
                   <th className="py-2.5 text-center whitespace-nowrap pl-2 sm:pl-3">
-                    SỐ LƯỢNG
+                    {t.colQuantity}
                   </th>
                   <th className="hidden sm:table-cell py-2.5 text-right whitespace-nowrap pl-3">
-                    TẠM TÍNH
+                    {t.colSubtotal}
                   </th>
                 </tr>
               </thead>
@@ -230,6 +245,18 @@ export function CartPageClient() {
                     lineCalc?.effectiveUnitPrice ?? item.price;
                   const lineSubtotal =
                     lineCalc?.lineSubtotal ?? item.price * item.quantity;
+                  const displayName = localizeProductName(
+                    item.name,
+                    locale,
+                    item.slug
+                  );
+                  const displayVariant = [
+                    localizeColorName(item.colorName, locale),
+                    localizeSizeLabel(item.sizeName, locale),
+                  ]
+                    .filter(Boolean)
+                    .join(" · ");
+                  const productHref = localizeHref(`/${item.slug}`, locale);
 
                   return (
                     <tr key={item.variantId}>
@@ -240,7 +267,7 @@ export function CartPageClient() {
                           <button
                             type="button"
                             onClick={() => removeItem(item.variantId)}
-                            aria-label={`Xóa ${item.name}`}
+                            aria-label={t.removeItemAria(displayName)}
                             className="hidden sm:inline-flex min-w-[36px] min-h-[36px] w-9 h-9 rounded-full border border-[#cccccc] text-[#666666] hover:border-[#0a0a0a] hover:text-[#0a0a0a] items-center justify-center shrink-0 transition-colors"
                           >
                             <X className="w-3.5 h-3.5" aria-hidden="true" />
@@ -251,19 +278,19 @@ export function CartPageClient() {
                             <button
                               type="button"
                               onClick={() => removeItem(item.variantId)}
-                              aria-label={`Xóa ${item.name}`}
+                              aria-label={t.removeItemAria(displayName)}
                               className="sm:hidden absolute -top-2 -left-2 z-10 min-w-[36px] min-h-[36px] w-9 h-9 rounded-full border border-[#cccccc] bg-white text-[#555555] inline-flex items-center justify-center shadow-sm"
                             >
                               <X className="w-3.5 h-3.5" aria-hidden="true" />
                             </button>
                             <Link
-                              href={`/${item.slug}`}
+                              href={productHref}
                               className="relative block w-[56px] h-[56px] sm:w-[74px] sm:h-[74px] bg-white border border-[#eeeeee] overflow-hidden"
                             >
                               {resolveMediaUrl(item.imageUrl) ? (
                                 <Image
                                   src={resolveMediaUrl(item.imageUrl)}
-                                  alt={item.name}
+                                  alt={displayName}
                                   fill
                                   sizes="74px"
                                   className="object-contain p-1"
@@ -279,22 +306,22 @@ export function CartPageClient() {
                           {/* Product Name, Variant & Mobile inline qty × price */}
                           <div className="min-w-0 space-y-0.5">
                             <Link
-                              href={`/${item.slug}`}
+                              href={productHref}
                               className="text-[13.5px] sm:text-[14px] font-medium text-[#224e40] hover:text-[#186746] line-clamp-2 leading-snug block"
                             >
-                              {item.name}
+                              {displayName}
                             </Link>
-                            {(item.colorName || item.sizeName) && (
+                            {displayVariant && (
                               <p className="text-[12px] text-[#777777]">
-                                {[item.colorName, item.sizeName]
-                                  .filter(Boolean)
-                                  .join(" · ")}
+                                {displayVariant}
                               </p>
                             )}
                             {lineCalc?.appliedBulkTierMinQty && (
                               <p className="text-[11.5px] font-semibold text-[#204b3e]">
-                                Giá sỉ bậc {lineCalc.appliedBulkTierMinQty}+:{" "}
-                                {formatPriceByCurrency(effectiveUnit, currency)}/sp
+                                {t.bulkTierApplied(
+                                  lineCalc.appliedBulkTierMinQty,
+                                  formatPriceByCurrency(effectiveUnit, currency)
+                                )}
                               </p>
                             )}
                             <p className="sm:hidden text-[12.5px] text-[#555555] pt-0.5 tabular-nums">
@@ -320,7 +347,7 @@ export function CartPageClient() {
                             onClick={() =>
                               updateQuantity(item.variantId, item.quantity - 1)
                             }
-                            aria-label={`Giảm số lượng ${item.name}`}
+                            aria-label={t.decreaseQtyAria(displayName)}
                             className="min-w-[36px] min-h-[36px] inline-flex items-center justify-center text-[#555555] hover:bg-[#f5f5f5]"
                           >
                             <Minus className="w-3.5 h-3.5" aria-hidden="true" />
@@ -333,7 +360,7 @@ export function CartPageClient() {
                             onClick={() =>
                               updateQuantity(item.variantId, item.quantity + 1)
                             }
-                            aria-label={`Tăng số lượng ${item.name}`}
+                            aria-label={t.increaseQtyAria(displayName)}
                             className="min-w-[36px] min-h-[36px] inline-flex items-center justify-center text-[#555555] hover:bg-[#f5f5f5]"
                           >
                             <Plus className="w-3.5 h-3.5" aria-hidden="true" />
@@ -355,30 +382,33 @@ export function CartPageClient() {
                     <td className="py-4 pr-2 align-middle">
                       <div className="flex items-center gap-3">
                         <span className="hidden sm:inline-block w-6 shrink-0" />
-                        <div className="w-[64px] h-[64px] sm:w-[74px] sm:h-[74px] bg-white border border-[#dce5da] shrink-0 flex items-center justify-center text-[11px] font-bold uppercase text-[#204b3e] text-center p-1">
-                          Quà tặng
+                        <div className="w-[64px] h-[64px] sm:w-[74px] sm:h-[74px] bg-white border border-[#dce5da] shrink-0 flex items-center justify-center text-[11px] font-bold uppercase text-[#204b3e] text-center p-1 leading-tight">
+                          {t.giftBadge}
                         </div>
                         <div className="min-w-0 space-y-0.5">
                           <p className="text-[13.5px] sm:text-[14px] font-semibold text-[#204b3e] leading-snug">
-                            {activeGift.productName}
+                            {localizeGiftTitle(activeGift.productName, locale)}
                           </p>
                           <p className="text-[12px] text-[#4a6b5d]">
-                            Quà tặng 11Sport: Miễn phí
+                            {t.giftSubtitle}
                           </p>
                           <p className="sm:hidden text-[12.5px] text-[#555555] pt-0.5 tabular-nums">
-                            1 × <strong className="text-[#0a0a0a]">0₫</strong>
+                            1 ×{" "}
+                            <strong className="text-[#0a0a0a]">
+                              {zeroPrice}
+                            </strong>
                           </p>
                         </div>
                       </div>
                     </td>
-                    <td className="hidden sm:table-cell py-4 pl-3 text-right font-bold text-[#0a0a0a] tabular-nums align-middle">
-                      0₫
+                    <td className="hidden sm:table-cell py-4 pl-3 text-right font-bold text-[#0a0a0a] tabular-nums align-middle whitespace-nowrap">
+                      {zeroPrice}
                     </td>
                     <td className="py-4 pl-3 text-center font-medium text-[#555555] tabular-nums align-middle">
                       {activeGift.quantity || 1}
                     </td>
-                    <td className="hidden sm:table-cell py-4 pl-3 text-right font-bold text-[#0a0a0a] tabular-nums align-middle">
-                      0₫
+                    <td className="hidden sm:table-cell py-4 pl-3 text-right font-bold text-[#0a0a0a] tabular-nums align-middle whitespace-nowrap">
+                      {zeroPrice}
                     </td>
                   </tr>
                 )}
@@ -389,10 +419,10 @@ export function CartPageClient() {
           {/* Continue Shopping & Update Cart Actions */}
           <div className="pt-5 flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-3">
             <Link
-              href="/vot-pickleball"
+              href={paddlesHref}
               className="inline-flex items-center justify-center min-h-[44px] px-4 rounded-none border border-[#224e40] bg-[linear-gradient(90deg,#d8e5de_0%,#edf2ee_50%,#f8eee9_100%)] hover:brightness-95 text-[#142e25] text-[12.5px] font-bold uppercase tracking-wider transition-all whitespace-nowrap"
             >
-              ← TIẾP TỤC XEM SẢN PHẨM
+              {t.continueViewing}
             </Link>
 
             <button
@@ -401,7 +431,7 @@ export function CartPageClient() {
               disabled={loadingPrice}
               className="inline-flex items-center justify-center min-h-[44px] px-5 rounded-none bg-[#224e40] hover:bg-[#193b30] text-white text-[12.5px] font-bold uppercase tracking-wider transition-colors disabled:opacity-60 whitespace-nowrap"
             >
-              {loadingPrice ? "ĐANG CẬP NHẬT..." : "CẬP NHẬT GIỎ HÀNG"}
+              {loadingPrice ? t.updatingCart : t.updateCart}
             </button>
           </div>
         </div>
@@ -410,12 +440,12 @@ export function CartPageClient() {
         <aside className="lg:col-span-5 lg:pl-8 space-y-5">
           <div>
             <h2 className="text-[13.5px] font-bold uppercase tracking-wider text-[#0a0a0a] border-b-[3px] border-[#ececec] pb-2.5">
-              TỔNG CỘNG GIỎ HÀNG
+              {t.totalsHeading}
             </h2>
 
             <div className="divide-y divide-[#ececec] text-[13.5px]">
               <div className="py-3 flex items-center justify-between gap-3">
-                <span className="text-[#555555]">Tạm tính</span>
+                <span className="text-[#555555]">{t.subtotal}</span>
                 <span className="font-bold text-[#0a0a0a] tabular-nums">
                   {formatPriceByCurrency(rawSubtotal, currency)}
                 </span>
@@ -423,7 +453,7 @@ export function CartPageClient() {
 
               {tierDiscountTotal > 0 && (
                 <div className="py-3 flex items-center justify-between gap-3 text-[#204b3e]">
-                  <span>Tiết kiệm Giá Mua Nhiều</span>
+                  <span>{t.bulkSavings}</span>
                   <span className="font-bold tabular-nums">
                     -{formatPriceByCurrency(tierDiscountTotal, currency)}
                   </span>
@@ -432,7 +462,7 @@ export function CartPageClient() {
 
               {couponDiscount > 0 && (
                 <div className="py-3 flex items-center justify-between gap-3 text-[#204b3e]">
-                  <span>Mã ưu đãi</span>
+                  <span>{t.promoCode}</span>
                   <span className="font-bold tabular-nums">
                     -{formatPriceByCurrency(couponDiscount, currency)}
                   </span>
@@ -440,34 +470,35 @@ export function CartPageClient() {
               )}
 
               <div className="py-3 flex items-start justify-between gap-4">
-                <span className="text-[#555555] shrink-0">Vận chuyển</span>
+                <span className="text-[#555555] shrink-0">{t.shipping}</span>
                 <div className="text-right space-y-1">
                   <p className="font-medium text-[#333333]">
                     {shippingFee === 0
-                      ? "Miễn phí vận chuyển"
+                      ? t.freeShipping
                       : formatPriceByCurrency(shippingFee, currency)}
                   </p>
                   <p className="text-[12px] text-[#777777] leading-snug max-w-[230px] ml-auto">
-                    Các tùy chọn vận chuyển sẽ được cập nhật trong quá trình
-                    thanh toán.
+                    {t.shippingCalcNote}
                   </p>
                 </div>
               </div>
 
               <div className="py-3.5 border-b-2 border-[#ececec] flex items-center justify-between gap-3">
-                <span className="font-bold text-[#333333]">Tổng</span>
+                <span className="font-bold text-[#333333]">{t.total}</span>
                 <span className="text-[15.5px] font-bold text-[#0a0a0a] tabular-nums">
-                  {loadingPrice ? "..." : formatPriceByCurrency(totalAmount, currency)}
+                  {loadingPrice
+                    ? "..."
+                    : formatPriceByCurrency(totalAmount, currency)}
                 </span>
               </div>
             </div>
 
             <div className="pt-4">
               <Link
-                href="/thanh-toan"
+                href={checkoutHref}
                 className="w-full min-h-[44px] rounded-none inline-flex items-center justify-center bg-[#224e40] hover:bg-[#193b30] text-white text-[13px] font-bold uppercase tracking-wider transition-colors"
               >
-                TIẾN HÀNH THANH TOÁN
+                {t.proceedToCheckout}
               </Link>
             </div>
           </div>
@@ -482,7 +513,7 @@ export function CartPageClient() {
           >
             <div className="flex items-center gap-2 pb-2 border-b-[3px] border-[#ececec] text-[13.5px] font-bold text-[#333333]">
               <Tag className="w-4 h-4 text-[#888888]" aria-hidden="true" />
-              <label htmlFor="cart-coupon">Mã ưu đãi</label>
+              <label htmlFor="cart-coupon">{t.couponLabel}</label>
             </div>
 
             <input
@@ -490,7 +521,7 @@ export function CartPageClient() {
               type="text"
               value={couponInput}
               onChange={(e) => setCouponInput(e.target.value)}
-              placeholder="Nhập mã giảm giá"
+              placeholder={t.couponPlaceholder}
               className="w-full min-h-[44px] px-3 py-2 rounded-none border border-[#dddddd] bg-white text-base sm:text-[13.5px] text-[#0a0a0a] placeholder:text-[#6b7280] focus:outline-none focus:border-[#224e40]"
             />
 
@@ -498,18 +529,20 @@ export function CartPageClient() {
               type="submit"
               className="w-full min-h-[44px] rounded-none bg-[#f7f7f7] hover:bg-[#eeeeee] border border-[#dddddd] text-[13.5px] font-medium text-[#555555] transition-colors"
             >
-              Áp dụng
+              {t.applyCoupon}
             </button>
 
             {pricing?.couponError && (
               <p className="text-xs text-[#dd3333] font-medium">
-                {pricing.couponError}
+                {localizeApiMessage(pricing.couponError, locale)}
               </p>
             )}
             {pricing?.couponApplied && (
               <p className="text-xs text-[#204b3e] font-bold">
-                Đã áp dụng mã {pricing.couponApplied.code}:{" "}
-                {pricing.couponApplied.name}
+                {t.couponAppliedPrefix(
+                  pricing.couponApplied.code,
+                  localizeCouponName(pricing.couponApplied.name, locale)
+                )}
               </p>
             )}
           </form>
@@ -521,14 +554,14 @@ export function CartPageClient() {
         <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-[#e2ebe1]">
           <div>
             <p className="text-[11px] font-bold uppercase tracking-widest text-[#4a6b5d]">
-              11SPORT EXCLUSIVE REWARDS
+              {t.rewardsEyebrow}
             </p>
             <h2 className="text-[18px] sm:text-[20px] font-bold text-[#204b3e] mt-0.5">
-              Chọn quà tặng của bạn
+              {t.chooseYourGift}
             </h2>
           </div>
           <span className="px-3.5 py-1 rounded-full bg-[#204b3e] text-white text-xs font-bold uppercase tracking-wide tabular-nums">
-            {eligibleGifts.length > 0 ? "1 / 1 QUÀ" : "0 / 1 QUÀ"}
+            {t.giftCounter(eligibleGifts.length > 0)}
           </span>
         </div>
 
@@ -557,13 +590,16 @@ export function CartPageClient() {
                   />
                   <div className="flex-1 min-w-0">
                     <p className="text-[13.5px] font-bold text-[#204b3e] leading-snug">
-                      {gift.productName}
+                      {localizeGiftTitle(gift.productName, locale)}
                     </p>
                     <p className="text-xs text-[#4a6b5d] mt-0.5">
-                      Tự động đính kèm cùng đơn hàng · Miễn phí 0₫
+                      {t.giftAutoAttached(zeroPrice)}
                     </p>
                   </div>
-                  <Gift className="w-4 h-4 text-[#204b3e] shrink-0" aria-hidden="true" />
+                  <Gift
+                    className="w-4 h-4 text-[#204b3e] shrink-0"
+                    aria-hidden="true"
+                  />
                 </label>
               );
             })}
@@ -573,11 +609,14 @@ export function CartPageClient() {
             <div className="flex flex-wrap items-center justify-between gap-2 text-[13px] font-medium">
               <span>
                 {nextMilestone
-                  ? `Mua thêm ${nextMilestone.itemsNeeded} sản phẩm để mở khóa: ${nextMilestone.rewardTitle}`
-                  : "Chọn từ 5 sản phẩm trở lên để nhận áo Polo 11Sport Dry-Fit miễn phí."}
+                  ? t.giftProgressPrompt(
+                      nextMilestone.itemsNeeded,
+                      localizeGiftTitle(nextMilestone.rewardTitle, locale)
+                    )
+                  : t.giftDefaultPrompt}
               </span>
               <span className="font-bold tabular-nums">
-                {totalQty} / {nextMilestone?.minQty || 5} SP
+                {t.qtyProgress(totalQty, nextMilestone?.minQty || 5)}
               </span>
             </div>
 
@@ -595,10 +634,10 @@ export function CartPageClient() {
                   className="bg-white rounded-[9px] border border-[#dce5da] px-3.5 py-2.5 flex items-center justify-between gap-2 text-xs sm:text-[13px]"
                 >
                   <span className="font-medium text-[#204b3e]">
-                    {tier.rewardTitle}
+                    {localizeGiftTitle(tier.rewardTitle, locale)}
                   </span>
-                  <span className="px-2 py-0.5 rounded-full bg-[#edf5ed] text-[#204b3e] font-bold shrink-0">
-                    0₫
+                  <span className="px-2 py-0.5 rounded-full bg-[#edf5ed] text-[#204b3e] font-bold shrink-0 tabular-nums">
+                    {zeroPrice}
                   </span>
                 </div>
               ))}

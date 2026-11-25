@@ -1,13 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { apiFetch } from "@/lib/api";
+import { ApiError, apiFetch } from "@/lib/api";
+import type { LocaleCode } from "@/lib/format";
+import { localizeApiMessage } from "@/lib/i18n";
+import { useLocale } from "@/lib/i18n/client";
+import { EDITORIAL_I18N } from "@/lib/i18n/editorial";
 
 interface QuickConsultFormProps {
   variant?: "sidebar" | "horizontal";
   title?: string;
   subtitle?: string;
   sourceUrl?: string;
+  locale?: LocaleCode;
 }
 
 const INPUT_CLS =
@@ -23,7 +28,12 @@ export function QuickConsultForm({
   title,
   subtitle,
   sourceUrl,
+  locale,
 }: QuickConsultFormProps) {
+  const clientLocale = useLocale();
+  const activeLocale = locale ?? clientLocale;
+  const t = EDITORIAL_I18N[activeLocale].consultForm;
+
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -37,17 +47,23 @@ export function QuickConsultForm({
 
   const isHorizontal = variant === "horizontal";
   const resolvedTitle =
-    title || (isHorizontal ? "ĐĂNG KÝ TƯ VẤN" : "GỬI CÂU HỎI TƯ VẤN");
+    title || (isHorizontal ? t.titleHorizontal : t.titleSidebar);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !phone.trim() || !message.trim()) return;
+    if (!name.trim() || !phone.trim() || !message.trim()) {
+      setFeedback({
+        type: "error",
+        text: t.validationRequired,
+      });
+      return;
+    }
     setSubmitting(true);
     setFeedback(null);
 
     const combinedMessage =
       isHorizontal && address.trim()
-        ? `[Địa chỉ: ${address.trim()}] ${message.trim()}`
+        ? `[${t.addressPrefix}: ${address.trim()}] ${message.trim()}`
         : message.trim();
 
     try {
@@ -65,19 +81,23 @@ export function QuickConsultForm({
       });
       setFeedback({
         type: "success",
-        text:
-          res?.message ||
-          "Đã nhận câu hỏi! Tư vấn viên 11Sport sẽ liên hệ lại sớm.",
+        text: res?.message
+          ? localizeApiMessage(res.message, activeLocale)
+          : t.successFallback,
       });
       setName("");
       setPhone("");
       setEmail("");
       setAddress("");
       setMessage("");
-    } catch {
+    } catch (err) {
+      const errorText =
+        err instanceof ApiError && err.message
+          ? localizeApiMessage(err.message, activeLocale)
+          : t.errorFallback;
       setFeedback({
         type: "error",
-        text: "Không thể gửi yêu cầu lúc này. Vui lòng gọi Hotline 0909 888 128.",
+        text: errorText,
       });
     } finally {
       setSubmitting(false);
@@ -98,7 +118,8 @@ export function QuickConsultForm({
 
         {feedback && (
           <div
-            role="status"
+            role={feedback.type === "error" ? "alert" : "status"}
+            aria-live="polite"
             className={`p-3 rounded-none border text-[13px] font-medium ${
               feedback.type === "success"
                 ? "bg-[#f8f9f5] border-[#dce5da] text-[#204b3e]"
@@ -113,7 +134,7 @@ export function QuickConsultForm({
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <div>
               <label htmlFor="consult-h-name" className="sr-only">
-                Họ và tên
+                {t.nameLabel}
               </label>
               <input
                 id="consult-h-name"
@@ -121,14 +142,14 @@ export function QuickConsultForm({
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Họ và tên *"
+                placeholder={t.namePlaceholder}
                 className={INPUT_CLS}
               />
             </div>
 
             <div>
               <label htmlFor="consult-h-phone" className="sr-only">
-                Số điện thoại
+                {t.phoneLabel}
               </label>
               <input
                 id="consult-h-phone"
@@ -136,35 +157,35 @@ export function QuickConsultForm({
                 required
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="Số điện thoại *"
+                placeholder={t.phonePlaceholder}
                 className={`${INPUT_CLS} tabular-nums`}
               />
             </div>
 
             <div>
               <label htmlFor="consult-h-email" className="sr-only">
-                Email
+                {t.emailLabel}
               </label>
               <input
                 id="consult-h-email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="Email"
+                placeholder={t.emailPlaceholder}
                 className={INPUT_CLS}
               />
             </div>
 
             <div>
               <label htmlFor="consult-h-address" className="sr-only">
-                Địa chỉ liên hệ
+                {t.addressLabel}
               </label>
               <input
                 id="consult-h-address"
                 type="text"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
-                placeholder="Địa chỉ liên hệ"
+                placeholder={t.addressPlaceholder}
                 className={INPUT_CLS}
               />
             </div>
@@ -172,7 +193,7 @@ export function QuickConsultForm({
 
           <div>
             <label htmlFor="consult-h-message" className="sr-only">
-              Nội dung tư vấn
+              {t.messageLabelHorizontal}
             </label>
             <textarea
               id="consult-h-message"
@@ -180,7 +201,7 @@ export function QuickConsultForm({
               required
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              placeholder="Nội dung cần tư vấn (chọn vợt 14mm/16mm, đặt lịch thử vợt...) *"
+              placeholder={t.messagePlaceholderHorizontal}
               className="w-full p-3 rounded-none border border-[#dddddd] bg-white text-base sm:text-[14px] text-[#0a0a0a] placeholder:text-[#6b7280] focus:outline-none focus:border-[#224e40]"
             />
           </div>
@@ -190,7 +211,7 @@ export function QuickConsultForm({
             disabled={submitting}
             className="min-h-[44px] px-6 rounded-none bg-[#224e40] hover:bg-[#193b30] text-white text-[12.5px] font-bold uppercase tracking-wider transition-colors disabled:opacity-60"
           >
-            {submitting ? "ĐANG GỬI..." : "GỬI LIÊN HỆ"}
+            {submitting ? t.submitting : t.submitHorizontal}
           </button>
         </form>
       </section>
@@ -208,7 +229,8 @@ export function QuickConsultForm({
       <div className="p-4 space-y-3">
         {feedback && (
           <div
-            role="status"
+            role={feedback.type === "error" ? "alert" : "status"}
+            aria-live="polite"
             className={`p-2.5 rounded-none border text-xs font-medium ${
               feedback.type === "success"
                 ? "bg-[#f8f9f5] border-[#dce5da] text-[#204b3e]"
@@ -222,7 +244,7 @@ export function QuickConsultForm({
         <form onSubmit={handleSubmit} className="space-y-2.5">
           <div>
             <label htmlFor="consult-name" className="sr-only">
-              Họ và tên
+              {t.nameLabel}
             </label>
             <input
               id="consult-name"
@@ -230,14 +252,14 @@ export function QuickConsultForm({
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Họ và tên *"
+              placeholder={t.namePlaceholder}
               className={INPUT_CLS}
             />
           </div>
 
           <div>
             <label htmlFor="consult-phone" className="sr-only">
-              Số điện thoại
+              {t.phoneLabel}
             </label>
             <input
               id="consult-phone"
@@ -245,28 +267,28 @@ export function QuickConsultForm({
               required
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              placeholder="Số điện thoại *"
+              placeholder={t.phonePlaceholder}
               className={`${INPUT_CLS} tabular-nums`}
             />
           </div>
 
           <div>
             <label htmlFor="consult-email" className="sr-only">
-              Email
+              {t.emailLabel}
             </label>
             <input
               id="consult-email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email"
+              placeholder={t.emailPlaceholder}
               className={INPUT_CLS}
             />
           </div>
 
           <div>
             <label htmlFor="consult-message" className="sr-only">
-              Nội dung
+              {t.messageLabelSidebar}
             </label>
             <textarea
               id="consult-message"
@@ -274,7 +296,7 @@ export function QuickConsultForm({
               required
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              placeholder="Nội dung *"
+              placeholder={t.messagePlaceholderSidebar}
               className="w-full p-3 rounded-none border border-[#dddddd] bg-white text-base sm:text-[14px] text-[#0a0a0a] placeholder:text-[#6b7280] focus:outline-none focus:border-[#224e40]"
             />
           </div>
@@ -284,7 +306,7 @@ export function QuickConsultForm({
             disabled={submitting}
             className="min-h-[44px] px-5 rounded-none bg-[#224e40] hover:bg-[#193b30] text-white text-[12.5px] font-bold uppercase tracking-wider transition-colors disabled:opacity-60"
           >
-            {submitting ? "ĐANG GỬI..." : "GỬI CÂU HỎI"}
+            {submitting ? t.submitting : t.submitSidebar}
           </button>
         </form>
       </div>

@@ -3,11 +3,18 @@
 import { useState } from "react";
 import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
+import { localizeHref } from "@/lib/i18n";
+import { useLocale } from "@/lib/i18n/client";
+import { getCommerceI18n } from "@/lib/i18n/commerce";
 
 /**
- * 1:1 mipik.vn Password Reset Page (`/tai-khoan/lost-password`)
+ * 1:1 mipik.vn Password Reset Page (`/tai-khoan/lost-password` & `/en/my-account/lost-password`)
  */
 export default function LostPasswordPage() {
+  const locale = useLocale();
+  const t = getCommerceI18n(locale).lostPassword;
+  const accountHref = localizeHref("/tai-khoan", locale);
+
   const [identifier, setIdentifier] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
@@ -20,30 +27,35 @@ export default function LostPasswordPage() {
   return (
     <div className="max-w-container mx-auto px-3.5 sm:px-4 lg:px-5 py-8 lg:py-10 space-y-5">
       <h1 className="text-[20px] sm:text-[22px] font-bold uppercase tracking-wide text-[#0a0a0a] border-b border-[#ececec] pb-3">
-        QUÊN MẬT KHẨU
+        {t.heading}
       </h1>
 
       {submitted ? (
         <div className="max-w-2xl space-y-4">
-          <div className="p-4 rounded-none bg-[#f8f9f5] border border-[#dce5da] text-[#204b3e] flex items-start gap-2.5 text-[14px]">
-            <CheckCircle2 className="w-5 h-5 shrink-0 mt-0.5" aria-hidden="true" />
+          <div
+            role="status"
+            className="p-4 rounded-none bg-[#f8f9f5] border border-[#dce5da] text-[#204b3e] flex items-start gap-2.5 text-[14px]"
+          >
+            <CheckCircle2
+              className="w-5 h-5 shrink-0 mt-0.5"
+              aria-hidden="true"
+            />
             <span>
-              Liên kết đặt lại mật khẩu đã được gửi tới{" "}
-              <strong>{identifier}</strong>. Vui lòng kiểm tra hộp thư của bạn.
+              {t.successPrefix} <strong>{identifier}</strong>
+              {t.successSuffix}
             </span>
           </div>
           <Link
-            href="/tai-khoan"
-            className="inline-flex items-center justify-center h-[40px] px-6 rounded-none bg-[#224e40] hover:bg-[#193b30] text-white text-[13px] font-bold uppercase tracking-wider transition-colors"
+            href={accountHref}
+            className="inline-flex items-center justify-center min-h-[44px] px-6 rounded-none bg-[#224e40] hover:bg-[#193b30] text-white text-[13px] font-bold uppercase tracking-wider transition-colors"
           >
-            QUAY LẠI ĐĂNG NHẬP
+            {t.backToLoginBtn}
           </Link>
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-4 max-w-2xl">
           <p className="text-[14px] text-[#333333] leading-relaxed">
-            Quên mật khẩu? Vui lòng nhập tên đăng nhập hoặc địa chỉ email. Bạn sẽ
-            nhận được một liên kết tạo mật khẩu mới qua email.
+            {t.instructions}
           </p>
 
           <div>
@@ -51,32 +63,33 @@ export default function LostPasswordPage() {
               htmlFor="reset-identifier"
               className="block text-[13px] font-bold text-[#222222] mb-1.5"
             >
-              Tên đăng nhập hoặc email <span className="text-[#dd3333]">*</span>
+              {t.identifierLabel} <span className="text-[#dd3333]">*</span>
             </label>
             <input
               id="reset-identifier"
               type="text"
               required
+              aria-label={t.identifierLabel}
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
-              placeholder="Nhập email hoặc tên tài khoản..."
-              className="w-full h-[40px] px-3 rounded-none border border-[#dddddd] bg-white text-[14px] text-[#0a0a0a] focus:outline-none focus:border-[#224e40]"
+              placeholder={t.identifierPlaceholder}
+              className="w-full min-h-[44px] px-3 py-2 rounded-none border border-[#dddddd] bg-white text-base sm:text-[14px] text-[#0a0a0a] placeholder:text-[#6b7280] focus:outline-none focus:border-[#224e40]"
             />
           </div>
 
           <div className="flex flex-wrap items-center gap-4">
             <button
               type="submit"
-              className="h-[40px] px-6 rounded-none bg-[#224e40] hover:bg-[#193b30] text-white text-[13px] font-bold uppercase tracking-wider transition-colors"
+              className="min-h-[44px] px-6 rounded-none bg-[#224e40] hover:bg-[#193b30] text-white text-[13px] font-bold uppercase tracking-wider transition-colors"
             >
-              ĐẶT LẠI MẬT KHẨU
+              {t.submitBtn}
             </button>
 
             <Link
-              href="/tai-khoan"
+              href={accountHref}
               className="text-[13.5px] font-medium text-[#224e40] hover:underline"
             >
-              ← Quay lại trang Đăng nhập
+              {t.backToLoginLink}
             </Link>
           </div>
         </form>

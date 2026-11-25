@@ -3,6 +3,13 @@ import type { Metadata } from "next";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { buildBreadcrumbJsonLd, buildMetadata } from "@/lib/seo";
 import { fetchArticles } from "@/lib/storefront";
+import {
+  localizeArticleCategoryName,
+  localizeArticleSummary,
+  localizeHref,
+} from "@/lib/i18n";
+import { getServerLocale } from "@/lib/i18n/server";
+import { EDITORIAL_I18N, getBlogCategories } from "@/lib/i18n/editorial";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { QuickConsultForm } from "@/components/blog/QuickConsultForm";
 import { ArticleGridCard } from "@/components/blog/ArticleViews";
@@ -15,11 +22,13 @@ interface BlogListPageProps {
 export async function generateMetadata({
   searchParams,
 }: BlogListPageProps): Promise<Metadata> {
+  const locale = getServerLocale();
+  const t = EDITORIAL_I18N[locale].blogList;
   return buildMetadata({
-    title: "Tin Tức & Kiến Thức Pickleball Chính Hãng",
-    description:
-      "Hướng dẫn chọn vợt Pickleball 14mm vs 16mm, luật chơi USAPA, review vợt Joola Perseus, Selkirk Boomstik và tin tức giải đấu.",
+    title: t.metaTitle,
+    description: t.metaDescription,
     path: "/tin-tuc",
+    locale,
     searchParams,
   });
 }
@@ -28,17 +37,13 @@ function getParam(val: string | string[] | undefined): string | undefined {
   return Array.isArray(val) ? val[0] : val;
 }
 
-const DEFAULT_CATEGORIES = [
-  { name: "Tất cả", slug: "" },
-  { name: "Kiến thức Pickleball", slug: "kien-thuc-pickleball" },
-  { name: "Review & Đánh giá", slug: "review-danh-gia" },
-  { name: "Tư vấn dụng cụ Pickleball", slug: "tu-van-dung-cu-pickleball" },
-  { name: "Tin tức & Cộng đồng", slug: "tin-tuc-cong-dong" },
-];
-
 export default async function BlogListPage({
   searchParams,
 }: BlogListPageProps) {
+  const locale = getServerLocale();
+  const t = EDITORIAL_I18N[locale].blogList;
+  const tc = EDITORIAL_I18N[locale].common;
+
   const category = getParam(searchParams.category) || "";
   const page = Number(getParam(searchParams.page) || "1") || 1;
 
@@ -50,25 +55,51 @@ export default async function BlogListPage({
 
   const categories =
     articlesRes.categories && articlesRes.categories.length > 0
-      ? [{ name: "Tất cả", slug: "" }, ...articlesRes.categories]
-      : DEFAULT_CATEGORIES;
+      ? [
+          { name: t.allCategories, slug: "" },
+          ...articlesRes.categories.map((cat) => ({
+            slug: cat.slug,
+            name: localizeArticleCategoryName(cat.name, locale, cat.slug),
+          })),
+        ]
+      : [
+          { name: t.allCategories, slug: "" },
+          ...getBlogCategories(locale).map((cat) => ({
+            slug: cat.slug,
+            name: cat.name,
+          })),
+        ];
+
+  const localizedArticles = articlesRes.data.map((article) =>
+    localizeArticleSummary(article, locale)
+  );
 
   const breadcrumbs = [
-    { name: "Trang chủ", href: "/" },
-    { name: "Tin tức" },
+    { name: tc.home, href: localizeHref("/", locale) },
+    { name: tc.blog },
   ];
+
+  const buildPageHref = (targetPage: number) => {
+    const query = new URLSearchParams();
+    query.set("page", String(targetPage));
+    if (category) query.set("category", category);
+    return localizeHref(`/tin-tuc?${query.toString()}`, locale);
+  };
 
   return (
     <div>
       <JsonLd
-        data={buildBreadcrumbJsonLd([
-          { name: "Trang chủ", path: "/" },
-          { name: "Tin tức", path: "/tin-tuc" },
-        ])}
+        data={buildBreadcrumbJsonLd(
+          [
+            { name: tc.home, path: "/" },
+            { name: tc.blog, path: "/tin-tuc" },
+          ],
+          locale
+        )}
       />
 
       <PageHeroBanner
-        title="TIN TỨC"
+        title={t.heroTitle}
         breadcrumbs={breadcrumbs}
         tone="news"
       />
@@ -79,14 +110,15 @@ export default async function BlogListPage({
           <div className="flex flex-wrap items-center gap-2 border-b border-[#ececec] pb-3.5">
             {categories.map((cat) => {
               const active = category === cat.slug;
-              const href = cat.slug
+              const rawHref = cat.slug
                 ? `/tin-tuc/${encodeURIComponent(cat.slug)}`
                 : "/tin-tuc";
+              const href = localizeHref(rawHref, locale);
               return (
                 <Link
                   key={cat.slug || "all"}
                   href={href}
-                  className={`inline-flex items-center h-8 px-3.5 rounded-none border text-xs font-bold uppercase tracking-wider transition-colors ${
+                  className={`inline-flex items-center min-h-[32px] px-3.5 py-1 rounded-none border text-xs font-bold uppercase tracking-wider transition-colors ${
                     active
                       ? "border-[#224e40] bg-[#224e40] text-white"
                       : "border-[#dddddd] bg-white text-[#555555] hover:border-[#224e40] hover:text-[#224e40]"
@@ -99,37 +131,53 @@ export default async function BlogListPage({
           </div>
 
           {/* 3-Col Clean Editorial Grid (1:1 mipik.vn) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-8">
-            {articlesRes.data.map((article) => (
-              <ArticleGridCard key={article._id} article={article} />
-            ))}
-          </div>
+          {localizedArticles.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-8">
+              {localizedArticles.map((article) => (
+                <ArticleGridCard
+                  key={article._id}
+                  article={article}
+                  locale={locale}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="border border-[#e5e5e5] bg-[#f8f9f5] p-8 text-center space-y-3">
+              <p className="text-sm text-[#555555]">{t.emptyTitle}</p>
+              <Link
+                href={localizeHref("/tin-tuc", locale)}
+                className="inline-flex items-center justify-center min-h-[40px] px-5 bg-[#224e40] hover:bg-[#193b30] text-white text-xs font-bold uppercase tracking-wider transition-colors"
+              >
+                {t.emptyAction}
+              </Link>
+            </div>
+          )}
 
           {/* Pagination */}
           {articlesRes.meta.totalPages > 1 && (
             <nav
-              aria-label="Phân trang bài viết"
+              aria-label={t.paginationAria}
               className="pt-4 flex items-center justify-center gap-2"
             >
               {page > 1 && (
                 <Link
-                  href={`/tin-tuc?page=${page - 1}`}
-                  aria-label="Trang trước"
+                  href={buildPageHref(page - 1)}
+                  aria-label={t.prevPageAria}
                   className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-[#dddddd] bg-white text-[#0a0a0a] hover:border-[#224e40]"
                 >
-                  <ChevronLeft className="w-4 h-4" />
+                  <ChevronLeft className="w-4 h-4" aria-hidden="true" />
                 </Link>
               )}
               <span className="text-sm font-semibold px-3 text-[#0a0a0a] tabular-nums">
-                Trang {page} / {articlesRes.meta.totalPages}
+                {t.pageLabel(page, articlesRes.meta.totalPages)}
               </span>
               {page < articlesRes.meta.totalPages && (
                 <Link
-                  href={`/tin-tuc?page=${page + 1}`}
-                  aria-label="Trang tiếp theo"
+                  href={buildPageHref(page + 1)}
+                  aria-label={t.nextPageAria}
                   className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-[#dddddd] bg-white text-[#0a0a0a] hover:border-[#224e40]"
                 >
-                  <ChevronRight className="w-4 h-4" />
+                  <ChevronRight className="w-4 h-4" aria-hidden="true" />
                 </Link>
               )}
             </nav>
@@ -137,7 +185,11 @@ export default async function BlogListPage({
         </div>
 
         <aside className="lg:col-span-3 lg:sticky lg:top-24">
-          <QuickConsultForm variant="sidebar" sourceUrl="/tin-tuc" />
+          <QuickConsultForm
+            variant="sidebar"
+            sourceUrl={localizeHref("/tin-tuc", locale)}
+            locale={locale}
+          />
         </aside>
       </div>
     </div>

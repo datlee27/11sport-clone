@@ -28,13 +28,61 @@ const EN_ROUTE_ALIASES: Record<string, string> = {
   "/en/contact": "/lien-he",
   "/en/cart": "/gio-hang",
   "/en/checkout": "/thanh-toan",
+  "/en/order-success": "/order-success",
   "/en/shop": "/cua-hang",
+  "/en/search": "/tim-kiem",
   "/en/my-account": "/tai-khoan",
   "/en/my-account/lost-password": "/tai-khoan/lost-password",
   "/en/category/blogs": "/tin-tuc",
+  "/en/blogs": "/tin-tuc",
+  "/en/blog": "/tin-tuc",
   "/en/category/blogs/technique": "/tin-tuc/kien-thuc-pickleball",
-  "/my-account": "/tai-khoan",
+  "/en/category/blogs/techniques": "/tin-tuc/kien-thuc-pickleball",
+  "/en/category/blogs/guides": "/tin-tuc/kien-thuc-pickleball",
+  "/en/category/blogs/review": "/tin-tuc/review-danh-gia",
+  "/en/category/blogs/reviews": "/tin-tuc/review-danh-gia",
+  "/en/category/blogs/paddle-reviews": "/tin-tuc/review-danh-gia",
+  "/en/category/blogs/buying-guide": "/tin-tuc/tu-van-dung-cu-pickleball",
+  "/en/category/blogs/gear-buying-guides": "/tin-tuc/tu-van-dung-cu-pickleball",
+  "/en/category/blogs/guide": "/tin-tuc/tu-van-dung-cu-pickleball",
+  "/en/category/blogs/community": "/tin-tuc/tin-tuc-cong-dong",
+  "/en/category/blogs/news": "/tin-tuc/tin-tuc-cong-dong",
+  "/en/about-us": "/ve-chung-toi",
+  "/en/trade-in": "/thu-cu-doi-moi",
+  "/en/shipping-policy": "/chinh-sach-van-chuyen",
+  "/en/warranty-returns": "/hoan-tien_tra-ve",
+  "/en/return-policy": "/hoan-tien_tra-ve",
+  "/en/privacy-policy": "/chinh-sach-bao-mat",
+  "/en/terms-of-use": "/quy-dinh-su-dung",
 };
+
+const EN_PREFIX_ALIASES: Array<[prefix: string, targetPrefix: string]> = [
+  ["/en/checkout/order-received/", "/thanh-toan/order-received/"],
+  ["/en/my-account/", "/tai-khoan/"],
+  ["/en/category/blogs/", "/tin-tuc/"],
+  ["/en/brand/", "/thuong-hieu/"],
+  ["/en/product/", "/san-pham/"],
+  ["/en/product-category/", "/danh-muc-san-pham/"],
+  ["/en/category/", "/danh-muc/"],
+];
+
+function rewriteWithLocale(
+  request: NextRequest,
+  targetPathname: string,
+  originalPathname: string,
+  locale: "vi" | "en"
+): NextResponse {
+  const url = request.nextUrl.clone();
+  url.pathname = targetPathname;
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-locale", locale);
+  requestHeaders.set("x-pathname", originalPathname);
+  const response = NextResponse.rewrite(url, {
+    request: { headers: requestHeaders },
+  });
+  response.headers.set("x-locale", locale);
+  return response;
+}
 
 async function getRedirects(): Promise<RedirectRule[]> {
   if ((process.env.NEXT_PUBLIC_DATA_SOURCE || "mock") === "mock") {
@@ -94,51 +142,41 @@ export async function middleware(request: NextRequest) {
       308
     );
   }
+  if (pathname === "/en/tra-cuu-don-hang" || pathname === "/en/track-order") {
+    return NextResponse.redirect(
+      new URL("/en/my-account?tab=lookup", request.url),
+      308
+    );
+  }
+  if (pathname === "/my-account") {
+    return rewriteWithLocale(request, "/tai-khoan", pathname, "vi");
+  }
 
-  // 1. Handle direct English alias mappings (/en/cart, /en/checkout, /en/my-account, /en/brand/*)
+  // 1. Handle direct English alias mappings (/en/cart, /en/checkout, /en/search, /en/my-account, /en/category/blogs/*, ...)
   if (EN_ROUTE_ALIASES[pathname]) {
-    const url = request.nextUrl.clone();
-    url.pathname = EN_ROUTE_ALIASES[pathname]!;
-    const requestHeaders = new Headers(request.headers);
-    requestHeaders.set("x-locale", "en");
-    requestHeaders.set("x-pathname", pathname);
-    const response = NextResponse.rewrite(url, {
-      request: { headers: requestHeaders },
-    });
-    response.headers.set("x-locale", "en");
-    return response;
+    return rewriteWithLocale(
+      request,
+      EN_ROUTE_ALIASES[pathname]!,
+      pathname,
+      "en"
+    );
   }
 
-  if (pathname.startsWith("/en/brand/")) {
-    const brandSlug = pathname.replace("/en/brand/", "");
-    const url = request.nextUrl.clone();
-    url.pathname = `/thuong-hieu/${brandSlug}`;
-    const requestHeaders = new Headers(request.headers);
-    requestHeaders.set("x-locale", "en");
-    requestHeaders.set("x-pathname", pathname);
-    const response = NextResponse.rewrite(url, {
-      request: { headers: requestHeaders },
-    });
-    response.headers.set("x-locale", "en");
-    return response;
+  // 2. Handle English prefix route aliases (/en/checkout/order-received/*, /en/my-account/*, /en/category/blogs/*, /en/brand/*, ...)
+  for (const [enPrefix, viPrefix] of EN_PREFIX_ALIASES) {
+    if (pathname.startsWith(enPrefix)) {
+      const rest = pathname.slice(enPrefix.length);
+      return rewriteWithLocale(request, `${viPrefix}${rest}`, pathname, "en");
+    }
   }
 
-  // 2. Handle general /en and /en/* bilingual prefix via internal rewrite
+  // 3. Handle general /en and /en/* bilingual prefix via internal rewrite
   if (pathname === "/en" || pathname.startsWith("/en/")) {
     const stripped = pathname.replace(/^\/en(?=\/|$)/, "") || "/";
-    const url = request.nextUrl.clone();
-    url.pathname = stripped;
-    const requestHeaders = new Headers(request.headers);
-    requestHeaders.set("x-locale", "en");
-    requestHeaders.set("x-pathname", pathname);
-    const response = NextResponse.rewrite(url, {
-      request: { headers: requestHeaders },
-    });
-    response.headers.set("x-locale", "en");
-    return response;
+    return rewriteWithLocale(request, stripped, pathname, "en");
   }
 
-  // 3. Check CMS dynamic redirects when in API mode
+  // 4. Check CMS dynamic redirects when in API mode
   const redirects = await getRedirects();
   const match = redirects.find((r) => r.fromPath === pathname);
   if (match) {
@@ -149,7 +187,15 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(targetUrl, status);
   }
 
-  return NextResponse.next();
+  // 5. Default VI request — attach x-locale & x-pathname headers for server helpers
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-locale", "vi");
+  requestHeaders.set("x-pathname", pathname);
+  const response = NextResponse.next({
+    request: { headers: requestHeaders },
+  });
+  response.headers.set("x-locale", "vi");
+  return response;
 }
 
 export const config = {

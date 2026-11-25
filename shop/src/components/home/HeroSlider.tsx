@@ -6,11 +6,15 @@ import Image from "next/image";
 import useEmblaCarousel from "embla-carousel-react";
 import Autoplay from "embla-carousel-autoplay";
 import { ChevronLeft, ChevronRight, ImageIcon } from "lucide-react";
-import { resolveMediaUrl } from "@/lib/format";
+import { resolveMediaUrl, type LocaleCode } from "@/lib/format";
+import { localizeBanner, localizeHref } from "@/lib/i18n";
+import { useLocale } from "@/lib/i18n/client";
+import { CHROME_I18N } from "@/lib/i18n/chrome";
 import type { BannerItem } from "@/types/storefront";
 
 interface HeroSliderProps {
   banners: BannerItem[];
+  locale?: LocaleCode;
 }
 
 /**
@@ -19,7 +23,10 @@ interface HeroSliderProps {
  * - Hover-reveal circular white outline prev/next arrows
  * - Circular 12px white outline pagination dots (solid white when active)
  */
-export function HeroSlider({ banners }: HeroSliderProps) {
+export function HeroSlider({ banners, locale }: HeroSliderProps) {
+  const routeLocale = useLocale();
+  const activeLocale = locale ?? routeLocale;
+  const t = CHROME_I18N[activeLocale].heroSlider;
   const [reducedMotion, setReducedMotion] = useState(false);
 
   useEffect(() => {
@@ -55,16 +62,14 @@ export function HeroSlider({ banners }: HeroSliderProps) {
   if (!banners.length) {
     return (
       <section
-        aria-label="Khung banner quảng cáo 11Sport"
+        aria-label={t.emptyBannerAria}
         className="group relative w-full overflow-hidden bg-store-surface-sage border-b border-[#e2e8e5]"
       >
         <div className="relative w-full aspect-[16/9] sm:aspect-[1425/490] flex flex-col items-center justify-center text-center px-4 bg-[#eef3f0]">
           <div className="w-12 h-12 rounded-full bg-white border border-[#dce5da] flex items-center justify-center text-[#224e40]/60 mb-2 shadow-sm">
             <ImageIcon className="w-6 h-6" aria-hidden="true" />
           </div>
-          <p className="text-sm font-medium text-[#555555]">
-            Chưa có dữ liệu
-          </p>
+          <p className="text-sm font-medium text-[#555555]">{t.noData}</p>
         </div>
 
         {/* Nút mũi tên giả lập khung slider */}
@@ -86,18 +91,20 @@ export function HeroSlider({ banners }: HeroSliderProps) {
 
   return (
     <section
-      aria-label="Banner nổi bật 11Sport"
+      aria-label={t.heroSectionAria}
       className="group relative w-full overflow-hidden bg-store-surface-sage"
     >
       <div className="overflow-hidden touch-pan-y" ref={emblaRef}>
         <div className="flex">
-          {banners.map((banner, idx) => {
+          {banners.map((rawBanner, idx) => {
+            const banner = localizeBanner(rawBanner, activeLocale);
+            const altLabel = banner.altText || banner.title;
             const slideContent = (
               <div className="relative w-full aspect-[16/9] sm:aspect-[1425/490] sm:max-h-[520px] xl:max-h-[540px]">
                 {/* Desktop Image */}
                 <Image
                   src={resolveMediaUrl(banner.desktopImageUrl)}
-                  alt={banner.altText || banner.title}
+                  alt={altLabel}
                   fill
                   priority={idx === 0}
                   sizes="100vw"
@@ -108,7 +115,7 @@ export function HeroSlider({ banners }: HeroSliderProps) {
                   src={resolveMediaUrl(
                     banner.desktopImageUrl || banner.mobileImageUrl
                   )}
-                  alt={banner.altText || banner.title}
+                  alt={altLabel}
                   fill
                   priority={idx === 0}
                   sizes="100vw"
@@ -120,7 +127,10 @@ export function HeroSlider({ banners }: HeroSliderProps) {
             return (
               <div key={banner._id} className="shrink-0 w-full">
                 {banner.linkUrl ? (
-                  <Link href={banner.linkUrl} className="block">
+                  <Link
+                    href={localizeHref(banner.linkUrl, activeLocale)}
+                    className="block"
+                  >
                     {slideContent}
                   </Link>
                 ) : (
@@ -137,7 +147,7 @@ export function HeroSlider({ banners }: HeroSliderProps) {
           <button
             type="button"
             onClick={() => emblaApi?.scrollPrev()}
-            aria-label="Banner trước"
+            aria-label={t.prevBannerAria}
             className="hidden sm:inline-flex items-center justify-center w-10 h-10 rounded-full border border-white/75 bg-black/15 text-white hover:bg-black/35 opacity-0 group-hover:opacity-100 transition-opacity absolute left-4 top-1/2 -translate-y-1/2 z-10 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
           >
             <ChevronLeft className="w-5 h-5" aria-hidden="true" />
@@ -146,7 +156,7 @@ export function HeroSlider({ banners }: HeroSliderProps) {
           <button
             type="button"
             onClick={() => emblaApi?.scrollNext()}
-            aria-label="Banner tiếp theo"
+            aria-label={t.nextBannerAria}
             className="hidden sm:inline-flex items-center justify-center w-10 h-10 rounded-full border border-white/75 bg-black/15 text-white hover:bg-black/35 opacity-0 group-hover:opacity-100 transition-opacity absolute right-4 top-1/2 -translate-y-1/2 z-10 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
           >
             <ChevronRight className="w-5 h-5" aria-hidden="true" />
@@ -158,7 +168,7 @@ export function HeroSlider({ banners }: HeroSliderProps) {
                 key={b._id}
                 type="button"
                 onClick={() => emblaApi?.scrollTo(idx)}
-                aria-label={`Xem banner ${idx + 1}`}
+                aria-label={t.viewBannerAria(idx + 1)}
                 aria-pressed={idx === selectedIndex}
                 className="min-w-[28px] min-h-[28px] flex items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
               >

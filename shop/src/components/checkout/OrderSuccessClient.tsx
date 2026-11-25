@@ -15,6 +15,14 @@ import {
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { formatPriceByCurrency } from "@/lib/format";
+import {
+  formatDateByLocale,
+  localizeHref,
+  localizePaymentGateway,
+  localizePaymentStatus,
+} from "@/lib/i18n";
+import { useLocale } from "@/lib/i18n/client";
+import { getCommerceI18n } from "@/lib/i18n/commerce";
 import { useCartStore } from "@/store/cartStore";
 import { useCurrencyStore } from "@/store/currencyStore";
 
@@ -43,6 +51,8 @@ export function OrderSuccessClient({
   initialOrderCode = "",
 }: OrderSuccessClientProps) {
   const searchParams = useSearchParams();
+  const locale = useLocale();
+  const t = getCommerceI18n(locale).orderSuccess;
   const currency = useCurrencyStore((s) => s.currency);
   const codeFromQuery = searchParams.get("code") || initialOrderCode || "";
 
@@ -59,8 +69,11 @@ export function OrderSuccessClient({
   const clearCart = useCartStore((s) => s.clearCart);
 
   useEffect(() => {
+    setOrderDateStr(formatDateByLocale(new Date(), locale));
+  }, [locale]);
+
+  useEffect(() => {
     setMounted(true);
-    setOrderDateStr(new Date().toLocaleDateString("vi-VN"));
     try {
       const raw = sessionStorage.getItem("11sport_last_order");
       if (raw) {
@@ -102,7 +115,11 @@ export function OrderSuccessClient({
 
   // Countdown 15:00
   useEffect(() => {
-    if (!isQrPayment || paymentStatus === "PAID" || paymentStatus === "EXPIRED") {
+    if (
+      !isQrPayment ||
+      paymentStatus === "PAID" ||
+      paymentStatus === "EXPIRED"
+    ) {
       return;
     }
     const timer = setInterval(() => {
@@ -117,7 +134,7 @@ export function OrderSuccessClient({
     return () => clearInterval(timer);
   }, [isQrPayment, paymentStatus]);
 
-  // Poll GET /api/v1/public/orders/:code/payment-status every 5s
+  // Poll GET /api/v1/public/orders/:code/payment-status every 3s
   useEffect(() => {
     if (
       !orderCode ||
@@ -169,7 +186,7 @@ export function OrderSuccessClient({
 
     const interval = setInterval(poll, 3000);
     return () => clearInterval(interval);
-  }, [orderCode, isQrPayment, paymentStatus, searchParams]);
+  }, [orderCode, isQrPayment, paymentStatus, searchParams, clearCart]);
 
   const handleCopy = (text: string) => {
     navigator.clipboard?.writeText(text).then(() => {
@@ -178,42 +195,50 @@ export function OrderSuccessClient({
     });
   };
 
+  const accountHref = localizeHref("/tai-khoan", locale);
+  const paddlesHref = localizeHref("/vot-pickleball", locale);
+  const cartHref = localizeHref("/gio-hang", locale);
+  const homeHref = localizeHref("/", locale);
+
   if (!orderCode) {
     return (
       <div className="max-w-2xl mx-auto border border-[#dce5da] bg-[#f8f9f5] p-8 text-center space-y-4">
         <h1 className="text-[22px] font-bold text-[#0a0a0a]">
-          Không tìm thấy mã đơn hàng
+          {t.notFoundHeading}
         </h1>
-        <p className="text-[14px] text-[#555555]">
-          Bạn có thể tra cứu trạng thái đơn hàng bằng mã đơn và số điện thoại.
-        </p>
+        <p className="text-[14px] text-[#555555]">{t.notFoundDesc}</p>
         <Link
-          href="/tai-khoan"
-          className="inline-flex items-center justify-center h-[42px] px-6 rounded-none bg-[#224e40] hover:bg-[#193b30] text-white text-[13px] font-bold uppercase tracking-wider transition-colors"
+          href={accountHref}
+          className="inline-flex items-center justify-center min-h-[44px] px-6 rounded-none bg-[#224e40] hover:bg-[#193b30] text-white text-[13px] font-bold uppercase tracking-wider transition-colors"
         >
-          TRA CỨU ĐƠN HÀNG
+          {t.trackOrderBtn}
         </Link>
       </div>
     );
   }
 
+  const paymentSummary = isQrPayment
+    ? `${localizePaymentGateway(
+        order?.paymentGateway || "PAYOS",
+        locale
+      )} · ${localizePaymentStatus(paymentStatus, locale)}`
+    : order?.paymentGateway && order.paymentGateway !== "COD"
+    ? localizePaymentGateway(order.paymentGateway, locale)
+    : `${localizePaymentGateway("COD", locale)} · ${t.codOpenBoxSuffix}`;
+
   const overviewCells = [
-    { label: "MÃ ĐƠN HÀNG", value: `#${orderCode}` },
-    { label: "NGÀY ĐẶT", value: orderDateStr || "Hôm nay" },
+    { label: t.cellOrderCode, value: `#${orderCode}` },
+    { label: t.cellDate, value: orderDateStr || t.today },
     {
-      label: "TỔNG CỘNG",
+      label: t.cellTotal,
       value:
         typeof order?.totalAmount === "number"
           ? formatPriceByCurrency(order.totalAmount, activeCurrency)
-          : "Đã ghi nhận",
+          : t.recorded,
     },
     {
-      label: "THANH TOÁN",
-      value: isQrPayment
-        ? paymentStatus === "PAID"
-          ? "VietQR / PayOS · Đã TT"
-          : "VietQR / PayOS"
-        : "COD · Đồng kiểm",
+      label: t.cellPayment,
+      value: paymentSummary,
     },
   ];
 
@@ -225,10 +250,10 @@ export function OrderSuccessClient({
           <Clock className="w-6 h-6 shrink-0" aria-hidden="true" />
           <div>
             <h1 className="text-[18px] sm:text-[20px] font-bold">
-              Quét mã QR để hoàn tất thanh toán đơn hàng #{orderCode}
+              {t.qrHeading(orderCode)}
             </h1>
             <p className="text-[13.5px] text-[#4a6b5d] mt-0.5">
-              Hệ thống đang giữ chỗ tồn kho và tự động kiểm tra trạng thái mỗi 5 giây.
+              {t.qrSubheading}
             </p>
           </div>
         </div>
@@ -237,12 +262,12 @@ export function OrderSuccessClient({
           {overviewCells.map((cell) => (
             <div
               key={cell.label}
-              className="border border-[#dce5da] bg-white p-2.5 sm:p-3.5 space-y-1"
+              className="min-w-0 border border-[#dce5da] bg-white p-2.5 sm:p-3.5 space-y-1"
             >
               <p className="text-[11px] font-bold uppercase tracking-wider text-[#666666]">
                 {cell.label}
               </p>
-              <p className="text-[11.5px] sm:text-[13px] font-bold text-[#0a0a0a] tabular-nums tracking-tight whitespace-nowrap">
+              <p className="text-[11.5px] sm:text-[13px] font-bold text-[#0a0a0a] tabular-nums tracking-tight break-words leading-snug">
                 {cell.value}
               </p>
             </div>
@@ -252,7 +277,7 @@ export function OrderSuccessClient({
         <div className="border border-[#dce5da] bg-white p-6 sm:p-8 text-center space-y-5">
           <div className="inline-flex flex-col items-center border border-[#dd3333]/25 bg-[#fef2f2] px-5 py-3">
             <span className="text-xs font-semibold text-[#555555]">
-              Thời gian giữ chỗ tồn kho còn lại
+              {t.reserveCountdownLabel}
             </span>
             <span className="text-[28px] font-bold text-[#dd3333] tabular-nums mt-0.5">
               {formatCountdown(secondsLeft)}
@@ -260,18 +285,21 @@ export function OrderSuccessClient({
           </div>
 
           <div className="mx-auto w-56 h-56 border border-[#dce5da] bg-[#f8f9f5] flex flex-col items-center justify-center p-3 gap-2">
-            {order?.qrCode && (order.qrCode.startsWith("http") || order.qrCode.startsWith("data:image")) ? (
+            {order?.qrCode &&
+            (order.qrCode.startsWith("http") ||
+              order.qrCode.startsWith("data:image")) ? (
               <img
                 src={order.qrCode}
-                alt={`Mã QR thanh toán PayOS / VietQR cho đơn ${orderCode}`}
+                alt={t.qrAlt(orderCode)}
                 className="w-48 h-48 object-contain"
               />
             ) : (
               <>
-                <QrCode className="w-24 h-24 text-[#224e40]" aria-hidden="true" />
-                <p className="text-xs font-medium text-[#204b3e]">
-                  Mã QR PayOS đang sẵn sàng
-                </p>
+                <QrCode
+                  className="w-24 h-24 text-[#224e40]"
+                  aria-hidden="true"
+                />
+                <p className="text-xs font-medium text-[#204b3e]">{t.qrReady}</p>
               </>
             )}
           </div>
@@ -282,9 +310,9 @@ export function OrderSuccessClient({
                 href={order.paymentUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-2 h-[42px] px-6 rounded-none bg-[#224e40] hover:bg-[#193b30] text-white text-[13px] font-bold uppercase tracking-wider transition-colors"
+                className="inline-flex items-center justify-center gap-2 min-h-[44px] px-6 rounded-none bg-[#224e40] hover:bg-[#193b30] text-white text-[13px] font-bold uppercase tracking-wider transition-colors"
               >
-                <span>MỞ CỔNG THANH TOÁN PAYOS</span>
+                <span>{t.openPayosBtn}</span>
                 <ExternalLink className="w-4 h-4" aria-hidden="true" />
               </a>
             </div>
@@ -293,14 +321,14 @@ export function OrderSuccessClient({
           <div className="border border-[#ececec] bg-[#fafafa] p-4 text-left space-y-2 text-[13.5px] max-w-lg mx-auto">
             {typeof order?.totalAmount === "number" && (
               <div className="flex items-center justify-between gap-2">
-                <span className="text-[#555555]">Số tiền cần chuyển:</span>
+                <span className="text-[#555555]">{t.transferAmountLabel}</span>
                 <span className="font-bold text-[#dd3333] text-base tabular-nums">
                   {formatPriceByCurrency(order.totalAmount, activeCurrency)}
                 </span>
               </div>
             )}
             <div className="flex items-center justify-between gap-2">
-              <span className="text-[#555555]">Nội dung chuyển khoản:</span>
+              <span className="text-[#555555]">{t.transferNoteLabel}</span>
               <div className="inline-flex items-center gap-2">
                 <span className="font-mono font-bold text-[#0a0a0a]">
                   {orderCode}
@@ -308,11 +336,11 @@ export function OrderSuccessClient({
                 <button
                   type="button"
                   onClick={() => handleCopy(orderCode)}
-                  aria-label="Sao chép mã đơn hàng"
+                  aria-label={t.copyAriaLabel}
                   className="inline-flex items-center gap-1 px-2.5 h-8 border border-[#dddddd] bg-white text-xs font-semibold text-[#0a0a0a] hover:border-[#224e40]"
                 >
                   <Copy className="w-3.5 h-3.5" aria-hidden="true" />
-                  <span>{copied ? "Đã chép" : "Sao chép"}</span>
+                  <span>{copied ? t.copied : t.copy}</span>
                 </button>
               </div>
             </div>
@@ -320,16 +348,16 @@ export function OrderSuccessClient({
 
           <div className="flex flex-wrap justify-center gap-3 pt-2">
             <Link
-              href="/vot-pickleball"
-              className="inline-flex items-center justify-center gap-2 h-[42px] px-6 rounded-none bg-[#224e40] hover:bg-[#193b30] text-white text-[13px] font-bold uppercase tracking-wider transition-colors"
+              href={paddlesHref}
+              className="inline-flex items-center justify-center gap-2 min-h-[44px] px-6 rounded-none bg-[#224e40] hover:bg-[#193b30] text-white text-[13px] font-bold uppercase tracking-wider transition-colors"
             >
-              <span>TIẾP TỤC MUA SẮM</span>
+              <span>{t.continueShoppingBtn}</span>
             </Link>
             <Link
-              href="/tai-khoan"
-              className="inline-flex items-center justify-center gap-2 h-[42px] px-6 rounded-none border border-[#224e40] text-[#224e40] hover:bg-[#f8f9f5] text-[13px] font-bold uppercase tracking-wider transition-colors"
+              href={accountHref}
+              className="inline-flex items-center justify-center gap-2 min-h-[44px] px-6 rounded-none border border-[#224e40] text-[#224e40] hover:bg-[#f8f9f5] text-[13px] font-bold uppercase tracking-wider transition-colors"
             >
-              <span>TRA CỨU ĐƠN HÀNG</span>
+              <span>{t.trackOrderBtn}</span>
             </Link>
           </div>
         </div>
@@ -345,24 +373,25 @@ export function OrderSuccessClient({
           <XCircle className="w-8 h-8" aria-hidden="true" />
         </div>
         <h1 className="text-[22px] font-bold text-[#0a0a0a]">
-          Mã QR thanh toán đã hết hạn
+          {t.expiredHeading}
         </h1>
         <p className="text-[14px] text-[#555555]">
-          Đơn hàng <strong className="font-mono">{orderCode}</strong> đã quá
-          thời gian giữ chỗ 15 phút và tồn kho đã được hoàn lại.
+          {t.expiredDescPrefix}{" "}
+          <strong className="font-mono">{orderCode}</strong>{" "}
+          {t.expiredDescSuffix}
         </p>
         <div className="flex flex-wrap justify-center gap-3">
           <Link
-            href="/gio-hang"
-            className="inline-flex items-center justify-center h-[42px] px-6 rounded-none bg-[#224e40] hover:bg-[#193b30] text-white text-[13px] font-bold uppercase tracking-wider"
+            href={cartHref}
+            className="inline-flex items-center justify-center min-h-[44px] px-6 rounded-none bg-[#224e40] hover:bg-[#193b30] text-white text-[13px] font-bold uppercase tracking-wider"
           >
-            ĐẶT LẠI ĐƠN HÀNG
+            {t.reorderBtn}
           </Link>
           <Link
-            href="/"
-            className="inline-flex items-center justify-center h-[42px] px-6 rounded-none border border-[#dddddd] text-[#0a0a0a] text-[13px] font-bold uppercase tracking-wider"
+            href={homeHref}
+            className="inline-flex items-center justify-center min-h-[44px] px-6 rounded-none border border-[#dddddd] text-[#0a0a0a] text-[13px] font-bold uppercase tracking-wider"
           >
-            VỀ TRANG CHỦ
+            {t.backHomeBtn}
           </Link>
         </div>
       </div>
@@ -377,12 +406,11 @@ export function OrderSuccessClient({
         <div>
           <h1 className="text-[18px] sm:text-[21px] font-bold leading-snug">
             {paymentStatus === "PAID"
-              ? `Thanh toán thành công! Đơn hàng #${orderCode} đã được xác nhận.`
-              : `Cảm ơn bạn. Đơn hàng #${orderCode} đã được tiếp nhận!`}
+              ? t.paidHeading(orderCode)
+              : t.receivedHeading(orderCode)}
           </h1>
           <p className="text-[13.5px] text-[#4a6b5d] mt-1">
-            Chuyên viên CSKH 11Sport sẽ liên hệ qua số điện thoại trong vòng 15
-            phút để xác nhận và gửi mã vận đơn.
+            {t.successSubheading}
           </p>
         </div>
       </div>
@@ -391,12 +419,12 @@ export function OrderSuccessClient({
         {overviewCells.map((cell) => (
           <div
             key={cell.label}
-            className="bg-white border border-[#dce5da] p-2.5 sm:p-3.5 space-y-1"
+            className="min-w-0 bg-white border border-[#dce5da] p-2.5 sm:p-3.5 space-y-1"
           >
             <p className="text-[11px] font-bold uppercase tracking-wider text-[#666666]">
               {cell.label}
             </p>
-            <p className="text-[11.5px] sm:text-[13px] font-bold text-[#0a0a0a] tabular-nums tracking-tight whitespace-nowrap">
+            <p className="text-[11.5px] sm:text-[13px] font-bold text-[#0a0a0a] tabular-nums tracking-tight break-words leading-snug">
               {cell.value}
             </p>
           </div>
@@ -404,24 +432,23 @@ export function OrderSuccessClient({
       </div>
 
       <p className="text-[13.5px] text-[#333333] leading-relaxed">
-        Mọi kiện hàng tại 11Sport đều được tặng kèm quấn cán, dán viền, bao vợt
-        và hỗ trợ mở hộp đồng kiểm tem NFC chính hãng trước khi thanh toán.
+        {t.perksNote}
       </p>
 
       <div className="flex flex-wrap items-center gap-3 pt-1">
         <Link
-          href="/vot-pickleball"
-          className="h-[42px] px-6 rounded-none bg-[#224e40] hover:bg-[#193b30] text-white text-[13px] font-bold uppercase tracking-wider inline-flex items-center justify-center gap-2 transition-colors"
+          href={paddlesHref}
+          className="min-h-[44px] px-6 rounded-none bg-[#224e40] hover:bg-[#193b30] text-white text-[13px] font-bold uppercase tracking-wider inline-flex items-center justify-center gap-2 transition-colors"
         >
           <Home className="w-4 h-4" aria-hidden="true" />
-          <span>TIẾP TỤC MUA SẮM</span>
+          <span>{t.continueShoppingBtn}</span>
         </Link>
         <Link
-          href="/tai-khoan"
-          className="h-[42px] px-6 rounded-none border border-[#224e40] bg-white hover:bg-[#f2f5f2] text-[#224e40] text-[13px] font-bold uppercase tracking-wider inline-flex items-center justify-center gap-2 transition-colors"
+          href={accountHref}
+          className="min-h-[44px] px-6 rounded-none border border-[#224e40] bg-white hover:bg-[#f2f5f2] text-[#224e40] text-[13px] font-bold uppercase tracking-wider inline-flex items-center justify-center gap-2 transition-colors"
         >
           <Search className="w-4 h-4" aria-hidden="true" />
-          <span>TRA CỨU ĐƠN HÀNG</span>
+          <span>{t.trackOrderBtn}</span>
         </Link>
       </div>
     </div>

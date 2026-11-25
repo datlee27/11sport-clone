@@ -9,7 +9,8 @@ import {
   Sparkles,
 } from "lucide-react";
 import type { LocaleCode } from "@/lib/format";
-import { STORE_I18N } from "@/lib/i18n";
+import { localizeHref, localizeUspItem, STORE_I18N } from "@/lib/i18n";
+import { CHROME_I18N } from "@/lib/i18n/chrome";
 
 /**
  * 1. Store/Section/BoxedTitle (3:4434)
@@ -25,8 +26,8 @@ export function BoxedSectionTitle({
   return (
     <div className="flex items-center w-full my-2">
       <div className="flex-1 h-[1px] bg-[#e5e7eb]" />
-      <div className="px-7 py-2.5 sm:py-3 border border-[#d8ddd9] bg-white rounded-none mx-0">
-        <Tag className="text-[20px] sm:text-[26px] font-normal uppercase tracking-wide text-store-forest text-center leading-tight">
+      <div className="px-4 sm:px-7 py-2.5 sm:py-3 max-w-full border border-[#d8ddd9] bg-white rounded-none mx-0">
+        <Tag className="text-[19px] sm:text-[26px] font-normal uppercase tracking-wide text-store-forest text-center leading-tight break-words">
           {title}
         </Tag>
       </div>
@@ -43,19 +44,26 @@ export function GuaranteePillsHome({
   items,
   locale = "vi",
 }: {
-  items?: Array<{ title: string; description?: string }>;
+  items?: Array<{ icon?: string; title: string; description?: string }>;
   locale?: LocaleCode;
 }) {
   const defaultTitles = STORE_I18N[locale].home.guarantees;
+  const ds = CHROME_I18N[locale].designSystem;
 
   const labels =
-    locale === "vi" && items && items.length === 4
-      ? items.map((it) => it.title)
+    items && items.length === 4
+      ? items.map(
+          (it) =>
+            localizeUspItem(
+              { icon: it.icon || "", title: it.title },
+              locale
+            ).title
+        )
       : defaultTitles;
 
   return (
     <section
-      aria-label={locale === "en" ? "Official guarantees" : "Cam kết chính hãng"}
+      aria-label={ds.guaranteesHomeAria}
       className="w-full bg-store-forest text-white shadow-sm rounded-none"
     >
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
@@ -81,16 +89,13 @@ export function GuaranteePillsCategory({
 }: {
   locale?: LocaleCode;
 } = {}) {
-  const pills =
-    locale === "en"
-      ? ["100% AUTHENTIC", "1-TO-1 REPLACEMENT", "FREE SHIPPING"]
-      : ["CHÍNH HÃNG 100%", "LỖI LÀ ĐỔI MỚI", "FREESHIP TOÀN QUỐC"];
+  const pills = CHROME_I18N[locale].designSystem.categoryPills;
   return (
     <div className="grid grid-cols-3 gap-1.5 sm:gap-3 pb-3.5 sm:pb-4 mb-5">
       {pills.map((label) => (
         <div
           key={label}
-          className="bg-[#efe4d5] rounded-[6px] px-1.5 py-2 sm:px-4 sm:py-3 flex items-center justify-center text-center text-[11px] sm:text-base font-bold uppercase tracking-normal sm:tracking-[0.5px] text-store-forest leading-snug"
+          className="bg-[#efe4d5] rounded-[6px] px-1.5 py-2 sm:px-4 sm:py-3 flex items-center justify-center text-center text-[10px] min-[375px]:text-[11px] sm:text-base font-bold uppercase tracking-normal sm:tracking-[0.5px] text-store-forest leading-snug break-words"
         >
           {label}
         </div>
@@ -103,16 +108,21 @@ export function GuaranteePillsCategory({
  * 4. Store/Trust/DistributorBanner (3:4749)
  * Full-bleed edge-to-edge Official Distributor Certificates banner (hidden on mobile).
  */
-export function DistributorBanner() {
+export function DistributorBanner({
+  locale = "vi",
+}: {
+  locale?: LocaleCode;
+} = {}) {
+  const ds = CHROME_I18N[locale].designSystem;
   return (
     <section
-      aria-label="Chứng nhận nhà phân phối chính hãng"
+      aria-label={ds.distributorBannerAria}
       className="hidden sm:block relative w-full overflow-hidden bg-store-forest-dark rounded-none border-0"
     >
       <div className="relative w-full aspect-[1425/490]">
         <Image
           src="https://mipik.vn/wp-content/uploads/2026/05/Chung-nhan-.jpg"
-          alt="Chứng nhận đại lý phân phối chính hãng 11Sport: Joola, Selkirk, Kamito, Facolos, CRBN"
+          alt={ds.distributorBannerAlt}
           fill
           sizes="100vw"
           className="object-cover"
@@ -141,21 +151,24 @@ export function BrandGroupSection({
 export function BrandGroupHeader({
   title,
   href,
+  locale = "vi",
 }: {
   title: string;
   description?: string;
   href: string;
+  locale?: LocaleCode;
 }) {
+  const ds = CHROME_I18N[locale].designSystem;
   return (
     <div className="flex items-center justify-between gap-3 pb-4 mb-5 border-b-2 border-store-forest">
-      <h2 className="text-lg sm:text-[20px] font-bold text-store-forest leading-tight">
+      <h2 className="min-w-0 text-lg sm:text-[20px] font-bold text-store-forest leading-tight">
         {title}
       </h2>
       <Link
-        href={href}
+        href={localizeHref(href, locale)}
         className="inline-flex items-center gap-1 px-3.5 sm:px-[18px] py-2 border border-store-forest rounded-[6px] text-xs sm:text-sm font-semibold text-store-forest hover:bg-store-forest hover:text-white transition-colors whitespace-nowrap shrink-0"
       >
-        Xem tất cả →
+        {ds.viewAll}
       </Link>
     </div>
   );
@@ -169,15 +182,18 @@ export function BreadcrumbBar({
   items,
   rightSlot,
   prevNextHref,
+  locale = "vi",
 }: {
   items: Array<{ name: string; href?: string }>;
   rightSlot?: React.ReactNode;
   prevNextHref?: { prev?: string; next?: string };
+  locale?: LocaleCode;
 }) {
+  const ds = CHROME_I18N[locale].designSystem;
   return (
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 py-2 bg-transparent border-0">
       <nav
-        aria-label="Breadcrumb"
+        aria-label={ds.breadcrumbAria}
         className={`flex flex-wrap items-center gap-1.5 text-xs sm:text-[13px] tracking-wide uppercase ${
           rightSlot
             ? "justify-start"
@@ -195,7 +211,7 @@ export function BreadcrumbBar({
               )}
               {item.href ? (
                 <Link
-                  href={item.href}
+                  href={localizeHref(item.href, locale)}
                   className={
                     isLast
                       ? "font-bold text-ink-secondary hover:text-store-forest"
@@ -221,18 +237,18 @@ export function BreadcrumbBar({
       ) : prevNextHref ? (
         <div className="hidden sm:flex items-center gap-1.5 shrink-0">
           <Link
-            href={prevNextHref.prev || "/vot-pickleball"}
-            aria-label="Sản phẩm trước"
+            href={localizeHref(prevNextHref.prev || "/vot-pickleball", locale)}
+            aria-label={ds.prevProductAria}
             className="w-[31px] h-[31px] rounded-full border-2 border-[#dddddd] flex items-center justify-center text-[#777777] hover:border-store-forest hover:text-store-forest transition-colors"
           >
-            <ChevronLeft className="w-4 h-4" />
+            <ChevronLeft className="w-4 h-4" aria-hidden="true" />
           </Link>
           <Link
-            href={prevNextHref.next || "/vot-pickleball"}
-            aria-label="Sản phẩm tiếp theo"
+            href={localizeHref(prevNextHref.next || "/vot-pickleball", locale)}
+            aria-label={ds.nextProductAria}
             className="w-[31px] h-[31px] rounded-full border-2 border-[#dddddd] flex items-center justify-center text-[#777777] hover:border-store-forest hover:text-store-forest transition-colors"
           >
-            <ChevronRight className="w-4 h-4" />
+            <ChevronRight className="w-4 h-4" aria-hidden="true" />
           </Link>
         </div>
       ) : null}
@@ -248,13 +264,16 @@ export function PageHeroBanner({
   title,
   breadcrumbs,
   tone = "forest",
+  locale = "vi",
 }: {
   title: string;
   subtitle?: string;
   breadcrumbs?: Array<{ name: string; href?: string }>;
   tone?: "forest" | "news";
+  locale?: LocaleCode;
 }) {
   const isNews = tone === "news";
+  const ds = CHROME_I18N[locale].designSystem;
   return (
     <section
       className={`w-full text-white px-3.5 sm:px-4 lg:px-5 ${
@@ -269,14 +288,17 @@ export function PageHeroBanner({
         </h1>
         {breadcrumbs && breadcrumbs.length > 0 && (
           <nav
-            aria-label="Breadcrumb"
+            aria-label={ds.breadcrumbAria}
             className="flex flex-wrap items-center gap-1.5 text-[12.5px] sm:text-[13px] text-white"
           >
             {breadcrumbs.map((b, i) => (
               <React.Fragment key={`${b.name}-${i}`}>
                 {i > 0 && <span aria-hidden="true">»</span>}
                 {b.href ? (
-                  <Link href={b.href} className="hover:underline">
+                  <Link
+                    href={localizeHref(b.href, locale)}
+                    className="hover:underline"
+                  >
                     {b.name}
                   </Link>
                 ) : (
@@ -296,12 +318,16 @@ export function PageHeroBanner({
  * Expert note box with clean full border and icon header badge.
  */
 export function EditorialCallout({
-  title = "Lưu ý chuyên gia 11Sport",
+  title,
   children,
+  locale = "vi",
 }: {
   title?: string;
   children: React.ReactNode;
+  locale?: LocaleCode;
 }) {
+  const resolvedTitle =
+    title ?? CHROME_I18N[locale].designSystem.editorialCalloutDefaultTitle;
   return (
     <aside className="rounded-lg bg-store-surface-sage border border-[#cfe0d7] p-4 sm:p-5 space-y-1.5">
       <div className="flex items-center gap-2">
@@ -311,7 +337,7 @@ export function EditorialCallout({
         >
           <ShieldCheck className="w-3.5 h-3.5" />
         </span>
-        <p className="text-sm font-bold text-store-forest">{title}</p>
+        <p className="text-sm font-bold text-store-forest">{resolvedTitle}</p>
       </div>
       <div className="text-sm text-ink-secondary leading-relaxed max-w-[68ch]">
         {children}
@@ -331,6 +357,7 @@ export function PolicyProseLayout({
   sections,
   callout,
   allPolicies,
+  locale = "vi",
 }: {
   activeSlug: string;
   title: string;
@@ -338,7 +365,9 @@ export function PolicyProseLayout({
   sections: Array<{ heading: string; paragraphs: string[] }>;
   callout: string;
   allPolicies: Array<{ slug: string; title: string }>;
+  locale?: LocaleCode;
 }) {
+  const ds = CHROME_I18N[locale].designSystem;
   return (
     <div className="max-w-container mx-auto px-3.5 sm:px-4 lg:px-5 py-8 lg:py-10 space-y-6">
       <p className="text-[14.5px] text-[#333333] leading-relaxed">{summary}</p>
@@ -348,7 +377,7 @@ export function PolicyProseLayout({
           {title}
         </h1>
         <p className="text-[13.5px] italic text-[#dd3333]">
-          (Áp dụng cho khách hàng mua sắm trực tiếp tại hệ thống 3 showroom và đặt hàng online trên website 11Sport)
+          {ds.policyScopeNote}
         </p>
       </header>
 
@@ -376,12 +405,12 @@ export function PolicyProseLayout({
         ))}
       </div>
 
-      <EditorialCallout title="Cam kết bảo vệ quyền lợi khách hàng">
+      <EditorialCallout title={ds.policyCalloutTitle} locale={locale}>
         {callout}
       </EditorialCallout>
 
       <nav
-        aria-label="Các chính sách khác tại 11Sport"
+        aria-label={ds.otherPoliciesAria}
         className="pt-4 border-t border-[#ececec] flex flex-wrap items-center gap-2"
       >
         {allPolicies.map((pol) => {
@@ -389,7 +418,7 @@ export function PolicyProseLayout({
           return (
             <Link
               key={pol.slug}
-              href={`/${pol.slug}`}
+              href={localizeHref(`/${pol.slug}`, locale)}
               className={`px-3.5 py-2 text-[13px] border transition-colors ${
                 isActive
                   ? "bg-[#224e40] border-[#224e40] text-white font-semibold"

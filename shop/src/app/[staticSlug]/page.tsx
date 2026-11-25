@@ -16,6 +16,22 @@ import {
   fetchStaticPage,
   resolveRootSlug,
 } from "@/lib/storefront";
+import {
+  localizeArticleDetail,
+  localizeBrandDescription,
+  localizeBrandSummary,
+  localizeCategoryDescription,
+  localizeCategorySummary,
+  localizeHref,
+  localizePolicyPage,
+  localizeProductDetail,
+  localizeProductSummary,
+  localizeProgramPage,
+  localizeReviewList,
+  localizeStaticPage,
+} from "@/lib/i18n";
+import { getServerLocale } from "@/lib/i18n/server";
+import { EDITORIAL_I18N } from "@/lib/i18n/editorial";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { CatalogClient } from "@/components/catalog/CatalogClient";
 import { SeoDescriptionBox } from "@/components/catalog/SeoDescriptionBox";
@@ -46,82 +62,92 @@ export async function generateMetadata({
   params,
   searchParams,
 }: RootSlugPageProps): Promise<Metadata> {
+  const locale = getServerLocale();
+  const t = EDITORIAL_I18N[locale].rootSlug;
   const slug = params.staticSlug;
   const resolved = await resolveRootSlug(slug);
 
   if (resolved?.kind === "category") {
-    const cat = resolved.category.category;
+    const cat = localizeCategorySummary(resolved.category.category, locale);
     return buildMetadata({
-      title: `${cat.name} Chính Hãng`,
+      title: t.categoryMetaTitle(cat.name),
       description:
-        cat.seo?.description ||
-        `Đại lý phân phối ${cat.name} chính hãng 100%, lỗi 1 đổi 1, freeship toàn quốc.`,
+        (locale === "vi" ? cat.seo?.description : undefined) ||
+        t.categoryMetaDesc(cat.name),
       path: `/${slug}`,
       image: cat.imageUrl,
+      locale,
       searchParams,
     });
   }
 
   if (resolved?.kind === "brand") {
-    const b = resolved.brand;
-    const isShoeBrand =
-      slug.startsWith("giay-") || b.rootCategorySlug?.startsWith("giay-");
+    const b = localizeBrandSummary(resolved.brand, locale);
+    const isShoeBrand = Boolean(
+      slug.startsWith("giay-") || b.rootCategorySlug?.startsWith("giay-")
+    );
     return buildMetadata({
-      title: isShoeBrand
-        ? `Giày Pickleball ${b.name} Chính Hãng`
-        : `Vợt & Dụng cụ Pickleball ${b.name} Chính Hãng`,
-      description: `Mua sản phẩm ${b.name} chính hãng 100% có tem NFC/QR xác thực, tặng quấn cán, dán viền, bao vợt và ưu đãi giá sỉ từ 3 sản phẩm.`,
+      title: t.brandMetaTitle(b.name, isShoeBrand),
+      description: t.brandMetaDesc(b.name),
       path: `/${slug}`,
       image: b.logoUrl,
+      locale,
       searchParams,
     });
   }
 
   if (resolved?.kind === "product") {
-    const p = resolved.product;
+    const p = localizeProductDetail(resolved.product, locale);
     return buildMetadata({
-      title: `${p.name} Chính Hãng`,
-      description:
-        p.shortDescription ||
-        `Mua ${p.name} chính hãng 100%, giá mua nhiều từ 3 sản phẩm cùng biến thể, freeship toàn quốc.`,
+      title: t.productMetaTitle(p.name),
+      description: p.shortDescription || t.productMetaDesc(p.name),
       path: `/${slug}`,
       image: p.thumbnailUrl,
+      locale,
     });
   }
 
   if (resolved?.kind === "article") {
-    const a = resolved.article;
+    const a = localizeArticleDetail(resolved.article, locale);
     return buildMetadata({
       title: a.title,
       description: a.excerpt || a.title,
       path: `/${slug}`,
       image: a.thumbnailUrl,
       type: "article",
+      locale,
     });
   }
 
   if (resolved?.kind === "policy") {
-    const pol = resolved.policy;
+    const pol = localizePolicyPage(resolved.policy, locale);
     return buildMetadata({
       title: pol.title,
       description: pol.summary,
       path: `/${slug}`,
+      locale,
     });
   }
 
   if (resolved?.kind === "program") {
-    const prog = resolved.program;
+    const prog = localizeProgramPage(resolved.program, locale);
     return buildMetadata({
       title: prog.title,
       description: prog.subtitle,
       path: `/${slug}`,
+      locale,
     });
   }
 
-  const { data: staticPage } = await fetchStaticPage(slug);
+  const { data: rawStaticPage } = await fetchStaticPage(slug);
+  const staticPage = rawStaticPage
+    ? localizeStaticPage(rawStaticPage, locale)
+    : null;
   return buildMetadata({
     title: staticPage?.title || slug.replace(/-/g, " "),
+    description: staticPage?.seo?.description,
     path: `/${slug}`,
+    locale,
   });
 }
 
@@ -129,13 +155,23 @@ export default async function RootCanonicalDispatcherPage({
   params,
   searchParams = {},
 }: RootSlugPageProps) {
+  const locale = getServerLocale();
+  const t = EDITORIAL_I18N[locale].rootSlug;
+  const tc = EDITORIAL_I18N[locale].common;
   const slug = params.staticSlug;
   const resolved = await resolveRootSlug(slug);
 
   // 1. TOP-LEVEL CATEGORY HUB (/vot-pickleball, /giay-pickleball, /balo-tui-pickleball, /phu-kien-pickleball, /bong-pickleball)
   if (resolved?.kind === "category") {
-    const cat = resolved.category.category;
-    const brands = resolved.category.brands ?? [];
+    const cat = localizeCategorySummary(resolved.category.category, locale);
+    const brands = (resolved.category.brands ?? []).map((b) =>
+      localizeBrandSummary(b, locale)
+    );
+    const categoryDescriptionHtml = localizeCategoryDescription(
+      cat.slug,
+      cat.descriptionHtml,
+      locale
+    );
     const isBrandGroupedHub =
       (cat.slug === "vot-pickleball" || cat.slug === "giay-pickleball") &&
       !getParam(searchParams.brand) &&
@@ -156,43 +192,48 @@ export default async function RootCanonicalDispatcherPage({
       limit: isBrandGroupedHub ? 100 : 20,
     });
 
+    const localizedProducts = productsRes.data.map((p) =>
+      localizeProductSummary(p, locale)
+    );
+
     if (isBrandGroupedHub) {
       const seenBrandSlugs = new Set<string>();
       const groupedBrands: Array<{
         slug: string;
         name: string;
         href: string;
-        products: typeof productsRes.data;
+        products: typeof localizedProducts;
       }> = [];
 
       for (const b of brands) {
-        const brandProducts = productsRes.data.filter(
+        const brandProducts = localizedProducts.filter(
           (p) => p.brand?.slug === b.slug
         );
         if (!brandProducts.length) continue;
         seenBrandSlugs.add(b.slug);
+        const rawHref =
+          "rootCategorySlug" in b && typeof b.rootCategorySlug === "string"
+            ? `/${b.rootCategorySlug}`
+            : `/thuong-hieu/${b.slug}`;
         groupedBrands.push({
           slug: b.slug,
           name: b.name,
-          href:
-            "rootCategorySlug" in b && typeof b.rootCategorySlug === "string"
-              ? `/${b.rootCategorySlug}`
-              : `/thuong-hieu/${b.slug}`,
+          href: localizeHref(rawHref, locale),
           products: brandProducts,
         });
       }
 
-      for (const p of productsRes.data) {
+      for (const p of localizedProducts) {
         const bSlug = p.brand?.slug;
         if (!bSlug || seenBrandSlugs.has(bSlug)) continue;
         seenBrandSlugs.add(bSlug);
-        const brandProducts = productsRes.data.filter(
+        const brandProducts = localizedProducts.filter(
           (item) => item.brand?.slug === bSlug
         );
         groupedBrands.push({
           slug: bSlug,
           name: p.brand?.name || bSlug.toUpperCase(),
-          href: `/thuong-hieu/${bSlug}`,
+          href: localizeHref(`/thuong-hieu/${bSlug}`, locale),
           products: brandProducts,
         });
       }
@@ -202,21 +243,28 @@ export default async function RootCanonicalDispatcherPage({
       return (
         <div className="max-w-container mx-auto px-3.5 sm:px-4 lg:px-5 py-4 lg:py-6 space-y-4">
           <JsonLd
-            data={buildBreadcrumbJsonLd([
-              { name: "Trang chủ", path: "/" },
-              { name: cat.name, path: `/${slug}` },
-            ])}
+            data={buildBreadcrumbJsonLd(
+              [
+                { name: tc.home, path: "/" },
+                { name: cat.name, path: `/${slug}` },
+              ],
+              locale
+            )}
           />
 
-          <h1 className="sr-only">
-            {cat.name} Chính Hãng — Hệ Thống Cửa Hàng 11Sport
-          </h1>
+          <h1 className="sr-only">{t.categoryH1(cat.name)}</h1>
 
           <BreadcrumbBar
-            items={[{ name: "Trang chủ", href: "/" }, { name: cat.name }]}
+            items={[
+              { name: tc.home, href: localizeHref("/", locale) },
+              { name: cat.name },
+            ]}
+            locale={locale}
           />
 
-          {cat.slug === "vot-pickleball" && <GuaranteePillsCategory />}
+          {cat.slug === "vot-pickleball" && (
+            <GuaranteePillsCategory locale={locale} />
+          )}
 
           <div className="space-y-1">
             {groupedBrands.map((group) => {
@@ -224,12 +272,9 @@ export default async function RootCanonicalDispatcherPage({
               return (
                 <BrandGroupSection key={group.slug}>
                   <BrandGroupHeader
-                    title={
-                      isShoes
-                        ? `Giày ${group.name}`
-                        : `Vợt Pickleball ${group.name}`
-                    }
+                    title={t.brandGroupTitle(group.name, isShoes)}
                     href={group.href}
+                    locale={locale}
                   />
                   {isCenteredRow ? (
                     <div className="flex flex-wrap justify-center gap-3 sm:gap-4">
@@ -263,8 +308,8 @@ export default async function RootCanonicalDispatcherPage({
           </div>
 
           <SeoDescriptionBox
-            html={cat.descriptionHtml}
-            title={`Hướng dẫn chọn mua ${cat.name} chính hãng`}
+            html={categoryDescriptionHtml}
+            title={t.categorySeoTitle(cat.name)}
           />
         </div>
       );
@@ -273,15 +318,16 @@ export default async function RootCanonicalDispatcherPage({
     return (
       <div className="max-w-container mx-auto px-3.5 sm:px-4 lg:px-5 py-4 lg:py-6 space-y-5">
         <JsonLd
-          data={buildBreadcrumbJsonLd([
-            { name: "Trang chủ", path: "/" },
-            { name: cat.name, path: `/${slug}` },
-          ])}
+          data={buildBreadcrumbJsonLd(
+            [
+              { name: tc.home, path: "/" },
+              { name: cat.name, path: `/${slug}` },
+            ],
+            locale
+          )}
         />
 
-        <h1 className="sr-only">
-          {cat.name} Chính Hãng — Hệ Thống Cửa Hàng 11Sport
-        </h1>
+        <h1 className="sr-only">{t.categoryH1(cat.name)}</h1>
 
         <Suspense
           fallback={
@@ -289,8 +335,11 @@ export default async function RootCanonicalDispatcherPage({
           }
         >
           <CatalogClient
-            breadcrumbs={[{ name: "Trang chủ", href: "/" }, { name: cat.name }]}
-            products={productsRes.data}
+            breadcrumbs={[
+              { name: tc.home, href: localizeHref("/", locale) },
+              { name: cat.name },
+            ]}
+            products={localizedProducts}
             meta={productsRes.meta}
             facets={productsRes.facets}
             subCategories={cat.subCategories}
@@ -299,8 +348,8 @@ export default async function RootCanonicalDispatcherPage({
         </Suspense>
 
         <SeoDescriptionBox
-          html={cat.descriptionHtml}
-          title={`Hướng dẫn chọn mua ${cat.name} chính hãng`}
+          html={categoryDescriptionHtml}
+          title={t.categorySeoTitle(cat.name)}
         />
       </div>
     );
@@ -308,7 +357,12 @@ export default async function RootCanonicalDispatcherPage({
 
   // 2. ROOT BRAND ARCHIVE (/vot-pickleball-joola, /vot-pickleball-selkirk, ..., /giay-asics, /giay-skechers)
   if (resolved?.kind === "brand") {
-    const brand = resolved.brand;
+    const brand = localizeBrandSummary(resolved.brand, locale);
+    const brandDescriptionHtml = localizeBrandDescription(
+      brand.slug,
+      brand.descriptionHtml,
+      locale
+    );
     const productsRes = await fetchProducts({
       brand: brand.slug,
       priceMin: getParam(searchParams.priceMin),
@@ -320,26 +374,30 @@ export default async function RootCanonicalDispatcherPage({
       page: getParam(searchParams.page) || "1",
       limit: 20,
     });
+    const localizedProducts = productsRes.data.map((p) =>
+      localizeProductSummary(p, locale)
+    );
 
     const isShoeBrand =
-      slug.startsWith("giay-") || Boolean(brand.rootCategorySlug?.startsWith("giay-"));
-    const parentCat = isShoeBrand
-      ? { name: "Giày Pickleball", href: "/giay-pickleball" }
-      : { name: "Vợt Pickleball", href: "/vot-pickleball" };
+      slug.startsWith("giay-") ||
+      Boolean(brand.rootCategorySlug?.startsWith("giay-"));
+    const parentCat = t.parentCategory(isShoeBrand);
+    const brandArchiveLabel = t.brandArchiveLabel(brand.name, isShoeBrand);
 
     return (
       <div className="max-w-container mx-auto px-3.5 sm:px-4 lg:px-5 py-4 lg:py-6 space-y-5">
         <JsonLd
-          data={buildBreadcrumbJsonLd([
-            { name: "Trang chủ", path: "/" },
-            { name: parentCat.name, path: parentCat.href },
-            { name: `${parentCat.name} ${brand.name}`, path: `/${slug}` },
-          ])}
+          data={buildBreadcrumbJsonLd(
+            [
+              { name: tc.home, path: "/" },
+              { name: parentCat.name, path: parentCat.path },
+              { name: brandArchiveLabel, path: `/${slug}` },
+            ],
+            locale
+          )}
         />
 
-        <h1 className="sr-only">
-          {parentCat.name} {brand.name} Chính Hãng — 11Sport
-        </h1>
+        <h1 className="sr-only">{t.brandH1(brandArchiveLabel)}</h1>
 
         <Suspense
           fallback={
@@ -348,11 +406,14 @@ export default async function RootCanonicalDispatcherPage({
         >
           <CatalogClient
             breadcrumbs={[
-              { name: "Trang chủ", href: "/" },
-              { name: parentCat.name, href: parentCat.href },
-              { name: `${parentCat.name} ${brand.name}` },
+              { name: tc.home, href: localizeHref("/", locale) },
+              {
+                name: parentCat.name,
+                href: localizeHref(parentCat.path, locale),
+              },
+              { name: brandArchiveLabel },
             ]}
-            products={productsRes.data}
+            products={localizedProducts}
             meta={productsRes.meta}
             facets={productsRes.facets}
             hideBrandFilter
@@ -360,8 +421,8 @@ export default async function RootCanonicalDispatcherPage({
         </Suspense>
 
         <SeoDescriptionBox
-          html={brand.descriptionHtml}
-          title={`Về thương hiệu ${brand.name} chính hãng`}
+          html={brandDescriptionHtml}
+          title={t.brandSeoTitle(brand.name)}
         />
       </div>
     );
@@ -369,16 +430,20 @@ export default async function RootCanonicalDispatcherPage({
 
   // 3. PRODUCT DETAIL AT ROOT SLUG (/joola-perseus-power-fx, /vot-pickleball-selkirk-boomstik-st, ...)
   if (resolved?.kind === "product") {
-    const product = resolved.product;
-    const [relatedProducts, reviewsData] = await Promise.all([
+    const product = localizeProductDetail(resolved.product, locale);
+    const [rawRelatedProducts, rawReviewsData] = await Promise.all([
       fetchRelatedProducts(product.slug),
       fetchProductReviews(product._id, { page: 1, limit: 10 }),
     ]);
+    const relatedProducts = rawRelatedProducts.map((item) =>
+      localizeProductSummary(item, locale)
+    );
+    const reviewsData = localizeReviewList(rawReviewsData, locale);
 
     const brandBreadcrumb =
       product.brand && product.category?.slug === "vot-pickleball"
         ? {
-            name: `Vợt Pickleball ${product.brand.name}`,
+            name: t.productBrandBreadcrumb(product.brand.name),
             path: `/vot-pickleball-${product.brand.slug}`,
           }
         : product.brand
@@ -389,7 +454,7 @@ export default async function RootCanonicalDispatcherPage({
         : null;
 
     const visibleBreadcrumbs = [
-      { name: "Trang chủ", path: "/" },
+      { name: tc.home, path: "/" },
       ...(product.category
         ? [
             {
@@ -409,7 +474,7 @@ export default async function RootCanonicalDispatcherPage({
     const productJsonLd = buildProductJsonLd({
       name: product.name,
       description:
-        product.shortDescription || `${product.name} chính hãng 100%.`,
+        product.shortDescription || t.productJsonLdDescFallback(product.name),
       slug: product.slug,
       sku: product.code,
       brandName: product.brand?.name || "11Sport",
@@ -421,27 +486,47 @@ export default async function RootCanonicalDispatcherPage({
       ratingValue: product.ratingAvg,
       reviewCount: product.ratingCount,
       bulkTiers: (product.promotions?.tierPricing ?? [])
-        .map((t) => ({
-          minQty: t.minQty,
-          unitPrice: Math.max(0, product.sellingPrice - (t.discountAmount || 0)),
-          label: t.label,
+        .map((tier) => ({
+          minQty: tier.minQty,
+          unitPrice: Math.max(
+            0,
+            product.sellingPrice - (tier.discountAmount || 0)
+          ),
+          label: tier.label,
         }))
-        .filter((t) => t.unitPrice > 0),
+        .filter((tier) => tier.unitPrice > 0),
+      locale,
     });
 
     return (
       <div className="max-w-container mx-auto px-3.5 sm:px-4 lg:px-5 py-4 lg:py-6 space-y-4">
-        <JsonLd data={[buildBreadcrumbJsonLd(jsonLdBreadcrumbs), productJsonLd]} />
+        <JsonLd
+          data={[
+            buildBreadcrumbJsonLd(jsonLdBreadcrumbs, locale),
+            productJsonLd,
+          ]}
+        />
 
         <BreadcrumbBar
           items={visibleBreadcrumbs.map((b) => ({
             name: b.name,
-            href: b.path,
+            href: localizeHref(b.path, locale),
           }))}
           prevNextHref={{
-            prev: relatedProducts[0] ? `/${relatedProducts[0].slug}` : "/vot-pickleball",
-            next: relatedProducts[1] ? `/${relatedProducts[1].slug}` : "/vot-pickleball",
+            prev: localizeHref(
+              relatedProducts[0]
+                ? `/${relatedProducts[0].slug}`
+                : "/vot-pickleball",
+              locale
+            ),
+            next: localizeHref(
+              relatedProducts[1]
+                ? `/${relatedProducts[1].slug}`
+                : "/vot-pickleball",
+              locale
+            ),
           }}
+          locale={locale}
         />
 
         <ProductDetailClient
@@ -455,10 +540,10 @@ export default async function RootCanonicalDispatcherPage({
 
   // 4. EDITORIAL BLOG ARTICLE AT ROOT SLUG (/luat-choi-pickleball, /vot-pickleball-cho-nguoi-moi, ...)
   if (resolved?.kind === "article") {
-    const article = resolved.article;
+    const article = localizeArticleDetail(resolved.article, locale);
     const breadcrumbs = [
-      { name: "Trang chủ", path: "/" },
-      { name: "Tin tức", path: "/tin-tuc" },
+      { name: tc.home, path: "/" },
+      { name: tc.blog, path: "/tin-tuc" },
       ...(article.category
         ? [
             {
@@ -474,7 +559,7 @@ export default async function RootCanonicalDispatcherPage({
       <div>
         <JsonLd
           data={[
-            buildBreadcrumbJsonLd(breadcrumbs),
+            buildBreadcrumbJsonLd(breadcrumbs, locale),
             buildArticleJsonLd({
               title: article.title,
               description: article.excerpt || article.title,
@@ -483,25 +568,36 @@ export default async function RootCanonicalDispatcherPage({
               publishedAt: article.publishedAt || new Date().toISOString(),
               updatedAt: article.updatedAt,
               authorName: article.authorName,
+              locale,
             }),
           ]}
         />
 
-        <ArticleDetailBody article={article} sourceUrl={`/${article.slug}`} />
+        <ArticleDetailBody
+          article={article}
+          sourceUrl={`/${article.slug}`}
+          locale={locale}
+        />
       </div>
     );
   }
 
   // 5. POLICY PAGES (/chinh-sach-van-chuyen, /hoan-tien_tra-ve, /chinh-sach-bao-mat, /quy-dinh-su-dung)
   if (resolved?.kind === "policy") {
-    const pol = resolved.policy;
+    const pol = localizePolicyPage(resolved.policy, locale);
+    const localizedPolicies = resolved.allPolicies.map((p) =>
+      localizePolicyPage(p, locale)
+    );
     return (
       <>
         <JsonLd
-          data={buildBreadcrumbJsonLd([
-            { name: "Trang chủ", path: "/" },
-            { name: pol.title, path: `/${pol.slug}` },
-          ])}
+          data={buildBreadcrumbJsonLd(
+            [
+              { name: tc.home, path: "/" },
+              { name: pol.title, path: `/${pol.slug}` },
+            ],
+            locale
+          )}
         />
         <PolicyProseLayout
           activeSlug={pol.slug}
@@ -509,10 +605,11 @@ export default async function RootCanonicalDispatcherPage({
           summary={pol.summary}
           sections={pol.sections}
           callout={pol.callout}
-          allPolicies={resolved.allPolicies.map((p) => ({
+          allPolicies={localizedPolicies.map((p) => ({
             slug: p.slug,
             title: p.title,
           }))}
+          locale={locale}
         />
       </>
     );
@@ -520,24 +617,25 @@ export default async function RootCanonicalDispatcherPage({
 
   // 6. PROGRAM & BRAND STATIC PAGES (/ve-chung-toi, /thu-cu-doi-moi) — 1:1 mipik.vn
   if (resolved?.kind === "program") {
-    const prog = resolved.program;
-    const sectionHeading =
-      prog.slug === "ve-chung-toi"
-        ? "TẦM NHÌN - SỨ MỆNH - MỤC TIÊU"
-        : "QUY TRÌNH 3 BƯỚC THU CŨ ĐỔI MỚI VỢT PICKLEBALL";
+    const prog = localizeProgramPage(resolved.program, locale);
+    const sectionHeading = t.programSectionHeading(prog.slug);
+    const contactHref = localizeHref("/lien-he", locale);
 
     return (
       <div className="max-w-container mx-auto px-3.5 sm:px-4 lg:px-5 py-8 lg:py-10 space-y-10">
         <JsonLd
-          data={buildBreadcrumbJsonLd([
-            { name: "Trang chủ", path: "/" },
-            { name: prog.title, path: `/${prog.slug}` },
-          ])}
+          data={buildBreadcrumbJsonLd(
+            [
+              { name: tc.home, path: "/" },
+              { name: prog.title, path: `/${prog.slug}` },
+            ],
+            locale
+          )}
         />
 
         {/* Top 2-Col Intro + Gradient Pill Cards + Showroom Photo */}
         <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-          <div className="lg:col-span-8 space-y-5">
+          <div className="lg:col-span-8 space-y-5 min-w-0">
             <h1 className="text-[24px] sm:text-[30px] font-bold uppercase tracking-wide text-[#0a0a0a]">
               {prog.title}
             </h1>
@@ -546,18 +644,16 @@ export default async function RootCanonicalDispatcherPage({
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
               <Link
-                href="/lien-he"
-                className="h-[50px] px-5 rounded-[12px] bg-[linear-gradient(90deg,#224e40_0%,#5c7c70_62%,#e8dfd8_100%)] text-white text-[14.5px] font-bold flex items-center justify-center [text-shadow:0_1px_2px_rgba(0,0,0,0.35)] hover:opacity-95 transition-opacity"
+                href={contactHref}
+                className="min-h-[50px] px-5 py-2.5 rounded-[12px] bg-[linear-gradient(90deg,#224e40_0%,#5c7c70_62%,#e8dfd8_100%)] text-white text-[14.5px] font-bold text-center flex items-center justify-center [text-shadow:0_1px_2px_rgba(0,0,0,0.35)] hover:opacity-95 transition-opacity"
               >
-                {prog.slug === "ve-chung-toi"
-                  ? "Hồ sơ năng lực"
-                  : "Đăng ký định giá vợt"}
+                {t.programPrimaryCta(prog.slug)}
               </Link>
               <Link
-                href="/lien-he"
-                className="h-[50px] px-5 rounded-[12px] bg-[linear-gradient(90deg,#224e40_0%,#5c7c70_62%,#e8dfd8_100%)] text-white text-[14.5px] font-bold flex items-center justify-center [text-shadow:0_1px_2px_rgba(0,0,0,0.35)] hover:opacity-95 transition-opacity"
+                href={contactHref}
+                className="min-h-[50px] px-5 py-2.5 rounded-[12px] bg-[linear-gradient(90deg,#224e40_0%,#5c7c70_62%,#e8dfd8_100%)] text-white text-[14.5px] font-bold text-center flex items-center justify-center [text-shadow:0_1px_2px_rgba(0,0,0,0.35)] hover:opacity-95 transition-opacity"
               >
-                Liên hệ tư vấn
+                {t.programSecondaryCta}
               </Link>
             </div>
           </div>
@@ -569,7 +665,7 @@ export default async function RootCanonicalDispatcherPage({
                   ? "/mock/hero-11sport-desktop-2.jpg"
                   : "/mock/hero-11sport-desktop-1.jpg"
               }
-              alt={`Showroom 11Sport - ${prog.title}`}
+              alt={t.programPhotoAlt(prog.title)}
               fill
               sizes="(max-width: 1024px) 100vw, 33vw"
               className="object-cover"
@@ -603,27 +699,46 @@ export default async function RootCanonicalDispatcherPage({
           </div>
         </section>
 
-        <EditorialCallout title="Cam kết hệ thống 11Sport">
+        <EditorialCallout title={t.programCalloutTitle} locale={locale}>
           {prog.callout}
         </EditorialCallout>
 
-        <DistributorBanner />
+        <DistributorBanner locale={locale} />
 
-        <QuickConsultForm variant="horizontal" sourceUrl={`/${prog.slug}`} />
+        <QuickConsultForm
+          variant="horizontal"
+          sourceUrl={localizeHref(`/${prog.slug}`, locale)}
+          locale={locale}
+        />
       </div>
     );
   }
 
   // 7. FALLBACK TO BACKEND STATIC PAGE (/public/pages/:slug)
-  const { data: page, notFound: isNotFound } = await fetchStaticPage(slug);
-  if (isNotFound || !page) {
+  const { data: rawPage, notFound: isNotFound } = await fetchStaticPage(slug);
+  if (isNotFound || !rawPage) {
     notFound();
   }
 
+  const page = localizeStaticPage(rawPage, locale);
+
   return (
     <div className="max-w-container mx-auto px-4 lg:px-6 py-6 lg:py-10 space-y-6">
+      <JsonLd
+        data={buildBreadcrumbJsonLd(
+          [
+            { name: tc.home, path: "/" },
+            { name: page.title, path: `/${slug}` },
+          ],
+          locale
+        )}
+      />
       <BreadcrumbBar
-        items={[{ name: "Trang chủ", href: "/" }, { name: page.title }]}
+        items={[
+          { name: tc.home, href: localizeHref("/", locale) },
+          { name: page.title },
+        ]}
+        locale={locale}
       />
       <h1 className="text-2xl sm:text-3xl font-extrabold text-store-forest">
         {page.title}

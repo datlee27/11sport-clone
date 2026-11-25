@@ -1,10 +1,20 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import type { LocaleCode } from "@/lib/format";
 import {
   buildBreadcrumbJsonLd,
   buildMetadata,
   buildProductJsonLd,
 } from "@/lib/seo";
+import {
+  localizeCategoryName,
+  localizeHref,
+  localizeProductDetail,
+  localizeProductSummary,
+  localizeReviewList,
+} from "@/lib/i18n";
+import { getServerLocale } from "@/lib/i18n/server";
+import { CATALOG_I18N, formatSlugTitle } from "@/lib/i18n/catalog";
 import {
   fetchProductDetail,
   fetchProductReviews,
@@ -19,11 +29,8 @@ interface ProductPageProps {
   params: { slug: string };
 }
 
-function buildFallbackProduct(slug: string): ProductDetail {
-  const title = slug
-    .split("-")
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(" ");
+function buildFallbackProduct(slug: string, locale: LocaleCode): ProductDetail {
+  const title = formatSlugTitle(slug);
   return {
     _id: slug,
     code: "11S-DEMO",
@@ -34,36 +41,53 @@ function buildFallbackProduct(slug: string): ProductDetail {
     stockAvailable: 0,
     variants: [],
     shortDescription:
-      "Thông tin sản phẩm đang được đồng bộ từ hệ thống 11Sport.",
+      CATALOG_I18N[locale].pages.product.fallbackShortDescription,
   };
 }
 
 export async function generateMetadata({
   params,
 }: ProductPageProps): Promise<Metadata> {
-  const { data: product } = await fetchProductDetail(params.slug);
-  if (!product) {
+  const locale = getServerLocale();
+  const t = CATALOG_I18N[locale].pages.product;
+  const { data: fetchedProduct } = await fetchProductDetail(params.slug);
+  if (!fetchedProduct) {
     return buildMetadata({
-      title: "Chi tiết sản phẩm",
+      title: t.notFoundMetaTitle,
       path: `/${params.slug}`,
+      locale,
     });
   }
 
+  const product = localizeProductDetail(fetchedProduct, locale);
+  const title =
+    locale === "vi"
+      ? product.seo?.title || t.metaTitle(product.name)
+      : t.metaTitle(product.name);
+  const description =
+    locale === "vi"
+      ? product.seo?.description ||
+        product.shortDescription ||
+        t.metaDescription(product.name)
+      : product.shortDescription || t.metaDescription(product.name);
+
   return buildMetadata({
-    title: product.seo?.title || `${product.name} Chính Hãng`,
-    description:
-      product.seo?.description ||
-      product.shortDescription ||
-      `Mua ${product.name} chính hãng tại 11Sport. Bảo hành đầy đủ, lỗi 1 đổi 1, freeship toàn quốc.`,
+    title,
+    description,
     path: `/${product.slug}`,
     image:
       product.seo?.ogImage ||
       product.thumbnailUrl ||
       product.images?.[0]?.url,
+    locale,
   });
 }
 
 export default async function ProductPage({ params }: ProductPageProps) {
+  const locale = getServerLocale();
+  const t = CATALOG_I18N[locale].pages.product;
+  const tc = CATALOG_I18N[locale].common;
+
   const { data: fetchedProduct, notFound: isNotFound } =
     await fetchProductDetail(params.slug);
 
@@ -71,7 +95,8 @@ export default async function ProductPage({ params }: ProductPageProps) {
     notFound();
   }
 
-  const product = fetchedProduct || buildFallbackProduct(params.slug);
+  const rawProduct = fetchedProduct || buildFallbackProduct(params.slug, locale);
+  const product = localizeProductDetail(rawProduct, locale);
 
   const [relatedProducts, reviewsData] = fetchedProduct
     ? await Promise.all([
@@ -80,11 +105,21 @@ export default async function ProductPage({ params }: ProductPageProps) {
       ])
     : [[], null];
 
+  const localizedRelated = relatedProducts.map((item) =>
+    localizeProductSummary(item, locale)
+  );
+  const localizedReviews = localizeReviewList(reviewsData, locale);
+
   const brandBreadcrumb =
     product.brand && product.category?.slug === "vot-pickleball"
       ? {
-          name: `Vợt Pickleball ${product.brand.name}`,
+          name: t.brandPaddleBreadcrumb(product.brand.name),
           path: `/vot-pickleball-${product.brand.slug}`,
+        }
+      : product.brand && product.category?.slug === "giay-pickleball"
+      ? {
+          name: t.brandShoeBreadcrumb(product.brand.name),
+          path: `/thuong-hieu/${product.brand.slug}`,
         }
       : product.brand
       ? {
@@ -94,11 +129,15 @@ export default async function ProductPage({ params }: ProductPageProps) {
       : null;
 
   const visibleBreadcrumbs = [
-    { name: "Trang chủ", path: "/" },
+    { name: tc.home, path: "/" },
     ...(product.category
       ? [
           {
-            name: product.category.name,
+            name: localizeCategoryName(
+              product.category.name,
+              locale,
+              product.category.slug
+            ),
             path: `/${product.category.slug}`,
           },
         ]
@@ -114,8 +153,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
   const productJsonLd = buildProductJsonLd({
     name: product.name,
     description:
-      product.shortDescription ||
-      `${product.name} chính hãng phân phối tại 11Sport.`,
+      product.shortDescription || t.jsonLdFallbackDesc(product.name),
     slug: product.slug,
     sku: product.code,
     brandName: product.brand?.name || "11Sport",
@@ -126,27 +164,42 @@ export default async function ProductPage({ params }: ProductPageProps) {
     inStock: product.inStock,
     ratingValue: product.ratingAvg,
     reviewCount: product.ratingCount,
+    locale,
   });
 
   return (
     <div className="max-w-container mx-auto px-3.5 sm:px-4 lg:px-5 py-4 lg:py-6 space-y-4">
-      <JsonLd data={[buildBreadcrumbJsonLd(jsonLdBreadcrumbs), productJsonLd]} />
+      <JsonLd
+        data={[buildBreadcrumbJsonLd(jsonLdBreadcrumbs, locale), productJsonLd]}
+      />
 
       <BreadcrumbBar
         items={visibleBreadcrumbs.map((b) => ({
           name: b.name,
-          href: b.path,
+          href: localizeHref(b.path, locale),
         }))}
         prevNextHref={{
-          prev: relatedProducts[0] ? `/${relatedProducts[0].slug}` : "/vot-pickleball",
-          next: relatedProducts[1] ? `/${relatedProducts[1].slug}` : "/vot-pickleball",
+          prev: localizeHref(
+            localizedRelated[0]
+              ? `/${localizedRelated[0].slug}`
+              : "/vot-pickleball",
+            locale
+          ),
+          next: localizeHref(
+            localizedRelated[1]
+              ? `/${localizedRelated[1].slug}`
+              : "/vot-pickleball",
+            locale
+          ),
         }}
+        locale={locale}
       />
 
       <ProductDetailClient
         product={product}
-        relatedProducts={relatedProducts}
-        initialReviews={reviewsData}
+        relatedProducts={localizedRelated}
+        initialReviews={localizedReviews}
+        locale={locale}
       />
     </div>
   );

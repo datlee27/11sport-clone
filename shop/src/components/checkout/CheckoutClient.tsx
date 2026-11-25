@@ -11,6 +11,17 @@ import {
   isValidPhoneVN,
   normalizePhoneVN,
 } from "@/lib/format";
+import {
+  localizeApiMessage,
+  localizeColorName,
+  localizeCouponName,
+  localizeGiftTitle,
+  localizeHref,
+  localizeProductName,
+  localizeSizeLabel,
+} from "@/lib/i18n";
+import { useLocale } from "@/lib/i18n/client";
+import { getCommerceI18n } from "@/lib/i18n/commerce";
 import { calculatePerVariantCartPricing } from "@/lib/pricingAndSearch";
 import { useCartStore } from "@/store/cartStore";
 import { useCurrencyStore } from "@/store/currencyStore";
@@ -44,6 +55,11 @@ function focusInvalidField(el: HTMLInputElement | null) {
 export function CheckoutClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const locale = useLocale();
+  const commerce = getCommerceI18n(locale);
+  const t = commerce.checkout;
+  const tCart = commerce.cart;
+
   const isCancelled =
     searchParams.get("cancelled") === "1" ||
     searchParams.get("cancel") === "true";
@@ -58,7 +74,7 @@ export function CheckoutClient() {
   const [phone, setPhone] = useState("");
   const [contactExtra, setContactExtra] = useState("");
   const [addressLine, setAddressLine] = useState("");
-  const [province, setProvince] = useState("TP. Hồ Chí Minh");
+  const [province, setProvince] = useState(() => t.defaultProvince);
   const [district, setDistrict] = useState("");
   const [note, setNote] = useState("");
 
@@ -87,6 +103,18 @@ export function CheckoutClient() {
   const provinceRef = useRef<HTMLInputElement>(null);
   const altNameRef = useRef<HTMLInputElement>(null);
   const altAddressRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setProvince((prev) => {
+      if (locale === "en" && prev === "TP. Hồ Chí Minh") {
+        return "Ho Chi Minh City";
+      }
+      if (locale === "vi" && prev === "Ho Chi Minh City") {
+        return "TP. Hồ Chí Minh";
+      }
+      return prev;
+    });
+  }, [locale]);
 
   useEffect(() => {
     setMounted(true);
@@ -188,14 +216,12 @@ export function CheckoutClient() {
   if (items.length === 0) {
     return (
       <div className="py-14 sm:py-20 px-4 text-center space-y-5 bg-white">
-        <p className="text-[15px] text-[#333333]">
-          Chưa có sản phẩm nào trong giỏ hàng.
-        </p>
+        <p className="text-[15px] text-[#333333]">{tCart.emptyText}</p>
         <Link
-          href="/vot-pickleball"
+          href={localizeHref("/vot-pickleball", locale)}
           className="inline-flex items-center justify-center min-h-[44px] px-7 rounded-none bg-store-forest hover:bg-store-forest-hover text-white text-[13px] font-bold uppercase tracking-wider transition-colors"
         >
-          QUAY TRỞ LẠI CỬA HÀNG
+          {tCart.backToShop}
         </Link>
       </div>
     );
@@ -214,12 +240,12 @@ export function CheckoutClient() {
               {
                 minQty: 3,
                 unitPrice: Math.max(0, i.price - 100_000),
-                label: "Mua từ 3 sản phẩm cùng biến thể",
+                label: tCart.bulkTierLabel(3),
               },
               {
                 minQty: 5,
                 unitPrice: Math.max(0, i.price - 200_000),
-                label: "Mua từ 5 sản phẩm cùng biến thể",
+                label: tCart.bulkTierLabel(5),
               },
             ]
           : [],
@@ -258,37 +284,37 @@ export function CheckoutClient() {
     setFieldError(null);
     if (!fullName.trim()) {
       setFieldError("name");
-      setErrorMsg("Vui lòng nhập họ và tên người nhận.");
+      setErrorMsg(t.errNameRequired);
       focusInvalidField(nameRef.current);
       return;
     }
     if (!isValidPhoneVN(phone)) {
       setFieldError("phone");
-      setErrorMsg("Số điện thoại không hợp lệ (VD: 0909 123 456).");
+      setErrorMsg(t.errPhoneInvalid);
       focusInvalidField(phoneRef.current);
       return;
     }
     if (!addressLine.trim()) {
       setFieldError("address");
-      setErrorMsg("Vui lòng điền đầy đủ địa chỉ giao hàng.");
+      setErrorMsg(t.errAddressRequired);
       focusInvalidField(addressRef.current);
       return;
     }
     if (!province.trim()) {
       setFieldError("province");
-      setErrorMsg("Vui lòng điền đầy đủ địa chỉ giao hàng.");
+      setErrorMsg(t.errProvinceRequired);
       focusInvalidField(provinceRef.current);
       return;
     }
     if (shipToDifferent && !altFullName.trim()) {
       setFieldError("altName");
-      setErrorMsg("Vui lòng điền đầy đủ tên và địa chỉ người nhận thay thế.");
+      setErrorMsg(t.errAltNameRequired);
       focusInvalidField(altNameRef.current);
       return;
     }
     if (shipToDifferent && !altAddress.trim()) {
       setFieldError("altAddress");
-      setErrorMsg("Vui lòng điền đầy đủ tên và địa chỉ người nhận thay thế.");
+      setErrorMsg(t.errAltAddressRequired);
       focusInvalidField(altAddressRef.current);
       return;
     }
@@ -300,10 +326,10 @@ export function CheckoutClient() {
     const noteParts = [
       note.trim(),
       trimmedContact && !trimmedContact.includes("@")
-        ? `Whatsapp/Zalo: ${trimmedContact}`
+        ? `WhatsApp/Zalo: ${trimmedContact}`
         : "",
       shipToDifferent && altPhone.trim()
-        ? `SĐT người nhận khác: ${altPhone.trim()}`
+        ? `${t.altPhoneNotePrefix}: ${altPhone.trim()}`
         : "",
     ].filter(Boolean);
 
@@ -342,8 +368,8 @@ export function CheckoutClient() {
                 : normalizePhoneVN(phone),
             email: emailValue,
             province: province.trim(),
-            district: district.trim() || "Trung tâm",
-            ward: "Phường trung tâm",
+            district: district.trim() || t.defaultDistrictFallback,
+            ward: t.defaultWardFallback,
             addressLine:
               shipToDifferent && altAddress.trim()
                 ? altAddress.trim()
@@ -421,16 +447,19 @@ export function CheckoutClient() {
         // Nếu là COD hoặc đơn hoàn tất tại shop: dọn sạch giỏ hàng và sang trang kết quả
         clearCart();
         router.push(
-          `/thanh-toan/order-received/${encodeURIComponent(orderData.orderCode)}`
+          localizeHref(
+            `/thanh-toan/order-received/${encodeURIComponent(orderData.orderCode)}`,
+            locale
+          )
         );
       } else {
-        setErrorMsg("Không nhận được mã đơn hàng từ hệ thống.");
+        setErrorMsg(t.errNoOrderCode);
       }
     } catch (err) {
       if (err instanceof ApiError) {
-        setErrorMsg(err.message);
+        setErrorMsg(localizeApiMessage(err.message, locale));
       } else {
-        setErrorMsg("Không thể kết nối máy chủ đặt hàng. Vui lòng thử lại sau.");
+        setErrorMsg(t.errServerConnection);
       }
     } finally {
       setSubmitting(false);
@@ -441,15 +470,17 @@ export function CheckoutClient() {
     <div className="space-y-6">
       {/* Banner thông báo khi khách bấm Hủy thanh toán từ PayOS */}
       {isCancelled && (
-        <div className="border border-[#f59e0b] bg-[#fffbeb] p-4 text-[#92400e] flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 shrink-0 text-[#d97706] mt-0.5" />
+        <div
+          role="status"
+          className="border border-[#f59e0b] bg-[#fffbeb] p-4 text-[#92400e] flex items-start gap-3"
+        >
+          <AlertCircle
+            className="w-5 h-5 shrink-0 text-[#d97706] mt-0.5"
+            aria-hidden="true"
+          />
           <div className="space-y-0.5">
-            <p className="font-bold text-[14px]">
-              Giao dịch thanh toán PayOS đã được hủy
-            </p>
-            <p className="text-[13px] text-[#b45309]">
-              Các sản phẩm bạn đã chọn vẫn được lưu đầy đủ trong giỏ hàng bên dưới. Bạn có thể chọn lại phương thức thanh toán khác hoặc điều chỉnh đơn hàng để tiếp tục đặt hàng.
-            </p>
+            <p className="font-bold text-[14px]">{t.payosCancelTitle}</p>
+            <p className="text-[13px] text-[#b45309]">{t.payosCancelBody}</p>
           </div>
         </div>
       )}
@@ -457,21 +488,19 @@ export function CheckoutClient() {
       {/* Top 1-Line Coupon Toggle (1:1 mipik.vn) */}
       <div className="border-b border-[#ececec] pb-4 text-[13.5px]">
         <p className="text-[#333333]">
-          Bạn có mã ưu đãi?{" "}
+          {t.haveCouponQuestion}{" "}
           <button
             type="button"
             onClick={() => setShowCouponBox((prev) => !prev)}
             className="text-[#224e40] hover:underline font-medium"
           >
-            Ấn vào đây để nhập mã
+            {t.clickToEnterCoupon}
           </button>
         </p>
 
         {showCouponBox && (
           <div className="mt-3 p-4 sm:p-5 border-2 border-dashed border-[#dddddd] bg-white space-y-3 max-w-xl">
-            <p className="text-[13px] text-[#555555]">
-              Nếu bạn có mã giảm giá, vui lòng điền vào phía bên dưới (VD: SALE11).
-            </p>
+            <p className="text-[13px] text-[#555555]">{t.couponHint}</p>
             <div className="flex flex-col sm:flex-row gap-2.5">
               <input
                 type="text"
@@ -483,27 +512,31 @@ export function CheckoutClient() {
                     setAppliedCoupon(couponInput.trim().toUpperCase());
                   }
                 }}
-                placeholder="Mã ưu đãi"
-                aria-label="Mã ưu đãi"
+                placeholder={t.couponPlaceholder}
+                aria-label={t.couponAriaLabel}
                 className={`${SHARP_INPUT_CLS} sm:flex-1`}
               />
               <button
                 type="button"
-                onClick={() => setAppliedCoupon(couponInput.trim().toUpperCase())}
+                onClick={() =>
+                  setAppliedCoupon(couponInput.trim().toUpperCase())
+                }
                 className="min-h-[44px] px-6 rounded-none bg-[#224e40] hover:bg-[#193b30] text-white text-[12.5px] font-bold uppercase tracking-wider transition-colors whitespace-nowrap"
               >
-                ÁP DỤNG
+                {t.applyBtnUpper}
               </button>
             </div>
             {pricing?.couponError && (
               <p className="text-xs text-[#dd3333] font-medium">
-                {pricing.couponError}
+                {localizeApiMessage(pricing.couponError, locale)}
               </p>
             )}
             {pricing?.couponApplied && (
               <p className="text-xs text-[#204b3e] font-bold">
-                Đã áp dụng mã {pricing.couponApplied.code}:{" "}
-                {pricing.couponApplied.name}
+                {tCart.couponAppliedPrefix(
+                  pricing.couponApplied.code,
+                  localizeCouponName(pricing.couponApplied.name, locale)
+                )}
               </p>
             )}
           </div>
@@ -523,19 +556,22 @@ export function CheckoutClient() {
               role="alert"
               className="border border-[#dd3333]/35 bg-[#fef2f2] text-[#b91c1c] p-3.5 flex items-start gap-2.5 text-[13.5px] font-medium"
             >
-              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
+              <AlertCircle
+                className="w-4 h-4 shrink-0 mt-0.5"
+                aria-hidden="true"
+              />
               <span>{errorMsg}</span>
             </div>
           )}
 
           <div className="space-y-4">
             <h2 className="text-[16px] sm:text-[17px] font-bold uppercase tracking-wide text-[#0a0a0a]">
-              THÔNG TIN THANH TOÁN
+              {t.billingHeading}
             </h2>
 
             <div>
               <label htmlFor="checkout-name" className={LABEL_CLS}>
-                Họ và Tên <span className="text-[#dd3333]">*</span>
+                {t.fullNameLabel} <span className="text-[#dd3333]">*</span>
               </label>
               <input
                 ref={nameRef}
@@ -548,7 +584,7 @@ export function CheckoutClient() {
                   setFullName(e.target.value);
                   if (fieldError === "name") setFieldError(null);
                 }}
-                placeholder="Họ và tên"
+                placeholder={t.fullNamePlaceholder}
                 className={
                   fieldError === "name" ? SHARP_INPUT_ERROR_CLS : SHARP_INPUT_CLS
                 }
@@ -557,7 +593,7 @@ export function CheckoutClient() {
 
             <div>
               <label htmlFor="checkout-phone" className={LABEL_CLS}>
-                Số điện thoại <span className="text-[#dd3333]">*</span>
+                {t.phoneLabel} <span className="text-[#dd3333]">*</span>
               </label>
               <input
                 ref={phoneRef}
@@ -570,30 +606,32 @@ export function CheckoutClient() {
                   setPhone(formatPhoneVN(e.target.value));
                   if (fieldError === "phone") setFieldError(null);
                 }}
-                placeholder="Số điện thoại"
+                placeholder={t.phonePlaceholder}
                 className={`${
-                  fieldError === "phone" ? SHARP_INPUT_ERROR_CLS : SHARP_INPUT_CLS
+                  fieldError === "phone"
+                    ? SHARP_INPUT_ERROR_CLS
+                    : SHARP_INPUT_CLS
                 } tabular-nums`}
               />
             </div>
 
             <div>
               <label htmlFor="checkout-contact" className={LABEL_CLS}>
-                Email / Whatsapp (tuỳ chọn)
+                {t.contactExtraLabel}
               </label>
               <input
                 id="checkout-contact"
                 type="text"
                 value={contactExtra}
                 onChange={(e) => setContactExtra(e.target.value)}
-                placeholder="Email nhận hóa đơn hoặc Whatsapp / Viber"
+                placeholder={t.contactExtraPlaceholder}
                 className={SHARP_INPUT_CLS}
               />
             </div>
 
             <div>
               <label htmlFor="checkout-address" className={LABEL_CLS}>
-                Địa chỉ <span className="text-[#dd3333]">*</span>
+                {t.addressLabel} <span className="text-[#dd3333]">*</span>
               </label>
               <input
                 ref={addressRef}
@@ -606,7 +644,7 @@ export function CheckoutClient() {
                   setAddressLine(e.target.value);
                   if (fieldError === "address") setFieldError(null);
                 }}
-                placeholder="Địa chỉ"
+                placeholder={t.addressPlaceholder}
                 className={
                   fieldError === "address"
                     ? SHARP_INPUT_ERROR_CLS
@@ -618,7 +656,7 @@ export function CheckoutClient() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label htmlFor="checkout-province" className={LABEL_CLS}>
-                  Tỉnh / Thành phố <span className="text-[#dd3333]">*</span>
+                  {t.provinceLabel} <span className="text-[#dd3333]">*</span>
                 </label>
                 <input
                   ref={provinceRef}
@@ -631,6 +669,7 @@ export function CheckoutClient() {
                     setProvince(e.target.value);
                     if (fieldError === "province") setFieldError(null);
                   }}
+                  placeholder={t.provincePlaceholder}
                   className={
                     fieldError === "province"
                       ? SHARP_INPUT_ERROR_CLS
@@ -641,14 +680,14 @@ export function CheckoutClient() {
 
               <div>
                 <label htmlFor="checkout-district" className={LABEL_CLS}>
-                  Quận / Huyện (tuỳ chọn)
+                  {t.districtLabel}
                 </label>
                 <input
                   id="checkout-district"
                   type="text"
                   value={district}
                   onChange={(e) => setDistrict(e.target.value)}
-                  placeholder="VD: Quận 10"
+                  placeholder={t.districtPlaceholder}
                   className={SHARP_INPUT_CLS}
                 />
               </div>
@@ -663,7 +702,7 @@ export function CheckoutClient() {
                   onChange={(e) => setShipToDifferent(e.target.checked)}
                   className="w-4 h-4 accent-[#224e40]"
                 />
-                <span>Giao hàng đến một địa chỉ khác?</span>
+                <span>{t.shipToDifferentLabel}</span>
               </label>
 
               {shipToDifferent && (
@@ -671,7 +710,8 @@ export function CheckoutClient() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label htmlFor="alt-name" className={LABEL_CLS}>
-                        Họ tên người nhận <span className="text-[#dd3333]">*</span>
+                        {t.altNameLabel}{" "}
+                        <span className="text-[#dd3333]">*</span>
                       </label>
                       <input
                         ref={altNameRef}
@@ -683,7 +723,7 @@ export function CheckoutClient() {
                           setAltFullName(e.target.value);
                           if (fieldError === "altName") setFieldError(null);
                         }}
-                        placeholder="Tên người nhận hàng"
+                        placeholder={t.altNamePlaceholder}
                         className={
                           fieldError === "altName"
                             ? SHARP_INPUT_ERROR_CLS
@@ -693,21 +733,24 @@ export function CheckoutClient() {
                     </div>
                     <div>
                       <label htmlFor="alt-phone" className={LABEL_CLS}>
-                        Số điện thoại nhận
+                        {t.altPhoneLabel}
                       </label>
                       <input
                         id="alt-phone"
                         type="tel"
                         value={altPhone}
-                        onChange={(e) => setAltPhone(formatPhoneVN(e.target.value))}
-                        placeholder="Số điện thoại người nhận"
+                        onChange={(e) =>
+                          setAltPhone(formatPhoneVN(e.target.value))
+                        }
+                        placeholder={t.altPhonePlaceholder}
                         className={`${SHARP_INPUT_CLS} tabular-nums`}
                       />
                     </div>
                   </div>
                   <div>
                     <label htmlFor="alt-address" className={LABEL_CLS}>
-                      Địa chỉ nhận hàng <span className="text-[#dd3333]">*</span>
+                      {t.altAddressLabel}{" "}
+                      <span className="text-[#dd3333]">*</span>
                     </label>
                     <input
                       ref={altAddressRef}
@@ -719,7 +762,7 @@ export function CheckoutClient() {
                         setAltAddress(e.target.value);
                         if (fieldError === "altAddress") setFieldError(null);
                       }}
-                      placeholder="Số nhà, đường, quận/huyện, tỉnh thành..."
+                      placeholder={t.altAddressPlaceholder}
                       className={
                         fieldError === "altAddress"
                           ? SHARP_INPUT_ERROR_CLS
@@ -734,18 +777,18 @@ export function CheckoutClient() {
 
           <div className="pt-2 space-y-2">
             <h2 className="text-[16px] sm:text-[17px] font-bold uppercase tracking-wide text-[#0a0a0a]">
-              THÔNG TIN BỔ SUNG
+              {t.additionalInfoHeading}
             </h2>
             <div>
               <label htmlFor="checkout-note" className={LABEL_CLS}>
-                Ghi chú đơn hàng (tuỳ chọn)
+                {t.orderNoteLabel}
               </label>
               <textarea
                 id="checkout-note"
                 rows={4}
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
-                placeholder="Ghi chú về đơn hàng, ví dụ: thời gian hay chỉ dẫn địa điểm giao hàng chi tiết hơn."
+                placeholder={t.orderNotePlaceholder}
                 className="w-full p-3 rounded-none border border-[#dddddd] bg-white text-base sm:text-[14px] text-[#0a0a0a] placeholder:text-[#6b7280] focus:outline-none focus:border-[#224e40]"
               />
             </div>
@@ -755,14 +798,14 @@ export function CheckoutClient() {
         {/* RIGHT 5 COLS: Flatsome `.is-well` Order Review & Payment Card */}
         <aside className="lg:col-span-5 lg:sticky lg:top-24 bg-[#fafafa] border border-[#e5e5e5] shadow-[0_1px_4px_rgba(0,0,0,0.04)] p-5 sm:p-7 rounded-none space-y-4">
           <h2 className="text-[16px] sm:text-[17px] font-bold uppercase tracking-wide text-[#0a0a0a]">
-            ĐƠN HÀNG CỦA BẠN
+            {t.yourOrderHeading}
           </h2>
 
           {/* Concise Text-Only Review Table */}
           <div className="text-[13.5px]">
             <div className="flex items-center justify-between pb-2.5 border-b-[3px] border-[#ececec] text-[12px] font-bold uppercase tracking-wider text-[#777777]">
-              <span>SẢN PHẨM</span>
-              <span>TẠM TÍNH</span>
+              <span>{tCart.colProduct}</span>
+              <span>{tCart.colSubtotal}</span>
             </div>
 
             <div className="divide-y divide-[#ececec]">
@@ -774,7 +817,15 @@ export function CheckoutClient() {
                 );
                 const lineSubtotal =
                   lineCalc?.lineSubtotal ?? item.price * item.quantity;
-                const variantLabel = [item.colorName, item.sizeName]
+                const displayName = localizeProductName(
+                  item.name,
+                  locale,
+                  item.slug
+                );
+                const variantLabel = [
+                  localizeColorName(item.colorName, locale),
+                  localizeSizeLabel(item.sizeName, locale),
+                ]
                   .filter(Boolean)
                   .join(" · ");
 
@@ -784,12 +835,17 @@ export function CheckoutClient() {
                     className="py-3 flex items-baseline justify-between gap-3"
                   >
                     <span className="text-[#555555] leading-snug">
-                      {item.name}
+                      {displayName}
                       {variantLabel ? ` (${variantLabel})` : ""}{" "}
-                      <strong className="text-[#0a0a0a]">× {item.quantity}</strong>
+                      <strong className="text-[#0a0a0a]">
+                        × {item.quantity}
+                      </strong>
                     </span>
                     <span className="font-bold text-[#0a0a0a] tabular-nums whitespace-nowrap shrink-0">
-                      {formatPriceByCurrency(lineSubtotal, mounted ? currency : "VND")}
+                      {formatPriceByCurrency(
+                        lineSubtotal,
+                        mounted ? currency : "VND"
+                      )}
                     </span>
                   </div>
                 );
@@ -799,10 +855,12 @@ export function CheckoutClient() {
                 <div className="py-3 space-y-1.5">
                   <div className="flex items-baseline justify-between gap-3">
                     <div className="text-[#204b3e] leading-snug">
-                      <span>{activeGift.productName}</span>{" "}
+                      <span>
+                        {localizeGiftTitle(activeGift.productName, locale)}
+                      </span>{" "}
                       <strong className="text-[#0a0a0a]">× 1</strong>
                       <p className="text-[11.5px] text-[#4a6b5d]">
-                        Quà tặng 11Sport: Miễn phí
+                        {tCart.giftSubtitle}
                       </p>
                     </div>
                     <span className="font-bold text-[#0a0a0a] tabular-nums shrink-0">
@@ -824,7 +882,9 @@ export function CheckoutClient() {
                             onChange={() => setSelectedGiftId(g.productId)}
                             className="accent-[#224e40]"
                           />
-                          <span>{g.productName}</span>
+                          <span>
+                            {localizeGiftTitle(g.productName, locale)}
+                          </span>
                         </label>
                       ))}
                     </div>
@@ -833,43 +893,64 @@ export function CheckoutClient() {
               )}
 
               <div className="py-3 flex items-center justify-between gap-3">
-                <span className="font-semibold text-[#333333]">Tạm tính</span>
+                <span className="font-semibold text-[#333333]">
+                  {tCart.subtotal}
+                </span>
                 <span className="font-bold text-[#0a0a0a] tabular-nums">
-                  {formatPriceByCurrency(rawSubtotal, mounted ? currency : "VND")}
+                  {formatPriceByCurrency(
+                    rawSubtotal,
+                    mounted ? currency : "VND"
+                  )}
                 </span>
               </div>
 
               {tierDiscountTotal > 0 && (
                 <div className="py-3 flex items-center justify-between gap-3 text-[#204b3e]">
-                  <span>Tiết kiệm Giá Mua Nhiều</span>
+                  <span>{tCart.bulkSavings}</span>
                   <span className="font-bold tabular-nums">
-                    -{formatPriceByCurrency(tierDiscountTotal, mounted ? currency : "VND")}
+                    -
+                    {formatPriceByCurrency(
+                      tierDiscountTotal,
+                      mounted ? currency : "VND"
+                    )}
                   </span>
                 </div>
               )}
 
               {couponDiscount > 0 && (
                 <div className="py-3 flex items-center justify-between gap-3 text-[#204b3e]">
-                  <span>Mã ưu đãi</span>
+                  <span>{tCart.promoCode}</span>
                   <span className="font-bold tabular-nums">
-                    -{formatPriceByCurrency(couponDiscount, mounted ? currency : "VND")}
+                    -
+                    {formatPriceByCurrency(
+                      couponDiscount,
+                      mounted ? currency : "VND"
+                    )}
                   </span>
                 </div>
               )}
 
               <div className="py-3 flex items-center justify-between gap-3">
-                <span className="font-semibold text-[#333333]">Vận chuyển</span>
+                <span className="font-semibold text-[#333333]">
+                  {tCart.shipping}
+                </span>
                 <span className="text-[#555555] text-right">
                   {shippingFee === 0
-                    ? "Miễn phí vận chuyển"
-                    : formatPriceByCurrency(shippingFee, mounted ? currency : "VND")}
+                    ? tCart.freeShipping
+                    : formatPriceByCurrency(
+                        shippingFee,
+                        mounted ? currency : "VND"
+                      )}
                 </span>
               </div>
 
               <div className="py-3.5 border-b-2 border-[#ececec] flex items-center justify-between gap-3">
-                <span className="font-bold text-[#0a0a0a]">Tổng</span>
+                <span className="font-bold text-[#0a0a0a]">{tCart.total}</span>
                 <span className="text-[16px] font-bold text-[#0a0a0a] tabular-nums">
-                  {formatPriceByCurrency(totalAmount, mounted ? currency : "VND")}
+                  {formatPriceByCurrency(
+                    totalAmount,
+                    mounted ? currency : "VND"
+                  )}
                 </span>
               </div>
             </div>
@@ -888,12 +969,12 @@ export function CheckoutClient() {
                   className="mt-1 accent-[#224e40]"
                 />
                 <span className="font-bold text-[#0a0a0a] leading-snug">
-                  Chuyển khoản ngân hàng QR (VietQR / PayOS)
+                  {t.payosTitle}
                 </span>
               </label>
               {paymentGateway === "PAYOS" && (
                 <p className="pl-6 text-[12.5px] text-[#555555] leading-relaxed">
-                  Thanh toán bằng thẻ ATM nội địa, QR VietQR / PayOS, xác nhận tự động 24/7 và ưu tiên đóng gói.
+                  {t.payosDesc}
                 </p>
               )}
             </li>
@@ -909,12 +990,12 @@ export function CheckoutClient() {
                   className="mt-1 accent-[#224e40]"
                 />
                 <span className="font-bold text-[#0a0a0a] leading-snug">
-                  Thanh toán khi nhận hàng (COD) · 11Sport liên hệ xác nhận
+                  {t.codTitle}
                 </span>
               </label>
               {paymentGateway === "COD" && (
                 <p className="pl-6 text-[12.5px] text-[#555555] leading-relaxed">
-                  Hỗ trợ mở hộp đồng kiểm vợt &amp; quét chip NFC chính hãng trước khi thanh toán.
+                  {t.codDesc}
                 </p>
               )}
             </li>
@@ -926,11 +1007,11 @@ export function CheckoutClient() {
             disabled={submitting}
             className="w-full h-[46px] rounded-none bg-[#224e40] hover:bg-[#193b30] text-white text-[13.5px] font-bold uppercase tracking-wider transition-colors disabled:opacity-60"
           >
-            {submitting ? "ĐANG XỬ LÝ ĐƠN HÀNG..." : "ĐẶT HÀNG"}
+            {submitting ? t.submittingBtn : t.placeOrderBtn}
           </button>
 
           <p className="text-[12.5px] text-[#555555] leading-relaxed">
-            Bộ phận CSKH sẽ liên hệ bạn qua số điện thoại để xác nhận đơn hàng.
+            {t.supportNote}
           </p>
         </aside>
       </form>

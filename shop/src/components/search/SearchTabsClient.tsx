@@ -1,11 +1,19 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import Link from "next/link";
 import { FileText, ShoppingBag } from "lucide-react";
 import { CatalogClient } from "@/components/catalog/CatalogClient";
 import { ArticleGridCard } from "@/components/blog/ArticleViews";
 import { QuickConsultForm } from "@/components/blog/QuickConsultForm";
+import type { LocaleCode } from "@/lib/format";
+import {
+  localizeArticleSummary,
+  localizeHref,
+  localizeProductSummary,
+} from "@/lib/i18n";
+import { useLocale } from "@/lib/i18n/client";
+import { CATALOG_I18N } from "@/lib/i18n/catalog";
 import type {
   ArticleSummary,
   ProductFacets,
@@ -24,6 +32,7 @@ interface SearchTabsClientProps {
   facets?: ProductFacets;
   articles: ArticleSummary[];
   articleTotal: number;
+  locale?: LocaleCode;
 }
 
 export function SearchTabsClient({
@@ -33,7 +42,22 @@ export function SearchTabsClient({
   facets,
   articles,
   articleTotal,
+  locale: localeProp,
 }: SearchTabsClientProps) {
+  const detectedLocale = useLocale();
+  const locale = localeProp ?? detectedLocale;
+  const t = CATALOG_I18N[locale].search;
+
+  const localizedProducts = useMemo(
+    () => products.map((product) => localizeProductSummary(product, locale)),
+    [products, locale]
+  );
+
+  const localizedArticles = useMemo(
+    () => articles.map((article) => localizeArticleSummary(article, locale)),
+    [articles, locale]
+  );
+
   const [activeTab, setActiveTab] = useState<"products" | "articles">(
     products.length === 0 && articles.length > 0 ? "articles" : "products"
   );
@@ -43,7 +67,7 @@ export function SearchTabsClient({
       {/* Sharp Tabs */}
       <div
         role="tablist"
-        aria-label="Loại kết quả tìm kiếm"
+        aria-label={t.tabsAriaLabel}
         className="flex flex-wrap items-center justify-center sm:justify-start gap-2 border-b border-[#ececec] pb-3"
       >
         <button
@@ -58,7 +82,7 @@ export function SearchTabsClient({
           }`}
         >
           <ShoppingBag className="w-4 h-4" aria-hidden="true" />
-          <span>Sản phẩm ({productMeta.total})</span>
+          <span>{t.productsTab(productMeta.total)}</span>
         </button>
 
         <button
@@ -73,7 +97,7 @@ export function SearchTabsClient({
           }`}
         >
           <FileText className="w-4 h-4" aria-hidden="true" />
-          <span>Bài viết ({articleTotal})</span>
+          <span>{t.articlesTab(articleTotal)}</span>
         </button>
       </div>
 
@@ -82,38 +106,43 @@ export function SearchTabsClient({
           fallback={<div className="h-96 bg-[#f8f9f5] animate-pulse" />}
         >
           <CatalogClient
-            products={products}
+            products={localizedProducts}
             meta={productMeta}
             facets={facets}
+            locale={locale}
           />
         </Suspense>
-      ) : articles.length === 0 ? (
+      ) : localizedArticles.length === 0 ? (
         <div className="border border-[#dce5da] bg-[#f8f9f5] py-14 px-4 text-center space-y-3">
           <p className="text-[16px] font-bold text-[#204b3e]">
-            Không tìm thấy bài viết nào{" "}
-            {query ? `cho từ khóa "${query}"` : ""}
+            {t.noArticlesHeading(query)}
           </p>
-          <p className="text-[14px] text-[#555555]">
-            Bạn có thể xem toàn bộ tin tức &amp; hướng dẫn chọn đồ tại chuyên mục
-            Tin tức 11Sport.
-          </p>
+          <p className="text-[14px] text-[#555555]">{t.noArticlesBody}</p>
           <Link
-            href="/tin-tuc"
+            href={localizeHref("/tin-tuc", locale)}
             className="inline-flex items-center justify-center h-[39px] px-6 rounded-none bg-[#224e40] hover:bg-[#193b30] text-white text-xs font-bold uppercase tracking-wider"
           >
-            XEM TẤT CẢ BÀI VIẾT
+            {t.viewAllArticles}
           </Link>
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           <div className="lg:col-span-9 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-8">
-            {articles.map((article) => (
-              <ArticleGridCard key={article._id} article={article} />
+            {localizedArticles.map((article) => (
+              <ArticleGridCard
+                key={article._id}
+                article={article}
+                locale={locale}
+              />
             ))}
           </div>
 
           <aside className="lg:col-span-3 lg:sticky lg:top-24">
-            <QuickConsultForm variant="sidebar" sourceUrl="/tim-kiem" />
+            <QuickConsultForm
+              variant="sidebar"
+              sourceUrl={localizeHref("/tim-kiem", locale)}
+              locale={locale}
+            />
           </aside>
         </div>
       )}

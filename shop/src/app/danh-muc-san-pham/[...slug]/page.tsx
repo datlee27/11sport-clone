@@ -1,5 +1,4 @@
 import { Suspense } from "react";
-import { headers } from "next/headers";
 import { notFound, permanentRedirect } from "next/navigation";
 import type { Metadata } from "next";
 import {
@@ -7,6 +6,18 @@ import {
   buildMetadata,
   resolveNestedCategoryRedirect,
 } from "@/lib/seo";
+import {
+  localizeCategoryDescription,
+  localizeCategoryName,
+  localizeCategorySummary,
+  localizeHref,
+  localizeProductSummary,
+} from "@/lib/i18n";
+import { getServerLocale } from "@/lib/i18n/server";
+import {
+  CATALOG_I18N,
+  formatCategorySegmentLabel,
+} from "@/lib/i18n/catalog";
 import { fetchCategoryDetail, fetchProducts } from "@/lib/storefront";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { CatalogClient } from "@/components/catalog/CatalogClient";
@@ -25,20 +36,31 @@ export async function generateMetadata({
   params,
   searchParams,
 }: NestedCategoryPageProps): Promise<Metadata> {
+  const locale = getServerLocale();
+  const tCat = CATALOG_I18N[locale].pages.category;
+  const tNested = CATALOG_I18N[locale].pages.nestedCategory;
+
   const segments = params.slug || [];
   const leafSlug = segments[segments.length - 1] || "thoi-trang";
   const { data } = await fetchCategoryDetail(leafSlug);
   const category = data?.category;
-  const title = category?.name
-    ? `${category.name} Chính Hãng`
-    : "Danh Mục Sản Phẩm Pickleball";
+
+  const categoryName = category?.name
+    ? localizeCategoryName(category.name, locale, category.slug || leafSlug)
+    : undefined;
+  const title = categoryName
+    ? tCat.metaTitle(categoryName)
+    : tNested.fallbackTitle;
+  const description =
+    locale === "vi"
+      ? category?.seo?.description || tNested.metaDescription(title)
+      : tNested.metaDescription(categoryName || tNested.fallbackTitle);
 
   return buildMetadata({
     title,
-    description:
-      category?.seo?.description ||
-      `Khám phá ${title} chính hãng 100%, lỗi 1 đổi 1, freeship toàn quốc.`,
+    description,
     path: `/danh-muc-san-pham/${segments.join("/")}`,
+    locale,
     searchParams,
   });
 }
@@ -47,6 +69,10 @@ export default async function NestedCategoryPage({
   params,
   searchParams,
 }: NestedCategoryPageProps) {
+  const locale = getServerLocale();
+  const tCat = CATALOG_I18N[locale].pages.category;
+  const tc = CATALOG_I18N[locale].common;
+
   const segments = params.slug || [];
   const singleSegTopCategories = new Set([
     "vot-pickleball",
@@ -57,8 +83,7 @@ export default async function NestedCategoryPage({
   ]);
 
   if (segments.length === 1 && singleSegTopCategories.has(segments[0] || "")) {
-    const reqLocale = headers().get("x-locale") === "en" ? "en" : "vi";
-    const redirectTarget = resolveNestedCategoryRedirect(segments, reqLocale);
+    const redirectTarget = resolveNestedCategoryRedirect(segments, locale);
     if (redirectTarget) {
       permanentRedirect(redirectTarget);
     }
@@ -86,24 +111,39 @@ export default async function NestedCategoryPage({
   }
 
   const category = catResult.data?.category;
-  const categoryName =
-    category?.name || leafSlug.replace(/-/g, " ").toUpperCase();
-  const subCategories =
+  const categoryName = category?.name
+    ? localizeCategoryName(category.name, locale, category.slug || leafSlug)
+    : formatCategorySegmentLabel(leafSlug, locale);
+  const rawSubCategories =
     catResult.data?.subCategories || category?.subCategories || [];
+  const subCategories = rawSubCategories.map((sub) =>
+    localizeCategorySummary(sub, locale)
+  );
+  const descriptionHtml = localizeCategoryDescription(
+    category?.slug || leafSlug,
+    category?.descriptionHtml,
+    locale
+  );
+  const localizedProducts = productsRes.data.map((product) =>
+    localizeProductSummary(product, locale)
+  );
 
   const breadcrumbs = [
-    { name: "Trang chủ", path: "/" },
+    { name: tc.home, path: "/" },
     ...segments.map((seg, i) => ({
-      name: i === segments.length - 1 ? categoryName : seg.replace(/-/g, " "),
+      name:
+        i === segments.length - 1
+          ? categoryName
+          : formatCategorySegmentLabel(seg, locale),
       path: `/danh-muc-san-pham/${segments.slice(0, i + 1).join("/")}`,
     })),
   ];
 
   return (
     <div className="max-w-container mx-auto px-3.5 sm:px-4 lg:px-5 py-4 lg:py-6 space-y-5">
-      <JsonLd data={buildBreadcrumbJsonLd(breadcrumbs)} />
+      <JsonLd data={buildBreadcrumbJsonLd(breadcrumbs, locale)} />
 
-      <h1 className="sr-only">{categoryName} Chính Hãng — 11Sport</h1>
+      <h1 className="sr-only">{tCat.srHeading(categoryName)}</h1>
 
       <Suspense
         fallback={
@@ -113,18 +153,23 @@ export default async function NestedCategoryPage({
         <CatalogClient
           breadcrumbs={breadcrumbs.map((b, i) => ({
             name: b.name,
-            href: i < breadcrumbs.length - 1 ? b.path : undefined,
+            href:
+              i < breadcrumbs.length - 1
+                ? localizeHref(b.path, locale)
+                : undefined,
           }))}
-          products={productsRes.data}
+          products={localizedProducts}
           meta={productsRes.meta}
           facets={productsRes.facets}
           subCategories={subCategories}
+          locale={locale}
         />
       </Suspense>
 
       <SeoDescriptionBox
-        html={category?.descriptionHtml}
-        title={`Thông tin về ${categoryName}`}
+        html={descriptionHtml}
+        title={tCat.seoBoxTitle(categoryName)}
+        locale={locale}
       />
     </div>
   );
